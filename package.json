@@ -30,6 +30,7 @@
     "sass": "^1.94.2",
     "svelte-material-ui": "^8.0.3",
     "svelte-routing": "^2.13.0",
-    "svelte-spa-router": "^4.0.1"
+    "svelte-spa-router": "^4.0.1",
+    "sweetalert2": "^11.26.3"
   }
 }

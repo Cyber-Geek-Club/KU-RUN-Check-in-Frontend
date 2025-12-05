@@ -2,22 +2,41 @@
   import { goto } from "$app/navigation";
   import { slide } from "svelte/transition";
 
-
+  
+  type Role = "student" | "officer";
   type Major = { id: string; name: string };
 
-  let fullName: string = "Somchai Nisit";
-  let nisitId: string = "64xxxxxxxx";
-  let email: string = "somchai.n@ku.th";
-  let faculty: string = "";
-  let major: string = "";
+ 
+  let role: Role = "student";
+  let indicatorTransform: string;
+  $: indicatorTransform = role === "student" ? "0%" : "calc(100% + 8px)";
+
+  let fullName: string = "";
+  let email: string = "";
   let password: string = "";
   let showPassword: boolean = false;
 
+
+  let nisitId: string = "";
+  let faculty: string = "";
+  let major: string = "";
+
+  let department: string = "";
+
   let isFacultyOpen = false;
   let isMajorOpen = false;
-  let errorField: string = ""; 
+  let isDeptOpen = false;
 
-  // --- Data ---
+  let errorFields = {
+    fullName: false,
+    email: false,
+    nisitId: false,
+    faculty: false,
+    major: false,
+    department: false,
+    password: false,
+  };
+
   const facultyList = [
     { id: "management", name: "Management Sciences" },
     { id: "engineering", name: "Engineering at Sriracha" },
@@ -47,24 +66,28 @@
     maritime: [{ id: "ns", name: "Nautical Science" }],
   };
 
+  const officerDepartments = [
+    "Academic Affairs",
+    "Student Affairs",
+    "Registrar Office",
+    "Finance Department",
+    "IT Support Center",
+    "Human Resources",
+  ];
+
   let currentMajors: Major[] = [];
 
   $: {
     if (faculty && majorData[faculty]) {
       currentMajors = majorData[faculty];
     } else {
-      currentMajors = Object.values(majorData).flat();
+      currentMajors = [];
     }
   }
 
   let message: string = "";
   let messageType: "error" | "success" = "error";
   let messageTimeout: any;
-
-  function closeAllDropdowns() {
-    isFacultyOpen = false;
-    isMajorOpen = false;
-  }
 
   function selectFaculty(id: string) {
     faculty = id;
@@ -73,17 +96,20 @@
     clearMessage();
   }
 
+  function highlight(field: keyof typeof errorFields) {
+    errorFields[field] = true;
+    setTimeout(() => (errorFields[field] = false), 3000); 
+  }
+
   function selectMajor(id: string) {
     major = id;
     isMajorOpen = false;
-    if (!faculty) {
-      for (const [facKey, majors] of Object.entries(majorData)) {
-        if (majors.find((m) => m.id === id)) {
-          faculty = facKey;
-          break;
-        }
-      }
-    }
+    clearMessage();
+  }
+
+  function selectDepartment(dept: string) {
+    department = dept;
+    isDeptOpen = false;
     clearMessage();
   }
 
@@ -93,29 +119,29 @@
   }
 
   function getMajorName(id: string) {
-    let found = currentMajors.find((m) => m.id === id);
-    if (!found) {
-      found = Object.values(majorData)
-        .flat()
-        .find((m) => m.id === id);
-    }
+    const found = currentMajors.find((m) => m.id === id);
     return found ? found.name : "Select Major";
+  }
+
+  function toggleRole(newRole: Role) {
+    if (role === newRole) return;
+    role = newRole;
+    isFacultyOpen = false;
+    isMajorOpen = false;
+    isDeptOpen = false;
+    clearMessage();
   }
 
   function showMessage(msg: string, type: "error" | "success" = "error") {
     if (messageTimeout) clearTimeout(messageTimeout);
     message = msg;
     messageType = type;
-    messageTimeout = setTimeout(() => {
-      message = "";
-      errorField = ""; 
-    }, 3000);
+    messageTimeout = setTimeout(() => (message = ""), 3000);
   }
 
   function clearMessage() {
     if (message) {
       message = "";
-      errorField = "";
       if (messageTimeout) clearTimeout(messageTimeout);
     }
   }
@@ -124,60 +150,66 @@
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }
 
-  async function handleSaveChanges(): Promise<void> {
+  function validatePassword(value: string): boolean {
+    return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(value);
+  }
+  async function handleSignup(): Promise<void> {
     clearMessage();
 
-    // Validation Logic with Error Highlighting
-    if (!fullName) {
-      errorField = "fullname";
+    if (!fullName) { 
+      highlight("fullName");
       return showMessage("Please enter your full name.");
     }
-    if (!nisitId) {
-      errorField = "nisitId";
-      return showMessage("Please enter your Nisit ID.");
-    }
+
     if (!email) {
-      errorField = "email";
+      highlight("email");
       return showMessage("Please enter your email.");
     }
+
     if (!validateEmail(email)) {
-      errorField = "email";
+      highlight("email");
       return showMessage("Invalid email format.");
     }
-    if (!faculty) {
-      errorField = "faculty";
-      return showMessage("Please select a faculty.");
+
+    if (role === "student") {
+      if (!nisitId) {
+        highlight("nisitId");
+        return showMessage("Please enter your Nisit ID.");
+      }
+      if (!faculty) {
+        highlight("faculty");
+        return showMessage("Please select a faculty.");
+      }
+      if (!major) {
+        highlight("major");
+        return showMessage("Please select a major.");
+      }
+    } else {
+      if (!department) {
+        highlight("department");
+        return showMessage("Please select your department.");
+      }
     }
-    if (!major) {
-      errorField = "major";
-      return showMessage("Please select a major.");
-    }
+
     if (!password) {
-      errorField = "password";
-      return showMessage("Please confirm your password to save.");
+      highlight("password");
+      return showMessage("Please enter a password.");
     }
 
-    const updateData = {
-      role: "student",
-      fullName,
-      nisitId,
-      email,
-      faculty,
-      major,
-      password,
-    };
-    console.log("Student Settings Updated:", updateData);
+    if (!validatePassword(password)) {
+      highlight("password");
+      showMessage("Password must be at least 8 chars & include a number.");
+      return;
+    }
 
-    showMessage("Account updated successfully!", "success");
-    setTimeout(() => goto("/eventlist"), 1500);
+    showMessage("Sign up successful!", "success");
+    setTimeout(() => goto("/login"), 1500);
   }
 </script>
 
-<svelte:window on:click={closeAllDropdowns} />
-
 <div class="app-screen">
   <div class="glass-header">
-    <a href="/eventlist" class="back-btn" aria-label="Back">
+    <a href="/login" class="back-btn" aria-label="Back">
       <svg
         width="24"
         height="24"
@@ -192,23 +224,41 @@
         <polyline points="12 19 5 12 12 5"></polyline>
       </svg>
     </a>
+    <h1 class="page-title">CREATE ACCOUNT</h1>
   </div>
 
   <div class="scroll-container">
     <div class="content-wrapper">
       <div class="form-card">
-        <div class="title-section">
-          <h1 class="main-title">ACCOUNT SETTINGS</h1>
-          <p class="sub-title">Update your student profile information.</p>
+        <div class="role-switcher-container">
+          <div class="segmented" role="tablist">
+            <div
+              class="indicator"
+              style="transform: translateX({indicatorTransform});"
+            ></div>
+            <button
+              type="button"
+              class="option"
+              class:active={role === "student"}
+              on:click={() => toggleRole("student")}
+            >
+              <span>Student</span>
+            </button>
+            <button
+              type="button"
+              class="option"
+              class:active={role === "officer"}
+              on:click={() => toggleRole("officer")}
+            >
+              <span>Officer</span>
+            </button>
+          </div>
         </div>
 
         <div class="form-section">
           <div class="form-group">
             <label class="label" for="fullname">Full Name</label>
-            <div
-              class="input-field"
-              class:error-border={errorField === "fullname"}
-            >
+            <div class="input-field {errorFields.fullName ? 'error' : ''}">
               <input
                 id="fullname"
                 type="text"
@@ -220,27 +270,8 @@
           </div>
 
           <div class="form-group">
-            <label class="label" for="nisitId">Nisit ID</label>
-            <div
-              class="input-field"
-              class:error-border={errorField === "nisitId"}
-            >
-              <input
-                id="nisitId"
-                type="text"
-                placeholder="Enter your ID"
-                bind:value={nisitId}
-                on:input={clearMessage}
-              />
-            </div>
-          </div>
-
-          <div class="form-group">
             <label class="label" for="email">Email</label>
-            <div
-              class="input-field"
-              class:error-border={errorField === "email"}
-            >
+            <div class="input-field {errorFields.email ? 'error' : ''}">
               <input
                 id="email"
                 type="email"
@@ -251,104 +282,172 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="label" for="faculty-trigger">Faculty</label>
-            <div class="custom-select-container">
-              <button
-                id="faculty-trigger"
-                type="button"
-                class="select-trigger"
-                class:placeholder={!faculty}
-                class:active={isFacultyOpen}
-                class:error-border={errorField === "faculty"}
-                on:click={(e) => {
-                  e.stopPropagation();
-                  isFacultyOpen = !isFacultyOpen;
-                  isMajorOpen = false;
-                }}
-              >
-                <span
-                  >{faculty ? getFacultyName(faculty) : "Select Faculty"}</span
-                >
-                <div class="arrow-icon" class:rotate={isFacultyOpen}>
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+          {#if role === "student"}
+            <div transition:slide|local={{ duration: 200 }}>
+              <div class="form-group">
+                <label class="label" for="nisitId">Nisit ID</label>
+                <div class="input-field {errorFields.nisitId ? 'error' : ''}">
+                  <input
+                    type="text"
+                    bind:value={nisitId}
+                    on:input={(event) => {
+                      const target = event.target as HTMLInputElement;
+                      target.value = target.value.replace(/\D/g, "").slice(0, 10);
+                      nisitId = target.value;
+                    }}
+                    placeholder="Nisit ID"
+                    maxlength="10"
+                  />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="label" for="faculty-dropdown">Faculty</label>
+                <div class="custom-select-container">
+                  <button
+                    id="faculty-dropdown"
+                    type="button"
+                    class="select-trigger {errorFields.faculty ? 'error' : ''}"
+                    class:placeholder={!faculty}
+                    class:active={isFacultyOpen}
+                    on:click={() => {
+                      isFacultyOpen = !isFacultyOpen;
+                      isMajorOpen = false;
+                    }}
                   >
-                </div>
-              </button>
-
-              {#if isFacultyOpen}
-                <div class="options-list" transition:slide={{ duration: 150 }}>
-                  {#each facultyList as f}
-                    <button
-                      type="button"
-                      class="option-item"
-                      on:click={() => selectFaculty(f.id)}
+                    <span
+                      >{faculty
+                        ? getFacultyName(faculty)
+                        : "Select Faculty"}</span
                     >
-                      {f.name}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          </div>
+                    <div class="arrow-icon" class:rotate={isFacultyOpen}>
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+                      >
+                    </div>
+                  </button>
 
-          <div class="form-group">
-            <label class="label" for="major-trigger">Major</label>
-            <div class="custom-select-container">
-              <button
-                id="major-trigger"
-                type="button"
-                class="select-trigger"
-                class:placeholder={!major}
-                class:active={isMajorOpen}
-                class:error-border={errorField === "major"}
-                on:click={(e) => {
-                  e.stopPropagation();
-                  isMajorOpen = !isMajorOpen;
-                  isFacultyOpen = false;
-                }}
-              >
-                <span>{major ? getMajorName(major) : "Select Major"}</span>
-                <div class="arrow-icon" class:rotate={isMajorOpen}>
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+                  {#if isFacultyOpen}
+                    <div
+                      class="options-list"
+                      transition:slide={{ duration: 150 }}
+                    >
+                      {#each facultyList as f}
+                        <button
+                          type="button"
+                          class="option-item"
+                          on:click={() => selectFaculty(f.id)}
+                        >
+                          {f.name}
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="label" for="major-dropdown">Major</label>
+                <div class="custom-select-container" class:disabled={!faculty}>
+                  <button
+                    id="major-dropdown"
+                    type="button"
+                    class="select-trigger {errorFields.major ? 'error' : ''}"
+                    class:placeholder={!major}
+                    class:active={isMajorOpen}
+                    disabled={!faculty}
+                    on:click={() => {
+                      isMajorOpen = !isMajorOpen;
+                      isFacultyOpen = false;
+                    }}
                   >
-                </div>
-              </button>
+                    <span>{major ? getMajorName(major) : "Select Major"}</span>
+                    <div class="arrow-icon" class:rotate={isMajorOpen}>
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+                      >
+                    </div>
+                  </button>
 
-              {#if isMajorOpen}
-                <div class="options-list" transition:slide={{ duration: 150 }}>
-                  {#each currentMajors as m}
-                    <button
-                      type="button"
-                      class="option-item"
-                      on:click={() => selectMajor(m.id)}
+                  {#if isMajorOpen}
+                    <div
+                      class="options-list"
+                      transition:slide={{ duration: 150 }}
                     >
-                      {m.name}
-                    </button>
-                  {/each}
+                      {#each currentMajors as m}
+                        <button
+                          type="button"
+                          class="option-item"
+                          on:click={() => selectMajor(m.id)}
+                        >
+                          {m.name}
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
                 </div>
-              {/if}
+              </div>
             </div>
-          </div>
+          {:else}
+            <div transition:slide|local={{ duration: 200 }}>
+              <div class="form-group">
+                <label class="label" for="dept-dropdown">Department</label>
+                <div class="custom-select-container">
+                  <button
+                    id="dept-dropdown"
+                    type="button"
+                    class="select-trigger {errorFields.department ? 'error' : ''}"
+                    class:placeholder={!department}
+                    class:active={isDeptOpen}
+                    on:click={() => (isDeptOpen = !isDeptOpen)}
+                  >
+                    <span>{department || "Select Department"}</span>
+                    <div class="arrow-icon" class:rotate={isDeptOpen}>
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+                      >
+                    </div>
+                  </button>
+
+                  {#if isDeptOpen}
+                    <div
+                      class="options-list"
+                      transition:slide={{ duration: 150 }}
+                    >
+                      {#each officerDepartments as dept}
+                        <button
+                          type="button"
+                          class="option-item"
+                          on:click={() => selectDepartment(dept)}
+                        >
+                          {dept}
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              </div>
+            </div>
+          {/if}
 
           <div class="form-group">
-            <label class="label" for="password">Confirm Password</label>
-            <div
-              class="input-field"
-              class:error-border={errorField === "password"}
-            >
+            <label class="label" for="password">Password</label>
+            <div class="input-field {errorFields.password ? 'error' : ''}">
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -429,12 +528,8 @@
             </div>
           {/if}
 
-          <button
-            class="primary-btn"
-            type="button"
-            on:click={handleSaveChanges}
-          >
-            SAVE CHANGES
+          <button class="primary-btn" type="button" on:click={handleSignup}>
+            SIGN UP
           </button>
         </div>
       </div>
@@ -518,7 +613,7 @@
 
   .page-title {
     color: white;
-    font-size: 20px;
+    font-size: 28px;
     font-weight: 700;
     margin: 0;
     letter-spacing: 1px;
@@ -536,6 +631,13 @@
     display: none;
   }
 
+  .input-field.error,
+  .select-trigger.error {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25) !important;
+  }
+
+
   .content-wrapper {
     width: 100%;
     max-width: 400px;
@@ -548,7 +650,6 @@
     display: flex;
     flex-direction: column;
   }
-
   .title-section {
     text-align: left;
     margin-bottom: 24px;
@@ -557,12 +658,50 @@
     color: #f3f4f6;
     font-size: 28px;
     font-weight: 700;
-    margin: 0 0 8px 0;
   }
-  .sub-title {
-    color: #9ca3af;
+
+  .role-switcher-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .segmented {
+    position: relative;
+    display: inline-flex;
+    background: rgba(243, 244, 246, 0.06);
+    padding: 7px;
+    border-radius: 99px;
+    gap: 4px;
+    width: 70%;
+    max-width: 300px;
+  }
+  .indicator {
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    bottom: 4px;
+    width: calc(50% - 6px);
+    background: #f3f4f6;
+    border-radius: 99px;
+    transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.2, 1);
+    z-index: 1;
+  }
+  .option {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 8px;
+    border-radius: 99px;
+    cursor: pointer;
+    color: #9aa0a6;
+    font-weight: 600;
     font-size: 14px;
-    margin: 0;
+    transition: color 0.16s ease;
+  }
+  .option.active {
+    color: #0f172a;
   }
 
   .form-section {
@@ -578,7 +717,7 @@
   }
   .label {
     color: #f3f4f6;
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 600;
   }
 
@@ -610,11 +749,16 @@
     color: #6b7280;
   }
 
-  /* Custom Dropdown */
+
   .custom-select-container {
     position: relative;
     width: 100%;
   }
+  .custom-select-container.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
   .select-trigger {
     width: 100%;
     height: 54px;
@@ -694,7 +838,6 @@
     color: #f3f4f6;
   }
 
-
   .message-container {
     display: flex;
     align-items: center;
@@ -716,10 +859,6 @@
     background: #ecfdf5;
     border: 1px solid #a7f3d0;
     color: #047857;
-  }
-  .error-border {
-    border-color: #ef4444 !important;
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25) !important;
   }
 
   .primary-btn {
