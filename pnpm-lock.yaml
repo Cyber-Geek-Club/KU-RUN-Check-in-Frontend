@@ -29,6 +29,9 @@ importers:
       svelte-spa-router:
         specifier: ^4.0.1
         version: 4.0.1
+      sweetalert2:
+        specifier: ^11.26.3
+        version: 11.26.3
     devDependencies:
       '@mdi/js':
         specifier: ^7.4.47
@@ -987,6 +990,9 @@ packages:
   svelte@5.45.2:
     resolution: {integrity: sha512-yyXdW2u3H0H/zxxWoGwJoQlRgaSJLp+Vhktv12iRw2WRDlKqUPT54Fi0K/PkXqrdkcQ98aBazpy0AH4BCBVfoA==}
     engines: {node: '>=18'}
+
+  sweetalert2@11.26.3:
+    resolution: {integrity: sha512-VU0hGw/WfI9h7Mh+SCsDlWgtxDwWZ6ccqS7QcO8zEeWnwplN1GptcLstq76OluUBSLUza6ldvKd3558OhjpJ9A==}
 
   tinyglobby@0.2.15:
     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
@@ -2515,6 +2521,8 @@ snapshots:
       locate-character: 3.0.0
       magic-string: 0.30.21
       zimmerframe: 1.1.4
+
+  sweetalert2@11.26.3: {}
 
   tinyglobby@0.2.15:
     dependencies:
