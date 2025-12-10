@@ -3,8 +3,6 @@
   import { goto, beforeNavigate } from "$app/navigation";
   import { quintOut } from "svelte/easing";
   import Swal from "sweetalert2";
-  import { enhance } from '$app/forms';
-  import { auth } from '$lib/stores/auth';
 
   let isMenuOpen = false;
 
@@ -63,29 +61,26 @@
     }
   }
 
-  function clearClientData() {
-      localStorage.removeItem("user_info");
-      isMenuOpen = false;
-  }
-
   beforeNavigate(({ type, cancel }) => {
     if (type === 'popstate') {
       cancel();
     }
   });
 
-  function handleLogout() {
+  async function handleLogout() {
+    // ยืนยันก่อนออก (Optional)
+    /* const result = await Swal.fire({ ... }); if (!result.isConfirmed) return; */
+
+    // 1. ลบข้อมูล User
+    localStorage.removeItem("user_info");
     
-    auth.logout();
-    
-   
+    // 2. ปิดเมนู
     isMenuOpen = false;
 
-   
-    goto('/auth/login', { replaceState: true });
+    // 3. กลับไปหน้า Login และใช้ replaceState: true
+    // เพื่อแทนที่ History ปัจจุบัน ทำให้กด Back กลับมาหน้านี้ไม่ได้
+    await goto("/", { replaceState: true });
   }
-
-  
 
   function toggleReadMore(index: number) {
     events[index].isReadMore = !events[index].isReadMore;
@@ -170,33 +165,13 @@
         <span class="icon">⚙️</span> Settings
       </a>
       <div class="menu-divider"></div>
-       <form 
-        action="?/logout" 
-        method="POST"
-        use:enhance={() => {
-            
-            isMenuOpen = false; 
-
-            return async ({ result, update }) => {
-                // โค้ดตรงนี้ทำงาน 'หลังจาก' Server ตอบกลับมาแล้ว
-                if (result.type === 'redirect') {
-                    clearClientData(); // ลบ localstorage (ถ้ามี)
-                    await goto(result.location); // ไปหน้า login
-                } else {
-                    await update(); // เผื่อกรณี error
-                }
-            };
-        }}
-        style="display: contents;" 
-    >
         <button 
-            type="button" 
-            class="menu-item logout" 
-            on:click={handleLogout}
-        >
-            <span class="icon">🚪</span> Logout
-        </button>
-    </form>
+        type="button" 
+        class="menu-item logout" 
+        on:click={handleLogout}
+      >
+        <span class="icon">🚪</span>  Logout
+      </button>
     </div>
   {/if}
 

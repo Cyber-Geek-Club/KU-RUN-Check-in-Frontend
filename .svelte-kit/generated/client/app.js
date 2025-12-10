@@ -18,7 +18,12 @@ export const nodes = [
 	() => import('./nodes/14'),
 	() => import('./nodes/15'),
 	() => import('./nodes/16'),
-	() => import('./nodes/17')
+	() => import('./nodes/17'),
+	() => import('./nodes/18'),
+	() => import('./nodes/19'),
+	() => import('./nodes/20'),
+	() => import('./nodes/21'),
+	() => import('./nodes/22')
 ];
 
 export const server_loads = [];
@@ -30,15 +35,20 @@ export const dictionary = {
 		"/auth/register": [6],
 		"/auth/reset-password": [7],
 		"/auth/verify-email": [8],
-		"/officer/create-event": [9],
-		"/officer/event-verify": [10],
-		"/officer/monthly-reward": [11],
-		"/officer/setting-account": [12],
-		"/officer/upload-proof": [13],
-		"/student/event-list": [14],
-		"/student/monthly-reward": [15],
-		"/student/myevents-upcoming": [16],
-		"/student/setting-account": [17]
+		"/officer/event-list": [9],
+		"/officer/monthly-reward copy": [11],
+		"/officer/monthly-reward": [10],
+		"/officer/myevents-upcoming": [12],
+		"/officer/setting-account": [13],
+		"/organize/create-event": [14],
+		"/organize/event-verify": [15],
+		"/organize/monthly-reward": [16],
+		"/organize/setting-account": [17],
+		"/organize/upload-proof": [18],
+		"/student/event-list": [19],
+		"/student/monthly-reward": [20],
+		"/student/myevents-upcoming": [21],
+		"/student/setting-account": [22]
 	};
 
 export const hooks = {

@@ -3,11 +3,11 @@
   import { slide, scale } from "svelte/transition";
   import { onMount } from "svelte";
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+  const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
   let verifyStatus: "loading" | "success" | "error" = "loading";
   let message: string = "Verifying your email...";
-  let countdown: number = 5;
+  let countdown: number = 3;
 
   onMount(async () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -20,19 +20,27 @@
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/users/verify-email?token=${token}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await fetch(
+        `${API_BASE}/api/users/verify-email?token=${token}`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
       const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
         verifyStatus = "success";
-        message = "Your email has been successfully verified.";
+        message = "Email verified successfully.";
+        const channel = new BroadcastChannel("auth-sync");
+        channel.postMessage("register-verified");
+        channel.close();
+
         startCountdown();
       } else {
         verifyStatus = "error";
-        message = data.detail || data.message || "Verification failed or link expired.";
+        message =
+          data.detail || data.message || "Verification failed or link expired.";
       }
     } catch (error) {
       verifyStatus = "error";
@@ -40,13 +48,12 @@
     }
   });
 
-
   function startCountdown() {
     const interval = setInterval(() => {
       countdown--;
       if (countdown <= 0) {
         clearInterval(interval);
-        goto("/auth/login");
+        goto("/auth/login"); 
       }
     }, 1000);
   }
@@ -54,21 +61,15 @@
   function handleBackToHome() {
     goto("/");
   }
-  function handleBackToLogin() {
-    goto("/auth/login");
-  }
 </script>
 
 <div class="app-screen">
- 
-
   <div class="scroll-container">
     <div class="content-wrapper">
       <div class="form-card">
-        
-        {#if verifyStatus === 'loading'}
+        {#if verifyStatus === "loading"}
           <div class="icon-wrapper" in:scale={{ duration: 400 }}>
-             <div class="loader"></div>
+            <div class="loader"></div>
           </div>
           <div class="title-section" style="text-align: center;" in:slide>
             <h1 class="main-title">VERIFYING...</h1>
@@ -76,7 +77,7 @@
           </div>
         {/if}
 
-        {#if verifyStatus === 'success'}
+        {#if verifyStatus === "success"}
           <div class="icon-wrapper" in:scale={{ duration: 400, start: 0.5 }}>
             <div class="success-circle">
               <svg
@@ -99,18 +100,21 @@
             <p class="sub-title">
               {message}
             </p>
-            <p class="sub-title" style="margin-top: 12px; color: #10b981;">
-                Redirecting to login in {countdown}s...
+            <p
+              class="sub-title"
+              style="margin-top: 16px; color: #10b981; font-weight: 600;"
+            >
+              Redirecting to login in {countdown}s...
             </p>
           </div>
           <div class="form-section" in:slide>
-            <button class="primary-btn" on:click={handleBackToLogin}>
-                GO TO LOGIN NOW
+            <button class="primary-btn" on:click={() => goto("/auth/login")}>
+              GO TO LOGIN NOW
             </button>
           </div>
         {/if}
 
-        {#if verifyStatus === 'error'}
+        {#if verifyStatus === "error"}
           <div class="icon-wrapper" in:scale={{ duration: 400, start: 0.5 }}>
             <div class="error-circle">
               <svg
@@ -130,18 +134,19 @@
             </div>
           </div>
           <div class="title-section" style="text-align: center;" in:slide>
-            <h1 class="main-title" style="color: #ef4444;">VERIFICATION FAILED</h1>
+            <h1 class="main-title" style="color: #ef4444;">
+              VERIFICATION FAILED
+            </h1>
             <p class="sub-title">
               {message}
             </p>
           </div>
           <div class="form-section" in:slide>
             <button class="primary-btn error-btn" on:click={handleBackToHome}>
-                BACK TO HOME
+              BACK TO HOME
             </button>
           </div>
         {/if}
-
       </div>
     </div>
   </div>
@@ -168,7 +173,7 @@
     flex-direction: column;
     position: relative;
   }
-  
+
   .scroll-container {
     flex: 1;
     overflow-y: auto;
@@ -233,12 +238,12 @@
     background: #059669;
   }
   .primary-btn.error-btn {
-      background: #ef4444;
-      color: white;
-      box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
   }
   .primary-btn.error-btn:hover {
-      background: #dc2626;
+    background: #dc2626;
   }
 
   .icon-wrapper {
@@ -270,8 +275,7 @@
     color: #ef4444;
     box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
   }
-  
-  /* Simple Loader */
+
   .loader {
     border: 4px solid rgba(255, 255, 255, 0.1);
     border-top: 4px solid #10b981;
@@ -281,7 +285,11 @@
     animation: spin 1s linear infinite;
   }
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 </style>

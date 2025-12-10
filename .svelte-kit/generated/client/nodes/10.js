@@ -1,1 +1,1 @@
-export { default as component } from "../../../../src/routes/officer/event-verify/+page.svelte";
+export { default as component } from "../../../../src/routes/officer/monthly-reward/+page.svelte";

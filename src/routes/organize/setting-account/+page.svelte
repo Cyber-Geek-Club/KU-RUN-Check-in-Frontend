@@ -1,105 +1,38 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { slide } from "svelte/transition";
-
-
-  type Major = { id: string; name: string };
-
-  let fullName: string = "Somchai Nisit";
-  let nisitId: string = "64xxxxxxxx";
-  let email: string = "somchai.n@ku.th";
-  let faculty: string = "";
-  let major: string = "";
+  let fullName: string = "Somchai Officer";
+  let email: string = "officer@ku.th";
+  let department: string = "";
   let password: string = "";
   let showPassword: boolean = false;
 
-  let isFacultyOpen = false;
-  let isMajorOpen = false;
-  let errorField: string = ""; 
+  let isDeptOpen = false;
 
-  // --- Data ---
-  const facultyList = [
-    { id: "management", name: "Management Sciences" },
-    { id: "engineering", name: "Engineering at Sriracha" },
-    { id: "science", name: "Science at Sriracha" },
-    { id: "economics", name: "Economics at Sriracha" },
-    { id: "maritime", name: "International Maritime Studies" },
+  let errorField: string = "";
+
+  const departments = [
+    "Academic Affairs",
+    "Student Affairs",
+    "Registrar Office",
+    "Finance Department",
+    "IT Support Center",
+    "Human Resources",
   ];
 
-  const majorData: Record<string, Major[]> = {
-    management: [
-      { id: "mgt", name: "Management" },
-      { id: "fin", name: "Finance" },
-      { id: "ib", name: "International Business" },
-      { id: "acc", name: "Accounting" },
-    ],
-    engineering: [
-      { id: "cpe", name: "Computer Engineering" },
-      { id: "me", name: "Mechanical Engineering" },
-      { id: "ie", name: "Industrial Engineering" },
-      { id: "ee", name: "Electrical Engineering" },
-    ],
-    science: [
-      { id: "cs", name: "Computer Science" },
-      { id: "it", name: "Information Technology" },
-    ],
-    economics: [{ id: "econ", name: "Economics" }],
-    maritime: [{ id: "ns", name: "Nautical Science" }],
-  };
-
-  let currentMajors: Major[] = [];
-
-  $: {
-    if (faculty && majorData[faculty]) {
-      currentMajors = majorData[faculty];
-    } else {
-      currentMajors = Object.values(majorData).flat();
-    }
-  }
-
+ 
   let message: string = "";
   let messageType: "error" | "success" = "error";
   let messageTimeout: any;
 
   function closeAllDropdowns() {
-    isFacultyOpen = false;
-    isMajorOpen = false;
+    isDeptOpen = false;
   }
 
-  function selectFaculty(id: string) {
-    faculty = id;
-    major = "";
-    isFacultyOpen = false;
+  function selectDepartment(dept: string) {
+    department = dept;
+    isDeptOpen = false;
     clearMessage();
-  }
-
-  function selectMajor(id: string) {
-    major = id;
-    isMajorOpen = false;
-    if (!faculty) {
-      for (const [facKey, majors] of Object.entries(majorData)) {
-        if (majors.find((m) => m.id === id)) {
-          faculty = facKey;
-          break;
-        }
-      }
-    }
-    clearMessage();
-  }
-
-  function getFacultyName(id: string) {
-    const found = facultyList.find((f) => f.id === id);
-    return found ? found.name : "Select Faculty";
-  }
-
-  function getMajorName(id: string) {
-    let found = currentMajors.find((m) => m.id === id);
-    if (!found) {
-      found = Object.values(majorData)
-        .flat()
-        .find((m) => m.id === id);
-    }
-    return found ? found.name : "Select Major";
   }
 
   function showMessage(msg: string, type: "error" | "success" = "error") {
@@ -115,7 +48,7 @@
   function clearMessage() {
     if (message) {
       message = "";
-      errorField = "";
+      errorField = ""; 
       if (messageTimeout) clearTimeout(messageTimeout);
     }
   }
@@ -127,13 +60,10 @@
   async function handleSaveChanges(): Promise<void> {
     clearMessage();
 
+  
     if (!fullName) {
       errorField = "fullname";
       return showMessage("Please enter your full name.");
-    }
-    if (!nisitId) {
-      errorField = "nisitId";
-      return showMessage("Please enter your Nisit ID.");
     }
     if (!email) {
       errorField = "email";
@@ -143,32 +73,27 @@
       errorField = "email";
       return showMessage("Invalid email format.");
     }
-    if (!faculty) {
-      errorField = "faculty";
-      return showMessage("Please select a faculty.");
-    }
-    if (!major) {
-      errorField = "major";
-      return showMessage("Please select a major.");
+    if (!department) {
+      errorField = "department";
+      return showMessage("Please select your department.");
     }
     if (!password) {
       errorField = "password";
       return showMessage("Please confirm your password to save.");
     }
 
+    // Simulate API Call
     const updateData = {
-      role: "student",
+      role: "officer",
       fullName,
-      nisitId,
       email,
-      faculty,
-      major,
+      department,
       password,
     };
-    console.log("Student Settings Updated:", updateData);
+    console.log("Officer Settings Updated:", updateData);
 
-    showMessage("Account updated successfully!", "success");
-    setTimeout(() => goto("/eventlist"), 1500);
+    showMessage("Settings updated successfully!", "success");
+    setTimeout(() => goto("/createevent-officer"), 1500);
   }
 </script>
 
@@ -176,7 +101,7 @@
 
 <div class="app-screen">
   <div class="glass-header">
-    <a href="/student/eventlist" class="back-btn" aria-label="Back">
+    <a href="/officer/create-event" class="back-btn" aria-label="Back">
       <svg
         width="24"
         height="24"
@@ -198,7 +123,7 @@
       <div class="form-card">
         <div class="title-section">
           <h1 class="main-title">ACCOUNT SETTINGS</h1>
-          <p class="sub-title">Update your student profile information.</p>
+          <p class="sub-title">Update your officer profile information.</p>
         </div>
 
         <div class="form-section">
@@ -213,22 +138,6 @@
                 type="text"
                 placeholder="Enter your name"
                 bind:value={fullName}
-                on:input={clearMessage}
-              />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="label" for="nisitId">Nisit ID</label>
-            <div
-              class="input-field"
-              class:error-border={errorField === "nisitId"}
-            >
-              <input
-                id="nisitId"
-                type="text"
-                placeholder="Enter your ID"
-                bind:value={nisitId}
                 on:input={clearMessage}
               />
             </div>
@@ -251,25 +160,22 @@
           </div>
 
           <div class="form-group">
-            <label class="label" for="faculty-trigger">Faculty</label>
+            <label class="label" for="dept-trigger">Department</label>
             <div class="custom-select-container">
               <button
-                id="faculty-trigger"
+                id="dept-trigger"
                 type="button"
                 class="select-trigger"
-                class:placeholder={!faculty}
-                class:active={isFacultyOpen}
-                class:error-border={errorField === "faculty"}
+                class:placeholder={!department}
+                class:active={isDeptOpen}
+                class:error-border={errorField === "department"}
                 on:click={(e) => {
-                  e.stopPropagation();
-                  isFacultyOpen = !isFacultyOpen;
-                  isMajorOpen = false;
+                  e.stopPropagation(); 
+                  isDeptOpen = !isDeptOpen;
                 }}
               >
-                <span
-                  >{faculty ? getFacultyName(faculty) : "Select Faculty"}</span
-                >
-                <div class="arrow-icon" class:rotate={isFacultyOpen}>
+                <span>{department || "Select Department"}</span>
+                <div class="arrow-icon" class:rotate={isDeptOpen}>
                   <svg
                     width="20"
                     height="20"
@@ -281,60 +187,15 @@
                 </div>
               </button>
 
-              {#if isFacultyOpen}
+              {#if isDeptOpen}
                 <div class="options-list" transition:slide={{ duration: 150 }}>
-                  {#each facultyList as f}
+                  {#each departments as dept}
                     <button
                       type="button"
                       class="option-item"
-                      on:click={() => selectFaculty(f.id)}
+                      on:click={() => selectDepartment(dept)}
                     >
-                      {f.name}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="label" for="major-trigger">Major</label>
-            <div class="custom-select-container">
-              <button
-                id="major-trigger"
-                type="button"
-                class="select-trigger"
-                class:placeholder={!major}
-                class:active={isMajorOpen}
-                class:error-border={errorField === "major"}
-                on:click={(e) => {
-                  e.stopPropagation();
-                  isMajorOpen = !isMajorOpen;
-                  isFacultyOpen = false;
-                }}
-              >
-                <span>{major ? getMajorName(major) : "Select Major"}</span>
-                <div class="arrow-icon" class:rotate={isMajorOpen}>
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
-                  >
-                </div>
-              </button>
-
-              {#if isMajorOpen}
-                <div class="options-list" transition:slide={{ duration: 150 }}>
-                  {#each currentMajors as m}
-                    <button
-                      type="button"
-                      class="option-item"
-                      on:click={() => selectMajor(m.id)}
-                    >
-                      {m.name}
+                      {dept}
                     </button>
                   {/each}
                 </div>
@@ -577,7 +438,7 @@
   }
   .label {
     color: #f3f4f6;
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 600;
   }
 
@@ -609,7 +470,6 @@
     color: #6b7280;
   }
 
-  /* Custom Dropdown */
   .custom-select-container {
     position: relative;
     width: 100%;
@@ -716,6 +576,8 @@
     border: 1px solid #a7f3d0;
     color: #047857;
   }
+
+  
   .error-border {
     border-color: #ef4444 !important;
     box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25) !important;
