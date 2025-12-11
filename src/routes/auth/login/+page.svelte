@@ -1,19 +1,17 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { slide } from "svelte/transition";
+  import { auth } from "$lib/stores/auth";
 
-  import { auth, type LoginResponse } from "$lib/stores/auth";
+  let email = "";
+  let password = "";
+  let showPassword = false;
 
-  let email: string = "";
-  let password: string = "";
-  let showPassword: boolean = false;
-
-  let errorMessage: string = "";
-  let errorTimeout: any;
-
+  let errorMessage = "";
+  let errorTimeout: any = null;
   let errorField: string | null = null;
 
-  function togglePassword(): void {
+  function togglePassword() {
     showPassword = !showPassword;
   }
 
@@ -39,7 +37,28 @@
     }, 3000);
   }
 
-  async function submitLogin(): Promise<void> {
+  function normalizeRole(role: any): string {
+    if (!role) return "";
+    const r = String(role).trim().toLowerCase();
+    if (["student", "officer", "organizer", "organizer"].includes(r)) return r;
+    return "";
+  }
+
+  function getRoleHome(role: string): string {
+    switch (role) {
+      case "officer":
+        return "/officer/event-list";
+      case "student":
+        return "/student/event-list";
+      case "organizer":
+      case "organizer":
+        return "/organizer/create-event";
+      default:
+        return "/student/event-list";
+    }
+  }
+
+  async function submitLogin() {
     clearError();
 
     if (!email) return showError("Please enter your email.", "email");
@@ -60,28 +79,56 @@
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const msg = data.detail
-          ? typeof data.detail === "string"
-            ? data.detail
-            : "Login failed."
-          : "Login failed. Please check your credentials.";
-
-        return showError(msg, "both");
+        return showError(
+          data?.detail ?? "Login failed. Please check your credentials.",
+          "both"
+        );
       }
 
-      const loginData = data as LoginResponse;
+      const accessToken = data.access_token;
+      const rawRole = data.role || data.user?.role;
+      const userRole = normalizeRole(rawRole);
 
-      auth.login(loginData);
+      console.log("ROLE FROM SERVER:", rawRole, "=>", userRole);
 
-      const userRole = (data.role || "").toLowerCase();
-
-      if (userRole === "officer") {
-        await goto("/officer/create-event", { replaceState: true });
-      } else {
-        await goto("/student/event-list", { replaceState: true });
+      if (!accessToken || !userRole) {
+        console.error("Login Error: Missing token or role", data);
+        return showError("System Error: Invalid response from server.", "both");
       }
-    } catch (error) {
-      console.error("Login Error:", error);
+
+      const sessionUser = {
+        ...(data.user ?? data),
+        role: userRole,
+      };
+
+      try {
+        localStorage.setItem("access_token", accessToken);
+        localStorage.setItem("user_info", JSON.stringify(sessionUser));
+        localStorage.setItem("strict_allowed_path", getRoleHome(userRole));
+        localStorage.setItem("strict_allowed_path_ts", Date.now().toString());
+      } catch (e) {
+        console.warn("localStorage write failed:", e);
+      }
+
+      try {
+        sessionStorage.setItem("access_token", accessToken);
+        sessionStorage.setItem("user_info", JSON.stringify(sessionUser));
+      } catch (e) {
+        console.warn("sessionStorage write failed:", e);
+      }
+      
+      auth.login({
+        ...data,
+        access_token: accessToken,
+        user: sessionUser,
+      });
+
+      const home = getRoleHome(userRole);
+      console.log("REDIRECTING TO:", home);
+
+      await goto(home, { replaceState: true });
+    } catch (err) {
+      console.error("Login Error:", err);
       showError("Cannot connect to server. Please try again later.", "both");
     }
   }

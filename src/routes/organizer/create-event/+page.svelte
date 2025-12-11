@@ -3,9 +3,12 @@
   import { fade, slide, scale } from "svelte/transition";
   import { quintOut } from "svelte/easing";
   import Swal from "sweetalert2";
+  import { enhance } from "$app/forms";
+  import { goto } from "$app/navigation";
+  import { auth } from "$lib/stores/auth";
 
-  // --- Configuration ---
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // ⚠️ ตรวจสอบ Port ให้ถูกต้อง
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; 
 
   let currentView: "list" | "form" = "list";
   let isEditMode = false;
@@ -14,56 +17,77 @@
 
   let events: any[] = [];
 
-  // --- Helpers for Date ---
   const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   function getMonthIndex(monthName: string) {
     return months.indexOf(monthName);
   }
 
-
-  function combineDateToISO(day: string, month: string, year: string, time: string): string | null {
+  function combineDateToISO(
+    day: string,
+    month: string,
+    year: string,
+    time: string
+  ): string | null {
     if (!day || !month || !year || !time) return null;
-    
+
     const monthIndex = getMonthIndex(month);
     const [hours, minutes] = time.split(":").map(Number);
-    
-    // สร้าง Date Object
-    const date = new Date(parseInt(year), monthIndex, parseInt(day), hours, minutes);
-    
-    // คืนค่าเป็น ISO String
+
+    const date = new Date(
+      parseInt(year),
+      monthIndex,
+      parseInt(day),
+      hours,
+      minutes
+    );
+
     return date.toISOString();
   }
-
-  // --- API Functions ---
 
   async function fetchEvents() {
     isLoading = true;
     try {
-      const res = await fetch(`${API_BASE_URL}/`);
-      if (!res.ok) throw new Error("Failed to fetch events");
-      const data = await res.json();
-      
-      // Map ข้อมูลจาก API กลับมาใส่ UI (เพราะชื่อตัวแปรไม่เหมือนกัน)
-      events = data.map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        // ใช้ banner_image_url ถ้ามี ถ้าไม่มีใช้รูป Default
-        image: item.banner_image_url || "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80",
-        currentParticipants: 0, // API อาจต้องมี field นี้แยก หรือคำนวณเอา
-        maxParticipants: item.max_participants,
-        location: item.location,
-        // แยก ISO String กลับมาเป็น วัน/เดือน/ปี เพื่อแสดงผลใน Edit Mode
-        ...parseISOToUI(item.event_date, item.event_end_date)
-      }));
+      const token = localStorage.getItem("access_token");
 
-    } catch (error) {
-      console.error(error);
-      // Swal.fire("Error", "Connection error", "error");
+      if (!token) throw new Error("NO TOKEN FOUND");
+
+      const res = await fetch(`${API_BASE_URL}/api/events/`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.status === 401) {
+        console.error("TOKEN INVALID OR EXPIRED");
+        throw new Error("Unauthorized");
+      }
+
+      if (!res.ok) throw new Error("Failed to fetch events");
+
+      const raw = await res.json();
+      console.log("EVENT RESPONSE:", raw);
+
+      // ปรับตาม schema จริง
+      const list = Array.isArray(raw) ? raw : (raw.events ?? []);
+      events = list;
+    } catch (err) {
+      console.error("FETCH EVENTS ERROR:", err);
+      events = [];
     } finally {
       isLoading = false;
     }
@@ -72,25 +96,25 @@
   function parseISOToUI(startDateStr: string, endDateStr: string) {
     if (!startDateStr) return {};
     const date = new Date(startDateStr);
-    
+
     // ดึงเวลาจบถ้ามี
     let endTimeStr = "";
     if (endDateStr) {
-        const endDate = new Date(endDateStr);
-        const endH = endDate.getHours().toString().padStart(2, '0');
-        const endM = endDate.getMinutes().toString().padStart(2, '0');
-        endTimeStr = `${endH}:${endM}`;
+      const endDate = new Date(endDateStr);
+      const endH = endDate.getHours().toString().padStart(2, "0");
+      const endM = endDate.getMinutes().toString().padStart(2, "0");
+      endTimeStr = `${endH}:${endM}`;
     }
 
-    const startH = date.getHours().toString().padStart(2, '0');
-    const startM = date.getMinutes().toString().padStart(2, '0');
+    const startH = date.getHours().toString().padStart(2, "0");
+    const startM = date.getMinutes().toString().padStart(2, "0");
 
     return {
-        day: date.getDate().toString(),
-        month: months[date.getMonth()],
-        year: date.getFullYear().toString(),
-        startTime: `${startH}:${startM}`,
-        endTime: endTimeStr
+      day: date.getDate().toString(),
+      month: months[date.getMonth()],
+      year: date.getFullYear().toString(),
+      startTime: `${startH}:${startM}`,
+      endTime: endTimeStr,
     };
   }
 
@@ -98,10 +122,11 @@
     fetchEvents();
   });
 
-  // --- Interaction Logic ---
   let isMenuOpen = false;
 
-  function toggleMenu() { isMenuOpen = !isMenuOpen; }
+  function toggleMenu() {
+    isMenuOpen = !isMenuOpen;
+  }
 
   function handleOverlayKeydown(event: KeyboardEvent) {
     if (event.key === "Enter" || event.key === " ") toggleMenu();
@@ -120,11 +145,13 @@
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const res = await fetch(`${API_BASE_URL}/${id}`, { method: "DELETE" });
+          const res = await fetch(`${API_BASE_URL}/${id}`, {
+            method: "DELETE",
+          });
           if (!res.ok) throw new Error("Delete failed");
-          
+
           events = events.filter((e) => e.id !== id);
-          
+
           Swal.fire({
             title: "Deleted!",
             icon: "success",
@@ -152,7 +179,7 @@
       eventDescription = event.description;
       previewImage = event.image;
       selSlots = event.maxParticipants ? event.maxParticipants.toString() : "";
-      
+
       eventLocation = event.location || "";
       selDay = event.day || "";
       selMonth = event.month || "";
@@ -191,7 +218,9 @@
 
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 10 }, (_, i) => (currentYear + i).toString());
+  const years = Array.from({ length: 10 }, (_, i) =>
+    (currentYear + i).toString()
+  );
 
   const times: string[] = [];
   for (let i = 0; i < 24; i++) {
@@ -203,29 +232,48 @@
   const slotsOptions = ["10", "20", "50", "100", "200", "500", "Unlimited"];
 
   function resetForm() {
-    eventName = ""; selDay = ""; selMonth = ""; selYear = "";
-    selStartTime = ""; selEndTime = ""; selSlots = "";
-    eventLocation = ""; eventDescription = ""; previewImage = "";
-    errorMessage = ""; successMessage = ""; errorField = ""; editingId = null;
+    eventName = "";
+    selDay = "";
+    selMonth = "";
+    selYear = "";
+    selStartTime = "";
+    selEndTime = "";
+    selSlots = "";
+    eventLocation = "";
+    eventDescription = "";
+    previewImage = "";
+    errorMessage = "";
+    successMessage = "";
+    errorField = "";
+    editingId = null;
   }
 
   function clearMessages() {
     if (errorMessage || successMessage) {
-      errorMessage = ""; successMessage = "";
+      errorMessage = "";
+      successMessage = "";
       if (msgTimeout) clearTimeout(msgTimeout);
     }
   }
 
+  function clearClientData() {
+    localStorage.removeItem("user_info");
+    isMenuOpen = false;
+  }
+
   function handleImageUpload() {
     clearMessages();
-    previewImage = "https://images.unsplash.com/photo-1552674605-46f5383a6719?auto=format&fit=crop&w=600&q=80";
+    previewImage =
+      "https://images.unsplash.com/photo-1552674605-46f5383a6719?auto=format&fit=crop&w=600&q=80";
   }
 
   function toggleDropdown(name: string, event: Event) {
     event.stopPropagation();
     activeDropdown = activeDropdown === name ? "" : name;
   }
-  function openDropdown(name: string) { activeDropdown = name; }
+  function openDropdown(name: string) {
+    activeDropdown = name;
+  }
   function selectOption(type: string, value: any) {
     clearMessages();
     if (type === "day") selDay = value;
@@ -236,7 +284,9 @@
     if (type === "slots") selSlots = value;
     activeDropdown = "";
   }
-  function closeDropdowns() { activeDropdown = ""; }
+  function closeDropdowns() {
+    activeDropdown = "";
+  }
 
   function handleTimeInput(event: Event, type: "start" | "end") {
     clearMessages();
@@ -257,49 +307,79 @@
     selSlots = v;
   }
 
-  function getSelectClass(value: any) { return value === "" ? "text-gray" : "text-dark"; }
+  function handleLogout() {
+    auth.logout();
 
-  // --- MAIN PUBLISH LOGIC (Updated for Schema) ---
+    isMenuOpen = false;
+
+    goto("/auth/login", { replaceState: true });
+  }
+
+  function getSelectClass(value: any) {
+    return value === "" ? "text-gray" : "text-dark";
+  }
+
   async function handlePublish() {
     if (msgTimeout) clearTimeout(msgTimeout);
-    errorMessage = ""; successMessage = ""; errorField = "";
+    errorMessage = "";
+    successMessage = "";
+    errorField = "";
 
-    // 1. Validation
-    if (!eventName) { errorField = "eventName"; errorMessage = "Please enter the Event name."; } 
-    else if (!selDay) { errorField = "day"; errorMessage = "Please select the Event Day."; } 
-    else if (!selMonth) { errorField = "month"; errorMessage = "Please select the Event Month."; } 
-    else if (!selYear) { errorField = "year"; errorMessage = "Please select the Event Year."; } 
-    else if (!selStartTime) { errorField = "startTime"; errorMessage = "Please enter the Start time."; } 
-    else if (!selEndTime) { errorField = "endTime"; errorMessage = "Please enter the End time."; } 
-    else if (!eventLocation) { errorField = "eventLocation"; errorMessage = "Please enter the Event location."; } 
-    else if (!selSlots) { errorField = "slots"; errorMessage = "Please enter slots."; }
+    if (!eventName) {
+      errorField = "eventName";
+      errorMessage = "Please enter the Event name.";
+    } else if (!selDay) {
+      errorField = "day";
+      errorMessage = "Please select the Event Day.";
+    } else if (!selMonth) {
+      errorField = "month";
+      errorMessage = "Please select the Event Month.";
+    } else if (!selYear) {
+      errorField = "year";
+      errorMessage = "Please select the Event Year.";
+    } else if (!selStartTime) {
+      errorField = "startTime";
+      errorMessage = "Please enter the Start time.";
+    } else if (!selEndTime) {
+      errorField = "endTime";
+      errorMessage = "Please enter the End time.";
+    } else if (!eventLocation) {
+      errorField = "eventLocation";
+      errorMessage = "Please enter the Event location.";
+    } else if (!selSlots) {
+      errorField = "slots";
+      errorMessage = "Please enter slots.";
+    }
 
     if (errorMessage) {
-      msgTimeout = setTimeout(() => { errorMessage = ""; errorField = ""; }, 3000);
+      msgTimeout = setTimeout(() => {
+        errorMessage = "";
+        errorField = "";
+      }, 3000);
       return;
     }
 
-    // 2. Data Preparation
-    const isoStartDate = combineDateToISO(selDay, selMonth, selYear, selStartTime);
-    const isoEndDate = combineDateToISO(selDay, selMonth, selYear, selEndTime); // สมมติว่าจบวันเดียวกัน
-
-    // แปลง Slot เป็น Int (ถ้าเป็น Unlimited ให้ส่ง null หรือค่า Max ตามที่ backend ตกลง ในที่นี้ผมส่ง 99999 ไปก่อนถ้า parse ไม่ได้)
+    const isoStartDate = combineDateToISO(
+      selDay,
+      selMonth,
+      selYear,
+      selStartTime
+    );
+    const isoEndDate = combineDateToISO(selDay, selMonth, selYear, selEndTime);
     let maxParticipantsInt: number | null = parseInt(selSlots);
     if (isNaN(maxParticipantsInt)) {
-        // กรณีเลือก "Unlimited" หรือพิมพ์ข้อความ
-        maxParticipantsInt = selSlots === "Unlimited" ? null : 0; 
+      maxParticipantsInt = selSlots === "Unlimited" ? null : 0;
     }
 
-    // สร้าง Payload ตาม Schema เป๊ะๆ
     const eventPayload = {
       title: eventName,
       description: eventDescription || null,
-      event_date: isoStartDate,          // string($date-time)
-      event_end_date: isoEndDate,        // string($date-time) nullable
+      event_date: isoStartDate, 
+      event_end_date: isoEndDate,
       location: eventLocation || null,
-      distance_km: 10,                   // ใส่ค่า Default เพราะ UI ไม่มีช่องกรอก (หรือจะใส่ null)
-      max_participants: maxParticipantsInt, // integer nullable
-      banner_image_url: previewImage || null // string nullable
+      distance_km: 10, 
+      max_participants: maxParticipantsInt, 
+      banner_image_url: previewImage || null, 
     };
 
     isLoading = true;
@@ -329,16 +409,17 @@
 
       const result = await response.json();
 
-      // Update UI List
       const newEventMapped = {
-        id: result.id, // ต้องมั่นใจว่า backend ส่ง id กลับมา
+        id: result.id, 
         title: result.title,
         description: result.description,
-        image: result.banner_image_url || "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80",
+        image:
+          result.banner_image_url ||
+          "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80",
         currentParticipants: 0,
         maxParticipants: result.max_participants,
         location: result.location,
-        ...parseISOToUI(result.event_date, result.event_end_date)
+        ...parseISOToUI(result.event_date, result.event_end_date),
       };
 
       if (isEditMode) {
@@ -353,11 +434,12 @@
         successMessage = "";
         backToList();
       }, 1500);
-
     } catch (error: any) {
       console.error("Save Error:", error);
       errorMessage = error.message;
-      msgTimeout = setTimeout(() => { errorMessage = ""; }, 3000);
+      msgTimeout = setTimeout(() => {
+        errorMessage = "";
+      }, 3000);
     } finally {
       isLoading = false;
     }
@@ -418,22 +500,40 @@
       }}
     >
       <div class="menu-arrow"></div>
-      <a href="/officer/event-verify" class="menu-item"
+      <a href="/organizer/event-verify" class="menu-item"
         ><span class="icon">🔢</span> Verify Code</a
       >
-      <a href="/officer/upload-proof" class="menu-item"
+      <a href="/organizer/upload-proof" class="menu-item"
         ><span class="icon">📝</span> Verify Proof</a
       >
-      <a href="/officer/monthly-reward" class="menu-item"
+      <a href="/organizer/monthly-reward" class="menu-item"
         ><span class="icon">🏆</span> Monthly Reward</a
       >
-      <a href="/officer/setting-account" class="menu-item"
+      <a href="/organizer/setting-account" class="menu-item"
         ><span class="icon">⚙️</span> Settings</a
       >
       <div class="menu-divider"></div>
-      <a href="/" class="menu-item logout"
-        ><span class="icon">🚪</span> Logout</a
+      <form
+        action="?/logout"
+        method="POST"
+        use:enhance={() => {
+          isMenuOpen = false;
+
+          return async ({ result, update }) => {
+            if (result.type === "redirect") {
+              clearClientData();
+              await goto(result.location); 
+            } else {
+              await update(); 
+            }
+          };
+        }}
+        style="display: contents;"
       >
+        <button type="button" class="menu-item logout" on:click={handleLogout}>
+          <span class="icon">🚪</span> Logout
+        </button>
+      </form>
     </div>
   {/if}
 
@@ -980,7 +1080,6 @@
   .back-btn:hover {
     background: rgba(255, 255, 255, 0.2);
   }
-
 
   .scroll-container {
     flex: 1;

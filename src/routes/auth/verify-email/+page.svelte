@@ -7,7 +7,6 @@
 
   let verifyStatus: "loading" | "success" | "error" = "loading";
   let message: string = "Verifying your email...";
-  let countdown: number = 3;
 
   onMount(async () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -32,11 +31,10 @@
       if (res.ok) {
         verifyStatus = "success";
         message = "Email verified successfully.";
+        localStorage.setItem("register_verified", Date.now().toString());
         const channel = new BroadcastChannel("auth-sync");
         channel.postMessage("register-verified");
         channel.close();
-
-        startCountdown();
       } else {
         verifyStatus = "error";
         message =
@@ -47,16 +45,6 @@
       message = "Cannot connect to server. Please try again later.";
     }
   });
-
-  function startCountdown() {
-    const interval = setInterval(() => {
-      countdown--;
-      if (countdown <= 0) {
-        clearInterval(interval);
-        goto("/auth/login"); 
-      }
-    }, 1000);
-  }
 
   function handleBackToHome() {
     goto("/");
@@ -102,15 +90,10 @@
             </p>
             <p
               class="sub-title"
-              style="margin-top: 16px; color: #10b981; font-weight: 600;"
+              style="margin-top: 16px; color: #9ca3af; font-weight: 600;"
             >
-              Redirecting to login in {countdown}s...
+              You can close this window now..
             </p>
-          </div>
-          <div class="form-section" in:slide>
-            <button class="primary-btn" on:click={() => goto("/auth/login")}>
-              GO TO LOGIN NOW
-            </button>
           </div>
         {/if}
 

@@ -3,8 +3,8 @@
   import { goto, beforeNavigate } from "$app/navigation";
   import { quintOut } from "svelte/easing";
   import Swal from "sweetalert2";
-  import { enhance } from '$app/forms';
-  import { auth } from '$lib/stores/auth';
+  import { enhance } from "$app/forms";
+  import { auth } from "$lib/stores/auth";
 
   let isMenuOpen = false;
 
@@ -64,28 +64,23 @@
   }
 
   function clearClientData() {
-      localStorage.removeItem("user_info");
-      isMenuOpen = false;
+    localStorage.removeItem("user_info");
+    isMenuOpen = false;
   }
 
   beforeNavigate(({ type, cancel }) => {
-    if (type === 'popstate') {
+    if (type === "popstate") {
       cancel();
     }
   });
 
   function handleLogout() {
-    
     auth.logout();
-    
-   
+
     isMenuOpen = false;
 
-   
-    goto('/auth/login', { replaceState: true });
+    goto("/auth/login", { replaceState: true });
   }
-
-  
 
   function toggleReadMore(index: number) {
     events[index].isReadMore = !events[index].isReadMore;
@@ -93,29 +88,29 @@
 
   function handleRegister(eventItem: any) {
     Swal.fire({
-      title: 'Confirm Registration',
+      title: "Confirm Registration",
       html: `Are you sure you want to register for <br><b style="color: #10B981;">"${eventItem.title}"</b>?`,
-      icon: 'question',
+      icon: "question",
       showCancelButton: true,
-      confirmButtonColor: '#10B981',
-      cancelButtonColor: '#6B7280',
+      confirmButtonColor: "#10B981",
+      cancelButtonColor: "#6B7280",
       iconColor: "#10B981",
-      confirmButtonText: 'Yes, Register',
-      cancelButtonText: 'Cancel',
-      background: '#fff',
-      width: "320px"
+      confirmButtonText: "Yes, Register",
+      cancelButtonText: "Cancel",
+      background: "#fff",
+      width: "320px",
     }).then((result) => {
       if (result.isConfirmed) {
         console.log("Registered for:", eventItem.title);
-        
+
         Swal.fire({
-          title: 'Registered!',
-          text: 'You have successfully registered.',
-          icon: 'success',
-          confirmButtonColor: '#10B981',
+          title: "Registered!",
+          text: "You have successfully registered.",
+          icon: "success",
+          confirmButtonColor: "#10B981",
           timer: 2000,
           width: "320px",
-          showConfirmButton: false
+          showConfirmButton: false,
         });
       }
     });
@@ -170,33 +165,28 @@
         <span class="icon">⚙️</span> Settings
       </a>
       <div class="menu-divider"></div>
-       <form 
-        action="?/logout" 
+      <form
+        action="?/logout"
         method="POST"
         use:enhance={() => {
-            
-            isMenuOpen = false; 
+          isMenuOpen = false;
 
-            return async ({ result, update }) => {
-                // โค้ดตรงนี้ทำงาน 'หลังจาก' Server ตอบกลับมาแล้ว
-                if (result.type === 'redirect') {
-                    clearClientData(); // ลบ localstorage (ถ้ามี)
-                    await goto(result.location); // ไปหน้า login
-                } else {
-                    await update(); // เผื่อกรณี error
-                }
-            };
+          return async ({ result, update }) => {
+            // โค้ดตรงนี้ทำงาน 'หลังจาก' Server ตอบกลับมาแล้ว
+            if (result.type === "redirect") {
+              clearClientData(); // ลบ localstorage (ถ้ามี)
+              await goto(result.location); // ไปหน้า login
+            } else {
+              await update(); // เผื่อกรณี error
+            }
+          };
         }}
-        style="display: contents;" 
-    >
-        <button 
-            type="button" 
-            class="menu-item logout" 
-            on:click={handleLogout}
-        >
-            <span class="icon">🚪</span> Logout
+        style="display: contents;"
+      >
+        <button type="button" class="menu-item logout" on:click={handleLogout}>
+          <span class="icon">🚪</span> Logout
         </button>
-    </form>
+      </form>
     </div>
   {/if}
 
@@ -218,13 +208,10 @@
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                ><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle
-                  cx="9"
-                  cy="7"
-                  r="4"
-                ></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path
-                  d="M16 3.13a4 4 0 0 1 0 7.75"
-                ></path></svg
+                ><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                ></path><circle cx="9" cy="7" r="4"></circle><path
+                  d="M23 21v-2a4 4 0 0 0-3-3.87"
+                ></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg
               >
               <span>{event.participants}/{event.maxParticipants}</span>
             </div>
@@ -252,11 +239,13 @@
               <button class="read-more-btn" on:click={() => toggleReadMore(i)}>
                 {event.isReadMore ? "Read less" : "Read more"}
               </button>
-              
-              <button class="register-btn" on:click={() => handleRegister(event)}>
+
+              <button
+                class="register-btn"
+                on:click={() => handleRegister(event)}
+              >
                 REGISTRATION
               </button>
-
             </div>
           </div>
         </div>
@@ -273,13 +262,13 @@
     margin: 0;
     padding: 0;
     background-color: #111827;
-    font-family: "Inter", sans-serif; 
+    font-family: "Inter", sans-serif;
     overflow: hidden;
   }
 
-  :global(button), 
-  :global(input), 
-  :global(select), 
+  :global(button),
+  :global(input),
+  :global(select),
   :global(textarea) {
     font-family: "Inter", sans-serif !important;
   }
@@ -292,7 +281,6 @@
   :global(.swal2-content) {
     font-family: "Inter", sans-serif !important;
   }
-  
 
   :global(.swal2-container) {
     backdrop-filter: blur(8px) !important;
@@ -303,7 +291,7 @@
   :global(.swal2-popup) {
     border-radius: 20px !important;
   }
-  
+
   .app-screen {
     height: 100vh;
     display: flex;
@@ -419,9 +407,9 @@
   .menu-item {
     display: flex;
     align-items: center;
-    padding: 10px 16px; 
+    padding: 10px 16px;
     text-decoration: none;
-    color: #374151; 
+    color: #374151;
     font-weight: 500;
     font-size: 15px;
     border: none;
@@ -430,14 +418,14 @@
     position: relative;
     z-index: 2;
     width: auto;
-    margin: 4px 8px; 
-    border-radius: 8px; 
+    margin: 4px 8px;
+    border-radius: 8px;
     transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   .menu-item:hover {
-    background-color: #F3F4F6; 
-    color: #10B981;
+    background-color: #f3f4f6;
+    color: #10b981;
     transform: translateX(4px);
   }
 
@@ -446,12 +434,12 @@
   }
 
   .menu-item.logout {
-    color: #EF4444; 
+    color: #ef4444;
   }
-  
+
   .menu-item.logout:hover {
-    background-color: #FEF2F2; 
-    color: #b40808; 
+    background-color: #fef2f2;
+    color: #b40808;
   }
 
   .icon {
@@ -467,7 +455,7 @@
   .menu-divider {
     height: 1px;
     background: #e5e7eb;
-    margin: 6px 12px; 
+    margin: 6px 12px;
   }
 
   .scroll-container {

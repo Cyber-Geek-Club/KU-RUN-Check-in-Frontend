@@ -1,115 +1,130 @@
 <script lang="ts">
-  import { goto, beforeNavigate } from '$app/navigation';
-  import { page } from '$app/stores';
-  import { browser } from '$app/environment';
-  import '../app.css';
+  import { goto, beforeNavigate } from "$app/navigation";
+  import { page } from "$app/stores";
+  import { browser } from "$app/environment";
+  import "../app.css";
 
   let { children } = $props();
 
-  let isAuthorized = $state(
-      browser ? checkPermission(window.location.pathname) : false
-  );
+  const ROLE_HOME: Record<string, string> = {
+    student: "/student/event-list",
+    officer: "/officer/event-list",
+    organizer: "/organizer/create-event",
+    organize: "/organizer/create-event",
+  };
 
-  function getSafeRedirect(role: string | null): string {
-      if (role === 'student') return '/student/dashboard';
-      if (role === 'officer') return '/officer/dashboard';
-      if (role === 'organize') return '/organize/dashboard'; 
-      
-      return '/auth/login';
+  const GUEST_PATHS = [
+    "/",
+    "/auth/login",
+    "/auth/register",
+    "/auth/verify-email",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+  ];
+
+  let isAuthorized = $state(false);
+  function getUserInfo() {
+    if (!browser) return { token: null, role: null };
+    const token = localStorage.getItem("access_token");
+    let role = null;
+    try {
+      const info = localStorage.getItem("user_info");
+      if (info) role = JSON.parse(info).role?.toLowerCase();
+    } catch {}
+    return { token, role };
   }
 
-  function checkPermission(path: string): boolean {
-      if (!browser) return false;
-
-      const token = localStorage.getItem('access_token');
-      const userInfoStr = localStorage.getItem('user_info');
-
-      if (!token) {
-          const validGuestPaths = ['/', '/auth/login', '/auth/register'];
-          const isAllowed = validGuestPaths.some(p => path === p || (path.startsWith(p) && p !== '/'));
-          return isAllowed;
-      }
-
-      let userRole = '';
-      try {
-          if (userInfoStr) userRole = JSON.parse(userInfoStr).role.toLowerCase();
-      } catch (e) { 
-          localStorage.clear(); 
-          return false; 
-      }
-
-      if (path.startsWith('/auth') || path === '/') return false;
-
-      const isOfficerZone = path.startsWith('/officer');
-      const isStudentZone = path.startsWith('/student');
-      const isOrganizeZone = path.startsWith('/organize'); // ✨ เพิ่มโซน organize
-
-      if (userRole === 'student' && (isOfficerZone || isOrganizeZone)) return false;
-      
-      if (userRole === 'officer' && (isStudentZone || isOrganizeZone)) return false;
-
-      if (userRole === 'organize' && (isStudentZone || isOfficerZone)) return false;
-
-      return true;
-  }
-
-  beforeNavigate(({ to, cancel }) => {
-      if (!to) return;
-      const targetPath = to.url.pathname;
-
-      if (!checkPermission(targetPath)) {
-          console.log(`⛔ Blocked Role Access: ${targetPath}`);
-          cancel(); 
-          return;
-      }
-
-      sessionStorage.setItem('strict_allowed_path', targetPath);
-  });
   $effect(() => {
-    if (browser) {
-      const currentPath = $page.url.pathname;
-      const token = localStorage.getItem('access_token');
-      
-      const isRoleAllowed = checkPermission(currentPath);
+    if (!browser) return;
 
-      if (!isRoleAllowed) {
-          console.log(`⛔ Access Denied: ${currentPath}`);
-          isAuthorized = false;
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === "access_token" && event.newValue === null) {
+        console.log("🔄 Logout detected from another tab.");
+        window.location.href = "/auth/login";
+      }
+    };
 
-          const lastValidPath = sessionStorage.getItem('strict_allowed_path');
-          
-          if (lastValidPath) {
-              goto(lastValidPath, { replaceState: true });
-          } else {
-              const role = token ? JSON.parse(localStorage.getItem('user_info') || '{}').role?.toLowerCase() : null;
-              goto(getSafeRedirect(role), { replaceState: true });
-          }
-          return;
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  });
+
+  beforeNavigate(({ to, cancel, type }) => {
+    if (!to) return;
+    const targetPath = to.url.pathname;
+
+    sessionStorage.setItem("authorized_ticket", targetPath);
+  });
+
+  $effect(() => {
+    if (!browser) return;
+
+    const currentPath = $page.url.pathname;
+    const { token, role } = getUserInfo();
+
+    if (!token) {
+      const isGuestPath = GUEST_PATHS.some((p) => currentPath.startsWith(p));
+      if (!isGuestPath) {
+        goto("/auth/login", { replaceState: true });
+        return;
       }
-      if (token) {
-          const allowedPath = sessionStorage.getItem('strict_allowed_path');
-          
-          if (allowedPath && allowedPath !== currentPath) {
-              console.log(`⛔ Direct Jump Denied! Expected: ${allowedPath}, Got: ${currentPath}`);
-              isAuthorized = false;
-              goto(allowedPath, { replaceState: true }); 
-              return;
-          }
-      }
-      if (!sessionStorage.getItem('strict_allowed_path')) {
-           sessionStorage.setItem('strict_allowed_path', currentPath);
-      } else if (!token) {
-           sessionStorage.setItem('strict_allowed_path', currentPath);
+      const ticket = sessionStorage.getItem("authorized_ticket");
+
+      if (!ticket) {
+        sessionStorage.setItem("authorized_ticket", currentPath);
+      } else if (ticket !== currentPath) {
+        console.log(`⛔ STOP! You typed URL manually. Go back to ${ticket}`);
+        goto(ticket, { replaceState: true });
+        isAuthorized = false;
+        return;
       }
 
       isAuthorized = true;
+      return;
     }
+
+    const home = role && ROLE_HOME[role] ? ROLE_HOME[role] : "/auth/login";
+
+    if (home === "/auth/login") {
+      localStorage.clear();
+      sessionStorage.clear();
+      goto("/auth/login", { replaceState: true });
+      return;
+    }
+
+    if (currentPath.startsWith("/auth") || currentPath === "/") {
+      sessionStorage.setItem("authorized_ticket", home);
+      goto(home, { replaceState: true });
+      return;
+    }
+
+    const ticket = sessionStorage.getItem("authorized_ticket");
+
+    if (!ticket) {
+      if (currentPath !== home) {
+        console.log("⛔ No Ticket (Deep Link). Force Home.");
+        sessionStorage.setItem("authorized_ticket", home);
+        goto(home, { replaceState: true });
+        return;
+      }
+      sessionStorage.setItem("authorized_ticket", currentPath);
+    } else {
+      if (currentPath !== ticket) {
+        console.log(
+          `⛔ URL TAMPERED! Expected: ${ticket}, Got: ${currentPath}`
+        );
+        goto(ticket, { replaceState: true });
+        isAuthorized = false;
+        return;
+      }
+    }
+    isAuthorized = true;
   });
 </script>
 
 {#if isAuthorized}
-    {@render children()}
+  {@render children()}
 {:else}
-    <div style="width: 100vw; height: 100vh; background-color: #111827; display: flex; align-items: center; justify-content: center;">
-         </div>
+  <div
+    style="width: 100vw; height: 100vh; background-color: #111827; display: flex; align-items: center; justify-content: center;"
+  ></div>
 {/if}

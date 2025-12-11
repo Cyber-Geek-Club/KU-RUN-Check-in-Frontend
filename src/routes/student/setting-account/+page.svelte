@@ -176,7 +176,7 @@
 
 <div class="app-screen">
   <div class="glass-header">
-    <a href="/student/eventlist" class="back-btn" aria-label="Back">
+    <a href="/student/event-list" class="back-btn" aria-label="Back">
       <svg
         width="24"
         height="24"

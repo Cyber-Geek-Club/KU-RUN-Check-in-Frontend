@@ -3,47 +3,49 @@
   import { slide, scale } from "svelte/transition";
   import { onMount, onDestroy } from "svelte";
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+  const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
-  let currentStep = 1;
+  let email: string = "";
   let isLoading = false;
-  let channel: BroadcastChannel;
-
-  onMount(() => {
-    channel = new BroadcastChannel("auth-sync");
-
-    channel.onmessage = (event) => {
-      if (event.data === "password-reset-success") {
-        try {
-          window.close();
-        } catch (e) {}
-        goto("/auth/login");
-      }
-    };
-  });
-
-  onDestroy(() => {
-    if (channel) channel.close();
-  });
-
+  let currentStep = 1;
   let message: string = "";
   let messageType: "error" | "success" = "error";
   let messageTimeout: any;
-  let errorField: string = "";
+  let errorField = "";
+
+  function handleStorageEvent(event: StorageEvent) {
+    if (event.key === "password_reset_done") {
+      goto("/auth/login");
+      localStorage.removeItem("password_reset_done");
+    }
+  }
+
+  onMount(() => {
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", handleStorageEvent);
+    }
+  });
+
+  onDestroy(() => {
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", handleStorageEvent);
+    }
+    if (messageTimeout) clearTimeout(messageTimeout);
+  });
 
   function showMessage(
     msg: string,
     type: "error" | "success" = "error",
-    field: string = ""
+    field = ""
   ) {
     if (messageTimeout) clearTimeout(messageTimeout);
     message = msg;
     messageType = type;
-    if (field) errorField = field;
+    errorField = field;
     messageTimeout = setTimeout(() => {
       message = "";
       errorField = "";
-    }, 3000);
+    }, 4000);
   }
 
   function clearMessage() {
@@ -54,50 +56,35 @@
     }
   }
 
-  let email: string = "";
-
-  function validateEmail(value: string): boolean {
+  function validateEmail(value: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }
 
-  async function handleSendEmail(): Promise<void> {
+  async function handleSendEmail() {
     clearMessage();
     if (!email)
       return showMessage("Please enter your email.", "error", "email");
     if (!validateEmail(email))
-      return showMessage(
-        "Please enter a valid email address.",
-        "error",
-        "email"
-      );
+      return showMessage("Invalid email format.", "error", "email");
 
     isLoading = true;
     try {
       const res = await fetch(`${API_BASE}/api/users/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email }),
+        body: JSON.stringify({ email }),
       });
-
-      const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
         currentStep = 2;
       } else {
-        showMessage(data.detail || "Failed to send email.", "error", "email");
+        const data = await res.json().catch(() => ({}));
+        showMessage(data.detail || "Failed to send email.", "error");
       }
-    } catch (error) {
-      showMessage("Cannot connect to server.", "error", "email");
+    } catch (e) {
+      showMessage("Cannot connect to server.", "error");
     } finally {
       isLoading = false;
-    }
-  }
-
-  function handleBack() {
-    if (currentStep === 2) {
-      currentStep = 1;
-    } else {
-      goto("/auth/login");
     }
   }
 </script>
@@ -107,7 +94,7 @@
     <button
       class="back-btn"
       aria-label="Back"
-      on:click={handleBack}
+      on:click={() => goto("/auth/login")}
       disabled={isLoading}
     >
       <svg
@@ -119,10 +106,10 @@
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
+        ><line x1="19" y1="12" x2="5" y2="12"></line><polyline
+          points="12 19 5 12 12 5"
+        ></polyline></svg
       >
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
-      </svg>
     </button>
   </div>
 
@@ -132,10 +119,9 @@
         {#if currentStep === 1}
           <div class="title-section" in:slide>
             <h1 class="main-title">FORGOT PASSWORD</h1>
-            <p class="sub-title">
-              Please enter your email to reset the password
-            </p>
+            <p class="sub-title">Enter your email to receive a reset link.</p>
           </div>
+
           <div class="form-section" in:slide>
             <div class="form-group">
               <label class="label" for="email">Email</label>
@@ -154,6 +140,7 @@
                 />
               </div>
             </div>
+
             {#if message}
               <div
                 class="message-container {messageType}"
@@ -162,22 +149,17 @@
                 <span>{message}</span>
               </div>
             {/if}
+
             <button
               class="primary-btn"
               on:click={handleSendEmail}
               disabled={isLoading}
             >
-              {#if isLoading}
-                SENDING...
-              {:else}
-                SEND LINK
-              {/if}
+              {#if isLoading}SENDING...{:else}SEND LINK{/if}
             </button>
           </div>
-        {/if}
-
-        {#if currentStep === 2}
-          <div class="icon-wrapper" in:scale={{ duration: 400, start: 0.5 }}>
+        {:else}
+          <div class="icon-wrapper" in:scale>
             <div class="success-circle">
               <svg
                 width="48"
@@ -188,32 +170,31 @@
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-              >
-                <path
+                ><path
                   d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
-                ></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
+                ></path><polyline points="22,6 12,13 2,6"></polyline></svg
+              >
             </div>
           </div>
-          <div class="title-section" style="text-align: center;" in:slide>
+          <div class="title-section" style="text-align:center;" in:slide>
             <h1 class="main-title">CHECK YOUR EMAIL</h1>
             <p class="sub-title">
-              We sent a reset link to <span
-                style="color: white; font-weight: 600;">{email}</span
-              ><br />
-              Please click the link in that email to set a new password.
+              We sent a link to <span style="color:#10b981; font-weight:600;"
+                >{email}</span
+              >.<br />
+              Please check your inbox.
+            </p>
+            <p class="footer-text" style="font-size: 13px; opacity: 0.7;">
+              (This page will redirect to Login automatically once reset is
+              complete)
             </p>
           </div>
           <div class="footer-text">
-            Haven’t got the email yet?
-            <button
+            Didn't receive it? <button
               class="resend-link"
               on:click={() => {
                 currentStep = 1;
-                handleSendEmail();
-              }}
-              disabled={isLoading}>Resend email</button
+              }}>Resend</button
             >
           </div>
         {/if}
@@ -224,6 +205,14 @@
 
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+  .resend-link {
+    background: none;
+    border: none;
+    color: #10b981;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+  }
 
   :global(body) {
     margin: 0;
@@ -233,14 +222,6 @@
     font-family: "Inter", sans-serif;
     overflow: hidden;
   }
-  :global(*) {
-    font-family: "Inter", sans-serif !important;
-  }
-  :global(::placeholder) {
-    font-family: "Inter", sans-serif !important;
-    color: #6b7280;
-  }
-
   .app-screen {
     height: 100vh;
     display: flex;
@@ -256,7 +237,6 @@
     z-index: 50;
     background: rgba(17, 24, 39, 0.95);
     backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(17, 24, 39, 0.95);
     display: flex;
     align-items: center;
@@ -278,19 +258,10 @@
     transition: 0.2s;
     padding: 0;
   }
-  .back-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
   .scroll-container {
     flex: 1;
     overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
     padding-top: 100px;
-    padding-bottom: 40px;
-  }
-  .scroll-container::-webkit-scrollbar {
-    display: none;
   }
   .content-wrapper {
     width: 100%;
@@ -318,7 +289,6 @@
   .sub-title {
     color: #9ca3af;
     font-size: 14px;
-    margin: 0;
     line-height: 1.5;
   }
   .form-section {
@@ -351,6 +321,11 @@
     border-color: #10b981;
     background: #111827;
   }
+  .input-field.error-border {
+    border-color: #ef4444 !important;
+    background-color: rgba(239, 68, 68, 0.05) !important;
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.5) !important;
+  }
   .input-field input {
     flex: 1;
     border: none;
@@ -359,11 +334,14 @@
     font-size: 16px;
     outline: none;
     height: 100%;
-    padding: 0;
   }
-  .error-border {
-    border-color: #ef4444 !important;
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25) !important;
+  .toggle-password {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 8px;
+    margin-right: -8px;
   }
   .message-container {
     display: flex;
@@ -375,7 +353,6 @@
     font-size: 13px;
     font-weight: 600;
     gap: 10px;
-    text-align: center;
     width: 100%;
     box-sizing: border-box;
   }
@@ -403,12 +380,6 @@
     text-transform: uppercase;
     box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
   }
-  .primary-btn:hover {
-    background: #059669;
-  }
-  .primary-btn:active {
-    transform: scale(0.98);
-  }
   .icon-wrapper {
     margin-bottom: 32px;
     display: flex;
@@ -430,20 +401,6 @@
     text-align: center;
     color: #9ca3af;
     font-size: 14px;
-    margin-top: 24px;
-  }
-  .resend-link {
-    background: none;
-    border: none;
-    padding: 0;
-    color: #10b981;
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: underline;
-    cursor: pointer;
-    display: inline;
-  }
-  .resend-link:hover {
-    opacity: 0.8;
+    margin-top: 14px;
   }
 </style>

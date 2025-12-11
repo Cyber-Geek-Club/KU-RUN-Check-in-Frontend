@@ -185,7 +185,7 @@
 
 <div class="app-screen">
   <div class="glass-header">
-    <a href="/officer/create-event" class="back-btn" aria-label="Back">
+    <a href="/organizer/create-event" class="back-btn" aria-label="Back">
       <svg
         width="24"
         height="24"
@@ -257,7 +257,12 @@
   :global(select),
   :global(span),
   :global(p),
-  :global(h1), :global(h2), :global(h3), :global(h4), :global(h5), :global(h6) {
+  :global(h1),
+  :global(h2),
+  :global(h3),
+  :global(h4),
+  :global(h5),
+  :global(h6) {
     font-family: "Inter", sans-serif !important;
   }
 
@@ -270,13 +275,12 @@
   :global(.swal2-radio label) {
     font-family: "Inter", sans-serif !important;
   }
-  
 
   :global(.swal2-container) {
     backdrop-filter: blur(8px) !important;
     background: rgba(0, 0, 0, 0.6) !important;
   }
-  
+
   :global(.my-swal-popup) {
     border-radius: 20px !important;
     padding-bottom: 20px !important;
@@ -316,11 +320,11 @@
     margin-top: 12px !important;
     padding: 12px !important;
     border-radius: 8px !important;
-    background-color: #ffffff !important; 
-    border: 1px solid #e5e7eb !important; 
-    color: #1f2937 !important; 
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #1f2937 !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-    font-family: "Inter", sans-serif !important; 
+    font-family: "Inter", sans-serif !important;
     font-size: 14px !important;
     min-height: 80px;
     resize: vertical;

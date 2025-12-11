@@ -20,7 +20,6 @@
     "Human Resources",
   ];
 
- 
   let message: string = "";
   let messageType: "error" | "success" = "error";
   let messageTimeout: any;
@@ -41,14 +40,14 @@
     messageType = type;
     messageTimeout = setTimeout(() => {
       message = "";
-      errorField = ""; 
+      errorField = "";
     }, 3000);
   }
 
   function clearMessage() {
     if (message) {
       message = "";
-      errorField = ""; 
+      errorField = "";
       if (messageTimeout) clearTimeout(messageTimeout);
     }
   }
@@ -60,7 +59,6 @@
   async function handleSaveChanges(): Promise<void> {
     clearMessage();
 
-  
     if (!fullName) {
       errorField = "fullname";
       return showMessage("Please enter your full name.");
@@ -101,7 +99,7 @@
 
 <div class="app-screen">
   <div class="glass-header">
-    <a href="/officer/create-event" class="back-btn" aria-label="Back">
+    <a href="/organizer/create-event" class="back-btn" aria-label="Back">
       <svg
         width="24"
         height="24"
@@ -170,7 +168,7 @@
                 class:active={isDeptOpen}
                 class:error-border={errorField === "department"}
                 on:click={(e) => {
-                  e.stopPropagation(); 
+                  e.stopPropagation();
                   isDeptOpen = !isDeptOpen;
                 }}
               >
@@ -553,7 +551,6 @@
     color: #f3f4f6;
   }
 
-
   .message-container {
     display: flex;
     align-items: center;
@@ -577,7 +574,6 @@
     color: #047857;
   }
 
-  
   .error-border {
     border-color: #ef4444 !important;
     box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25) !important;

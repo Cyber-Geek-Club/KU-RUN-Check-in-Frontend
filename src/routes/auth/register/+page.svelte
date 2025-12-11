@@ -46,24 +46,24 @@
   };
 
   let isRegisterSuccess = false;
-  let channel: BroadcastChannel;
+
+  function handleStorageEvent(event: StorageEvent) {
+    if (event.key === "register_verified") {
+      localStorage.removeItem("register_verified");
+      goto("/auth/login");
+    }
+  }
 
   onMount(() => {
-    channel = new BroadcastChannel("auth-sync");
-    channel.onmessage = (event) => {
-      if (event.data === "register-verified") {
-        try {
-          window.close();
-        } catch (e) {
-          console.log("Browser prevented auto-close");
-        }
-        goto("/auth/login");
-      }
-    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", handleStorageEvent);
+    }
   });
 
   onDestroy(() => {
-    if (channel) channel.close();
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", handleStorageEvent);
+    }
   });
 
   const titleList = ["Mr.", "Ms.", "Mrs.", "Dr.", "Prof."];
@@ -235,7 +235,6 @@
       highlight("lastName");
       return showMessage("Please enter your last name.");
     }
-
     if (!email) {
       highlight("email");
       return showMessage("Please enter your email.");
@@ -273,21 +272,11 @@
       highlight("password");
       return showMessage("Password must be 8+ chars and include a number.");
     }
-
     loading = true;
-
     if (role === "student") {
-      if (!nisitId) {
-        highlight("nisitId");
-        loading = false;
-        return showMessage("Please enter your Nisit ID.");
-      }
       try {
-        // เช็ค ID จากระบบมหาลัย (ถ้าไม่ได้ทำ Proxy ให้ URL นี้ใน vite.config อาจติด CORS ได้ถ้ามหาลัยบล็อก)
-        // แต่ปกติ API นี้เปิด Public
         const nisitApiUrl = `https://regis.src.ku.ac.th/res/api/gen_user_endcode.php?id=${nisitId}`;
         const nisitRes = await fetch(nisitApiUrl);
-
         if (!nisitRes.ok) {
           loading = false;
           return showMessage(
@@ -295,9 +284,7 @@
             "error"
           );
         }
-
         const nisitData = await nisitRes.json().catch(() => null);
-
         if (
           !nisitData ||
           (Array.isArray(nisitData) && nisitData.length === 0)
@@ -307,53 +294,46 @@
           return showMessage(`Nisit ID ${nisitId} is not recognized.`, "error");
         }
       } catch (e) {
-        console.error("Nisit ID Check Failed:", e);
+        console.error("Nisit Check Failed:", e);
         loading = false;
         return showMessage("Failed to verify Nisit ID.", "error");
-      }
-
-      if (!faculty || !major) {
-        loading = false;
-        return showMessage("Please select faculty and major.");
-      }
-    } else {
-      if (!department) {
-        highlight("department");
-        loading = false;
-        return showMessage("Please select your department.");
       }
     }
 
     try {
-      const payload =
-        role === "student"
-          ? {
-              email,
-              title,
-              first_name: firstName,
-              last_name: lastName,
-              role,
-              password,
-              nisit_id: nisitId,
-              major,
-              faculty,
-              department: null,
-            }
-          : {
-              email,
-              title,
-              first_name: firstName,
-              last_name: lastName,
-              role,
-              password,
-              nisit_id: null,
-              major: null,
-              faculty: null,
-              department,
-            };
+      let endpoint = "";
+      let payload = {};
 
-      // ใช้ Fetch ธรรมดา ไม่ต้องมี JWT Header
-      const res = await fetch(`${API_BASE}/api/users/register`, {
+      if (role === "student") {
+        endpoint = `${API_BASE}/api/users/register/student`;
+        payload = {
+          email: email,
+          password: password,
+          first_name: firstName,
+          last_name: lastName,
+          title: title,
+          nisit_id: nisitId,
+          major: major,
+          faculty: faculty,
+        };
+      } else {
+        endpoint = `${API_BASE}/api/users/register/officer`;
+        payload = {
+          email: email,
+          password: password,
+          first_name: firstName,
+          last_name: lastName,
+          title: title,
+          department: department,
+        };
+      }
+
+      console.log(
+        `🚀 Sending to [${endpoint}]:`,
+        JSON.stringify(payload, null, 2)
+      );
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -33,7 +33,6 @@
       errorIndex = null;
     }
 
-
     if (value.length === 1) {
       const nextEmptyIndex = pins.findIndex((p, i) => i > index && p === "");
 
@@ -49,17 +48,16 @@
     }
   }
 
-
   function handleKeydown(index: number, event: KeyboardEvent) {
     if (errorMessage) errorMessage = "";
 
     if (event.key === "Backspace") {
       if (pins[index]) {
         pins[index] = "";
-        errorIndex = index; 
+        errorIndex = index;
       } else {
         if (index > 0) {
-          errorIndex = index - 1; 
+          errorIndex = index - 1;
           inputRefs[index - 1]?.focus();
         }
       }
@@ -82,8 +80,8 @@
       }, 1000);
     } else {
       const firstEmpty = pins.findIndex((p) => p === "");
-      
-      errorIndex = firstEmpty; 
+
+      errorIndex = firstEmpty;
       errorMessage = "Please enter the full 5-digit code.";
 
       inputRefs[firstEmpty]?.focus();
@@ -99,7 +97,7 @@
 
 <div class="app-screen">
   <div class="glass-header">
-    <a href="/officer/create-event" class="back-btn" aria-label="Back">
+    <a href="/organizer/create-event" class="back-btn" aria-label="Back">
       <svg
         width="24"
         height="24"
@@ -207,7 +205,6 @@
   :global(label) {
     font-family: "Inter", sans-serif !important;
   }
-
 
   .app-screen {
     height: 100vh;

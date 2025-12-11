@@ -2,7 +2,6 @@
   import { goto } from "$app/navigation";
   import { slide } from "svelte/transition";
 
-
   type Major = { id: string; name: string };
 
   let fullName: string = "Somchai Nisit";
@@ -15,7 +14,7 @@
 
   let isFacultyOpen = false;
   let isMajorOpen = false;
-  let errorField: string = ""; 
+  let errorField: string = "";
 
   // --- Data ---
   const facultyList = [
@@ -108,7 +107,7 @@
     messageType = type;
     messageTimeout = setTimeout(() => {
       message = "";
-      errorField = ""; 
+      errorField = "";
     }, 3000);
   }
 
@@ -176,7 +175,7 @@
 
 <div class="app-screen">
   <div class="glass-header">
-    <a href="/student/eventlist" class="back-btn" aria-label="Back">
+    <a href="/officer/event-list" class="back-btn" aria-label="Back">
       <svg
         width="24"
         height="24"
@@ -692,7 +691,6 @@
   .toggle-password:hover {
     color: #f3f4f6;
   }
-
 
   .message-container {
     display: flex;
