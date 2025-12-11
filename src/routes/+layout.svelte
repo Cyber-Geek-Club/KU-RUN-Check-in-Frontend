@@ -1,4 +1,3 @@
-// src/routes/+layout.svelte - Enhanced with token validation
 <script lang="ts">
     import { goto, beforeNavigate } from '$app/navigation';
     import { page } from '$app/stores';
