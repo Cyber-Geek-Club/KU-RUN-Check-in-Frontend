@@ -48,7 +48,7 @@
     return () => window.removeEventListener("storage", handleStorageChange);
   });
 
-  beforeNavigate(({ to, cancel, type }) => {
+  beforeNavigate(({ to }) => {
     if (!to) return;
     const targetPath = to.url.pathname;
 
