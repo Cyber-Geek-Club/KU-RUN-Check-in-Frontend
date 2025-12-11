@@ -5,18 +5,18 @@
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-  let currentStep = 1; 
+  let currentStep = 1;
   let isLoading = false;
   let channel: BroadcastChannel;
 
-
   onMount(() => {
-  
-    channel = new BroadcastChannel('auth-sync');
+    channel = new BroadcastChannel("auth-sync");
 
     channel.onmessage = (event) => {
-      if (event.data === 'password-reset-success') {
-        try { window.close(); } catch (e) {}
+      if (event.data === "password-reset-success") {
+        try {
+          window.close();
+        } catch (e) {}
         goto("/auth/login");
       }
     };

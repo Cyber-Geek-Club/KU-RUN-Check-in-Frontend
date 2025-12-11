@@ -1,6 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { fade, slide } from "svelte/transition";
+  import { slide } from "svelte/transition";
+
+  import { auth, type LoginResponse } from "$lib/stores/auth";
 
   let email: string = "";
   let password: string = "";
@@ -8,7 +10,8 @@
 
   let errorMessage: string = "";
   let errorTimeout: any;
-  let errorField: string | null = null; 
+
+  let errorField: string | null = null;
 
   function togglePassword(): void {
     showPassword = !showPassword;
@@ -19,7 +22,7 @@
   }
 
   function clearError() {
-    errorField = null; 
+    errorField = null;
     if (errorMessage) {
       errorMessage = "";
       if (errorTimeout) clearTimeout(errorTimeout);
@@ -29,10 +32,10 @@
   function showError(message: string, field: string) {
     if (errorTimeout) clearTimeout(errorTimeout);
     errorMessage = message;
-    errorField = field; 
+    errorField = field;
     errorTimeout = setTimeout(() => {
       errorMessage = "";
-      errorField = null; 
+      errorField = null;
     }, 3000);
   }
 
@@ -40,12 +43,13 @@
     clearError();
 
     if (!email) return showError("Please enter your email.", "email");
-    if (!validateEmail(email)) return showError("Invalid email format.", "email");
+    if (!validateEmail(email))
+      return showError("Invalid email format.", "email");
     if (!password) return showError("Please enter your password.", "password");
 
     try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL;
-      const API_URL = `${API_BASE}/api/users/login`;
+      const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+      const API_URL = `${base}/api/users/login`;
 
       const res = await fetch(API_URL, {
         method: "POST",
@@ -56,32 +60,29 @@
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const msg = data.detail 
-          ? (typeof data.detail === 'string' ? data.detail : "Login failed.") 
+        const msg = data.detail
+          ? typeof data.detail === "string"
+            ? data.detail
+            : "Login failed."
           : "Login failed. Please check your credentials.";
-        return showError(msg, "password");
+
+        return showError(msg, "both");
       }
 
-      const userInfo = {
-          id: data.user_id,      
-          email: data.email,    
-          name: data.name,      
-          role: data.role        
-      };
-      
-      localStorage.setItem("user_info", JSON.stringify(userInfo));
+      const loginData = data as LoginResponse;
+
+      auth.login(loginData);
 
       const userRole = (data.role || "").toLowerCase();
 
       if (userRole === "officer") {
-          await goto("/officer/create-event",{ replaceState: true }); 
+        await goto("/officer/create-event", { replaceState: true });
       } else {
-          await goto("/student/event-list",{ replaceState: true });
+        await goto("/student/event-list", { replaceState: true });
       }
-
     } catch (error) {
-      console.error('Login Error:', error);
-      showError("Cannot connect to server. Please try again later.", "email");
+      console.error("Login Error:", error);
+      showError("Cannot connect to server. Please try again later.", "both");
     }
   }
 </script>
@@ -95,10 +96,15 @@
           <p class="sub-title">Welcome back! Please enter your details.</p>
         </div>
 
-        <div class="form-section">
+        <form class="form-section" on:submit|preventDefault={submitLogin}>
           <div class="form-group">
             <label class="label" for="email">Email</label>
-            <div class="input-field {errorField === 'email' ? 'error' : ''}">
+            <div
+              class="input-field {errorField === 'email' ||
+              errorField === 'both'
+                ? 'error'
+                : ''}"
+            >
               <input
                 id="email"
                 type="email"
@@ -114,7 +120,12 @@
               <label class="label" for="password">Password</label>
               <a href="/auth/forgot-password" class="forgot-link">Forgot ?</a>
             </div>
-            <div class="input-field password-field {errorField === 'password' ? 'error' : ''}">
+            <div
+              class="input-field password-field {errorField === 'password' ||
+              errorField === 'both'
+                ? 'error'
+                : ''}"
+            >
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -129,9 +140,32 @@
                 aria-label="Toggle Password Visibility"
               >
                 {#if showPassword}
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                    ></path><circle cx="12" cy="12" r="3"></circle></svg
+                  >
                 {:else}
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><path
+                      d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                    ></path><line x1="1" y1="1" x2="23" y2="23"></line></svg
+                  >
                 {/if}
               </button>
             </div>
@@ -142,7 +176,16 @@
               class="message-container error"
               transition:slide={{ duration: 200 }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="12" y1="8" x2="12" y2="12"></line>
                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -151,15 +194,12 @@
             </div>
           {/if}
 
-          <button class="login-button" type="button" on:click={submitLogin}>
-            LOGIN NOW
-          </button>
-
+          <button class="login-button" type="submit"> LOGIN NOW </button>
           <div class="signup-section">
             <span class="signup-text">Don't have an account?</span>
             <a href="/auth/register" class="signup-link">Sign up</a>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   </div>
@@ -201,11 +241,11 @@
 
   input::-ms-reveal,
   input::-ms-clear {
-      display: none;
+    display: none;
   }
   input::-webkit-password-reveal-button {
-      display: none;
-      -webkit-appearance: none;
+    display: none;
+    -webkit-appearance: none;
   }
 
   .app-screen {
