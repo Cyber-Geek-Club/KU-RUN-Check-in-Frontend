@@ -66,7 +66,6 @@
             const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
             const API_URL = `${base}/api/users/login`;
 
-            // ⭐ Axios POST
             const { data } = await axios.post<LoginResponse>(
                 API_URL,
                 {
@@ -75,14 +74,12 @@
                 },
                 {
                     headers: { "Content-Type": "application/json" },
-                    withCredentials: false, // caso precise cookies -> true
+                    withCredentials: false,
                 }
             );
 
-            // Salvar tokens
             auth.login(data);
 
-            // Role-based redirect
             const userRole = (data.role || "").toLowerCase();
 
             if (userRole === "organizer") {

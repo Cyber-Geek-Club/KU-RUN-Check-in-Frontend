@@ -41,7 +41,7 @@ declare module '$env/static/private' {
 	export const CURL_CA_BUNDLE: string;
 	export const DEBUG_COLORS: string;
 	export const DriverData: string;
-	export const EFC_12028_1592913036: string;
+	export const EFC_10268_1592913036: string;
 	export const FORCE_COLOR: string;
 	export const GDAL_DATA: string;
 	export const HOMEDRIVE: string;
@@ -128,7 +128,7 @@ declare module '$env/dynamic/private' {
 		CURL_CA_BUNDLE: string;
 		DEBUG_COLORS: string;
 		DriverData: string;
-		EFC_12028_1592913036: string;
+		EFC_10268_1592913036: string;
 		FORCE_COLOR: string;
 		GDAL_DATA: string;
 		HOMEDRIVE: string;
