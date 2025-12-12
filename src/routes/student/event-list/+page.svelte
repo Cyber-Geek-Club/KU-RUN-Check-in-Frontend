@@ -172,12 +172,12 @@
           isMenuOpen = false;
 
           return async ({ result, update }) => {
-            // โค้ดตรงนี้ทำงาน 'หลังจาก' Server ตอบกลับมาแล้ว
+           
             if (result.type === "redirect") {
-              clearClientData(); // ลบ localstorage (ถ้ามี)
-              await goto(result.location); // ไปหน้า login
+              clearClientData();
+              await goto(result.location); 
             } else {
-              await update(); // เผื่อกรณี error
+              await update(); 
             }
           };
         }}

@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import { slide, scale } from "svelte/transition";
   import { onMount, onDestroy } from "svelte";
+  import { page } from "$app/stores"; // 🔥 1. Import page store เพื่ออ่าน URL Params
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -13,10 +14,22 @@
   let messageTimeout: any;
   let errorField = "";
 
+  // 🔥 2. กำหนดตัวแปรสำหรับ URL ปลายทาง (ค่าเริ่มต้นคือ Login)
+  let returnUrl = "/auth/login"; 
+  
+  // ตรวจสอบว่ามี param "return_to" ส่งมาหรือไม่
+  $: {
+    const param = $page.url.searchParams.get("return_to");
+    if (param) {
+      returnUrl = param;
+    }
+  }
+
   function handleStorageEvent(event: StorageEvent) {
     if (event.key === "password_reset_done") {
-      goto("/auth/login");
       localStorage.removeItem("password_reset_done");
+      // 🔥 3. เด้งกลับไปที่ returnUrl ที่กำหนดไว้
+      goto(returnUrl); 
     }
   }
 
@@ -94,7 +107,7 @@
     <button
       class="back-btn"
       aria-label="Back"
-      on:click={() => goto("/auth/login")}
+      on:click={() => goto(returnUrl)} 
       disabled={isLoading}
     >
       <svg
@@ -118,7 +131,9 @@
       <div class="form-card">
         {#if currentStep === 1}
           <div class="title-section" in:slide>
-            <h1 class="main-title">FORGOT PASSWORD</h1>
+            <h1 class="main-title">
+               {returnUrl.includes('login') ? 'FORGOT PASSWORD' : 'CHANGE PASSWORD'}
+            </h1>
             <p class="sub-title">Enter your email to receive a reset link.</p>
           </div>
 
@@ -185,8 +200,7 @@
               Please check your inbox.
             </p>
             <p class="footer-text" style="font-size: 13px; opacity: 0.7;">
-              (This page will redirect to Login automatically once reset is
-              complete)
+              (This page will redirect automatically once reset is complete)
             </p>
           </div>
           <div class="footer-text">
@@ -205,6 +219,8 @@
 
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+  
+  /* CSS เดิมทั้งหมด */
   .resend-link {
     background: none;
     border: none;
