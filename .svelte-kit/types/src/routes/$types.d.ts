@@ -12,7 +12,7 @@ type EnsureDefined<T> = T extends null | undefined ? {} : T;
 type OptionalUnion<U extends Record<string, any>, A extends keyof U = U extends U ? keyof U : never> = U extends unknown ? { [P in Exclude<A, keyof U>]?: never } & U : never;
 export type Snapshot<T = any> = Kit.Snapshot<T>;
 type PageParentData = EnsureDefined<LayoutData>;
-type LayoutRouteId = RouteId | "/" | "/createevent-officer" | "/createevent-officer-2" | "/eventlist" | "/eventlist-1" | "/eventlist-2" | "/eventlist-3" | "/eventverify-officer" | "/login" | "/monthly-reward" | "/monthly-reward-completed-user" | "/monthly-reward-inprogress-user" | "/myevents-history" | "/myevents-upcoming" | "/myevents-upcoming-2" | "/notFound" | "/register-officer" | "/register-student" | "/reset-password" | "/reset-password-2" | "/reset-password-3" | "/reset-password-4" | "/setting-account-officer" | "/setting-account-student" | "/upload-proof-officer" | "/upload-proof-officer-2" | null
+type LayoutRouteId = RouteId | "/" | "/auth/forgot-password" | "/auth/login" | "/auth/register" | "/auth/reset-password" | "/auth/verify-email" | "/officer/event-list" | "/officer/monthly-reward" | "/officer/monthly-reward copy" | "/officer/myevents-upcoming" | "/officer/setting-account" | "/organizer/create-event" | "/organizer/event-verify" | "/organizer/monthly-reward" | "/organizer/setting-account" | "/organizer/upload-proof" | "/student/event-list" | "/student/monthly-reward" | "/student/myevents-upcoming" | "/student/setting-account" | null
 type LayoutParams = RouteParams & {  }
 type LayoutParentData = EnsureDefined<{}>;
 
