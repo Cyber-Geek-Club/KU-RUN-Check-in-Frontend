@@ -1,78 +1,69 @@
 <script lang="ts">
-    import { link } from "svelte-spa-router";
+    import {onMount} from "svelte";
 
     let activeTab = 'upcoming';
+    let events: any[] = [];
+    let isLoading = false;
 
-    let events = [
-        {
-            id: 1,
-            title: "KASETSART RUN OF HEALTH",
-            date: "Sunday, January 14, 2024",
-            time: "05:00 AM - 09:00 AM",
-            location: "Kasetsart University, Sriracha",
-            image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=600&auto=format&fit=crop",
-            pincode: "12345",
-            status: "joined",
-            type: "upcoming",
-        },
-        {
-            id: 2,
-            title: "KASETSART RUN OF HEALTH",
-            date: "Sunday, January 14, 2024",
-            time: "05:00 AM - 09:00 AM",
-            location: "Kasetsart University, Sriracha",
-            image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=600&auto=format&fit=crop",
-            pincode: "12345",
-            status: "checked-in",
-            type: "upcoming",
-        },
-        {
-            id: 3,
-            title: "KASETSART RUN OF HEALTH",
-            date: "Sunday, January 14, 2024",
-            time: "05:00 AM - 09:00 AM",
-            location: "Kasetsart University, Sriracha",
-            image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=600&auto=format&fit=crop",
-            pincode: "12345",
-            status: "completed",
-            type: "upcoming",
-        },
-        {
-            id: 4,
-            title: "KASETSART RUN OF HEALTH",
-            date: "Sunday, January 14, 2024",
-            time: "05:00 AM - 09:00 AM",
-            location: "Kasetsart University, Sriracha",
-            image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=600&auto=format&fit=crop",
-            pincode: "99999",
-            status: "cancel",
-            type: "history",
-        },
-        {
-            id: 5,
-            title: "KASETSART RUN OF HEALTH",
-            date: "Sunday, January 14, 2024",
-            time: "05:00 AM - 09:00 AM",
-            location: "Kasetsart University, Sriracha",
-            image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=600&auto=format&fit=crop",
-            pincode: "99999",
-            status: "completed",
-            type: "history",
-        },
-        {
-            id: 6,
-            title: "KASETSART RUN OF HEALTH",
-            date: "Sunday, January 14, 2024",
-            time: "05:00 AM - 09:00 AM",
-            location: "Kasetsart University, Sriracha",
-            image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=600&auto=format&fit=crop",
-            pincode: "99999",
-            status: "completed",
-            type: "history",
+    $: filteredEvents = events.filter(e => {
+        if (activeTab === 'upcoming') {
+            return ['joined', 'checked-in'].includes(e.status);
+        } else {
+            return ['completed', 'cancel'].includes(e.status);
         }
-    ];
+    });
 
-    $: filteredEvents = events.filter(e => e.type === activeTab);
+    onMount(async () => {
+        isLoading = true;
+        try {
+            const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+            const userInfoStr = localStorage.getItem("user_info");
+            const token = localStorage.getItem("access_token");
+
+            if (!userInfoStr || !token) {
+                console.error("ไม่พบข้อมูลผู้ใช้ หรือ Token");
+                return;
+            }
+
+            const userInfo = JSON.parse(userInfoStr);
+            const userId = userInfo.id;
+            const url = `${base}/api/users/${userId}/events`;
+
+            const res = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) throw new Error("Fetch failed");
+
+            const data = await res.json();
+
+            events = data.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                date: new Date(item.event_date).toLocaleDateString(),
+                time: new Date(item.event_date).toLocaleTimeString(),
+                location: item.location,
+                image: item.banner_image_url,
+                status: item.status || 'joined',
+                type: checkEventType(item.status)
+            }));
+
+        } catch (err) {
+            console.error("Error:", err);
+        } finally {
+            isLoading = false;
+        }
+    });
+
+    const checkEventType = (status: string) => {
+        if (['joined', 'checked-in'].includes(status)) return 'upcoming';
+        if (['completed', 'cancel'].includes(status)) return 'past';
+        return 'upcoming';
+    };
 
     const getStatusStyle = (status: string) => {
         switch (status) {

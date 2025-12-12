@@ -1,57 +1,90 @@
 <script lang="ts">
-  import { fade, scale } from "svelte/transition";
-  import { goto, beforeNavigate } from "$app/navigation";
-  import { quintOut } from "svelte/easing";
-  import Swal from "sweetalert2";
-  import { enhance } from '$app/forms';
-  import { auth } from '$lib/utils/auth';
+    import {fade, scale} from "svelte/transition";
+    import {beforeNavigate, goto} from "$app/navigation";
+    import {quintOut} from "svelte/easing";
+    import Swal from "sweetalert2";
+    import {enhance} from "$app/forms";
+    import {auth} from "$lib/utils/auth";
+    import {onMount} from "svelte";
 
+    let isLoading = true;
   let isMenuOpen = false;
 
-  let events = [
-    {
-      id: 1,
-      title: "KASETSART RUN OF HEALTH",
-      image:
-        "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80",
-      description:
-        "Join us for the biggest charity run event of the year. Promote good health and support our community.",
-      date: "Sunday, January 14, 2024",
-      time: "05:00 AM - 09:00 AM",
-      location: "Kasetsart University, Sriracha",
-      participants: 0,
-      maxParticipants: 100,
-      isReadMore: false,
-    },
-    {
-      id: 2,
-      title: "MUSIC FESTIVAL 2024",
-      image:
-        "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80",
-      description:
-        "Enjoy live music from top artists under the stars. Food trucks and fun activities included.",
-      date: "Saturday, February 20, 2024",
-      time: "04:00 PM - 11:00 PM",
-      location: "City Park",
-      participants: 45,
-      maxParticipants: 200,
-      isReadMore: false,
-    },
-    {
-      id: 3,
-      title: "FOOD CARNIVAL 2024",
-      image:
-        "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80",
-      description:
-        "Taste the best local and international dishes from over 50 food stalls.",
-      date: "Sunday, March 10, 2024",
-      time: "10:00 AM - 10:00 PM",
-      location: "Central Square",
-      participants: 120,
-      maxParticipants: 500,
-      isReadMore: false,
-    },
-  ];
+  interface EventItem {
+      id: number;
+      title: string;
+      description: string;
+      location: string;
+      distance_km: number;
+      max_participants: number;
+      banner_image_url: string;
+      is_active: boolean;
+      is_published: boolean;
+      created_by: number;
+      image: string;
+      maxParticipants: number;
+      participants: number;
+      date: string;
+      time: string;
+      isReadMore: boolean;
+  }
+
+  let events: EventItem[] = [];
+
+  onMount(async () => {
+      try {
+          const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+          const token = localStorage.getItem("access_token") || "";
+          const res = await fetch(`${base}/api/events/`, {
+              method: "GET",
+              headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+              },
+          });
+
+          if (res.status === 401) {
+              console.error("Token หมดอายุหรือไม่ได้ล็อกอิน");
+              return;
+          }
+
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); // เช็ค error จาก HTTP code ด้วย
+
+          const data = await res.json();
+
+          events = data.map((e: any) => ({
+              id: e.id,
+              title: e.title,
+              description: e.description,
+              location: e.location,
+              distance_km: e.distance_km,
+              max_participants: e.max_participants,
+              banner_image_url: e.banner_image_url,
+              is_active: e.is_active,
+              is_published: e.is_published,
+              created_by: e.created_by,
+              image: e.banner_image_url,
+              maxParticipants: e.max_participants,
+              participants: 0,
+              date: e.event_date
+                  ? new Date(e.event_date).toLocaleDateString()
+                  : "N/A",
+              time: e.event_date
+                  ? new Date(e.event_date).toLocaleTimeString()
+                  : "N/A",
+              isReadMore: false,
+          }));
+      } catch (err) {
+          console.error("Error loading events:", err);
+          Swal.fire({
+              icon: "error",
+              title: "Oops...",
+              text: "ไม่สามารถโหลดข้อมูลกิจกรรมได้",
+          });
+      } finally {
+          isLoading = false;
+      }
+  });
 
   function toggleMenu() {
     isMenuOpen = !isMenuOpen;
@@ -69,54 +102,85 @@
   }
 
   beforeNavigate(({ type, cancel }) => {
-    if (type === 'popstate') {
+      if (type === "popstate") {
       cancel();
     }
   });
 
   function handleLogout() {
-    
     auth.logout();
-    
-   
     isMenuOpen = false;
 
-   
-    goto('/auth/login', { replaceState: true });
+      goto("/auth/login", {replaceState: true});
   }
-
-  
-
   function toggleReadMore(index: number) {
     events[index].isReadMore = !events[index].isReadMore;
   }
 
-  function handleRegister(eventItem: any) {
-    Swal.fire({
-      title: 'Confirm Registration',
+  async function handleRegister(eventItem: EventItem) {
+      const result = await Swal.fire({
+          title: "Confirm Registration",
       html: `Are you sure you want to register for <br><b style="color: #10B981;">"${eventItem.title}"</b>?`,
-      icon: 'question',
+          icon: "question",
       showCancelButton: true,
-      confirmButtonColor: '#10B981',
-      cancelButtonColor: '#6B7280',
+          confirmButtonColor: "#10B981",
+          cancelButtonColor: "#6B7280",
       iconColor: "#10B981",
-      confirmButtonText: 'Yes, Register',
-      cancelButtonText: 'Cancel',
-      background: '#fff',
-      width: "320px"
-    }).then((result) => {
-      if (result.isConfirmed) {
-        console.log("Registered for:", eventItem.title);
-        
-        Swal.fire({
-          title: 'Registered!',
-          text: 'You have successfully registered.',
-          icon: 'success',
-          confirmButtonColor: '#10B981',
-          timer: 2000,
+          confirmButtonText: "Yes, Register",
+          cancelButtonText: "Cancel",
+          background: "#fff",
           width: "320px",
-          showConfirmButton: false
-        });
+      }).then(async (result) => {
+      if (result.isConfirmed) {
+          try {
+              const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(
+                  /\/$/,
+                  "",
+              );
+              const token = localStorage.getItem("access_token");
+
+              if (!token) {
+                  Swal.fire("Error", "กรุณาเข้าสู่ระบบก่อนลงทะเบียน", "error");
+                  return;
+              }
+              const res = await fetch(
+                  `${base}/api/participations/join?event_id=${eventItem.id}`,
+                  {
+                      method: "POST",
+                      headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`,
+                      },
+                  },
+              );
+              if (res.ok) {
+                  const data = await res.json();
+                  console.log("Joined Success:", data);
+                  await Swal.fire({
+                      title: "Registered!",
+                      html: `ลงทะเบียนสำเร็จ!<br>Join Code ของคุณคือ: <b>${data.join_code}</b>`,
+                      icon: "success",
+                      confirmButtonColor: "#10B981",
+                      width: "320px",
+                  });
+
+                  eventItem.participants += 1;
+                  events = events;
+              } else {
+                  // กรณี Error (เช่น ลงทะเบียนซ้ำ หรือ เต็ม)
+                  const errorData = await res.json();
+                  Swal.fire({
+                      title: "Registration Failed",
+                      text: errorData.detail || "เกิดข้อผิดพลาดในการลงทะเบียน",
+                      icon: "error",
+                      confirmButtonColor: "#EF4444",
+                      width: "320px",
+                  });
+              }
+          } catch (err) {
+              console.error("Register Error:", err);
+              Swal.fire("Error", "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้", "error");
+          }
       }
     });
   }
@@ -170,33 +234,28 @@
         <span class="icon">⚙️</span> Settings
       </a>
       <div class="menu-divider"></div>
-       <form 
-        action="?/logout" 
+        <form
+                action="?/logout"
         method="POST"
         use:enhance={() => {
-            
-            isMenuOpen = false; 
+          isMenuOpen = false;
 
-            return async ({ result, update }) => {
-                // โค้ดตรงนี้ทำงาน 'หลังจาก' Server ตอบกลับมาแล้ว
-                if (result.type === 'redirect') {
-                    clearClientData(); // ลบ localstorage (ถ้ามี)
-                    await goto(result.location); // ไปหน้า login
-                } else {
-                    await update(); // เผื่อกรณี error
-                }
-            };
+          return async ({ result, update }) => {
+            // โค้ดตรงนี้ทำงาน 'หลังจาก' Server ตอบกลับมาแล้ว
+            if (result.type === "redirect") {
+              clearClientData(); // ลบ localstorage (ถ้ามี)
+              await goto(result.location); // ไปหน้า login
+            } else {
+              await update(); // เผื่อกรณี error
+            }
+          };
         }}
-        style="display: contents;" 
-    >
-        <button 
-            type="button" 
-            class="menu-item logout" 
-            on:click={handleLogout}
+                style="display: contents;"
         >
-            <span class="icon">🚪</span> Logout
+            <button type="button" class="menu-item logout" on:click={handleLogout}>
+                <span class="icon">🚪</span> Logout
         </button>
-    </form>
+        </form>
     </div>
   {/if}
 
@@ -218,13 +277,15 @@
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                ><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle
-                  cx="9"
-                  cy="7"
-                  r="4"
-                ></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path
-                  d="M16 3.13a4 4 0 0 1 0 7.75"
-                ></path></svg
+              >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                  ></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path
+                          d="M23 21v-2a4 4 0 0 0-3-3.87"
+                  ></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg
               >
               <span>{event.participants}/{event.maxParticipants}</span>
             </div>
@@ -252,11 +313,13 @@
               <button class="read-more-btn" on:click={() => toggleReadMore(i)}>
                 {event.isReadMore ? "Read less" : "Read more"}
               </button>
-              
-              <button class="register-btn" on:click={() => handleRegister(event)}>
+
+                <button
+                        class="register-btn"
+                        on:click={() => handleRegister(event)}
+                >
                 REGISTRATION
               </button>
-
             </div>
           </div>
         </div>
@@ -273,13 +336,13 @@
     margin: 0;
     padding: 0;
     background-color: #111827;
-    font-family: "Inter", sans-serif; 
+      font-family: "Inter", sans-serif;
     overflow: hidden;
   }
 
-  :global(button), 
-  :global(input), 
-  :global(select), 
+  :global(button),
+  :global(input),
+  :global(select),
   :global(textarea) {
     font-family: "Inter", sans-serif !important;
   }
@@ -292,7 +355,6 @@
   :global(.swal2-content) {
     font-family: "Inter", sans-serif !important;
   }
-  
 
   :global(.swal2-container) {
     backdrop-filter: blur(8px) !important;
@@ -303,7 +365,7 @@
   :global(.swal2-popup) {
     border-radius: 20px !important;
   }
-  
+
   .app-screen {
     height: 100vh;
     display: flex;
@@ -419,9 +481,9 @@
   .menu-item {
     display: flex;
     align-items: center;
-    padding: 10px 16px; 
+      padding: 10px 16px;
     text-decoration: none;
-    color: #374151; 
+      color: #374151;
     font-weight: 500;
     font-size: 15px;
     border: none;
@@ -430,14 +492,14 @@
     position: relative;
     z-index: 2;
     width: auto;
-    margin: 4px 8px; 
-    border-radius: 8px; 
+      margin: 4px 8px;
+      border-radius: 8px;
     transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   .menu-item:hover {
-    background-color: #F3F4F6; 
-    color: #10B981;
+      background-color: #f3f4f6;
+      color: #10b981;
     transform: translateX(4px);
   }
 
@@ -446,12 +508,12 @@
   }
 
   .menu-item.logout {
-    color: #EF4444; 
+      color: #ef4444;
   }
-  
+
   .menu-item.logout:hover {
-    background-color: #FEF2F2; 
-    color: #b40808; 
+      background-color: #fef2f2;
+      color: #b40808;
   }
 
   .icon {
@@ -467,7 +529,7 @@
   .menu-divider {
     height: 1px;
     background: #e5e7eb;
-    margin: 6px 12px; 
+      margin: 6px 12px;
   }
 
   .scroll-container {
@@ -549,9 +611,7 @@
   .detail-row:last-child {
     margin-bottom: 0;
   }
-  .detail-icon {
-    margin-right: 8px;
-  }
+
   .card-footer {
     display: flex;
     justify-content: space-between;
