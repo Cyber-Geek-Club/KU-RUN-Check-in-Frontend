@@ -3,6 +3,8 @@
   import { goto, beforeNavigate } from "$app/navigation";
   import { quintOut } from "svelte/easing";
   import Swal from "sweetalert2";
+  import { enhance } from '$app/forms';
+  import { auth } from '$lib/utils/auth';
 
   let isMenuOpen = false;
 

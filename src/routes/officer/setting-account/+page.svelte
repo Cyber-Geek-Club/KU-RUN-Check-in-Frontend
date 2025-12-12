@@ -5,9 +5,9 @@
 
   type Major = { id: string; name: string };
 
-  let fullName: string = "Somchai Nisit";
-  let nisitId: string = "64xxxxxxxx";
-  let email: string = "somchai.n@ku.th";
+  let fullName: string = "";
+  let nisitId: string = "";
+  let email: string = "";
   let faculty: string = "";
   let major: string = "";
   let password: string = "";
@@ -176,7 +176,7 @@
 
 <div class="app-screen">
   <div class="glass-header">
-    <a href="/student/eventlist" class="back-btn" aria-label="Back">
+    <a href="/student/event-list" class="back-btn" aria-label="Back">
       <svg
         width="24"
         height="24"
