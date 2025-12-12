@@ -151,6 +151,7 @@
                           "Content-Type": "application/json",
                           Authorization: `Bearer ${token}`,
                       },
+                      body: JSON.stringify({event_id: eventItem.id})
                   },
               );
               if (res.ok) {

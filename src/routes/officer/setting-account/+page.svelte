@@ -1,23 +1,72 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
-  import { slide } from "svelte/transition";
+    import {goto} from "$app/navigation";
+    import {slide} from "svelte/transition";
+    import {onMount} from "svelte";
+    import {page} from "$app/stores";
 
+    const API_BASE_URL =
+      import.meta.env.VITE_API_BASE_URL || "";
 
-  type Major = { id: string; name: string };
+  let userId: string = "";
+  let token: string = "";
+  let role: string = "";
 
-  let fullName: string = "Somchai Nisit";
-  let nisitId: string = "64xxxxxxxx";
-  let email: string = "somchai.n@ku.th";
+  let backUrl: string = "/";
+
+  $: {
+      if (role === "student") {
+          backUrl = "/student/event-lios";
+      } else {
+          backUrl = "/organizer/create-event";
+      }
+  }
+
+  let title: string = "";
+  let firstName: string = "";
+  let lastName: string = "";
+  let email: string = "";
+
+  let nisitId: string = "";
   let faculty: string = "";
   let major: string = "";
-  let password: string = "";
-  let showPassword: boolean = false;
 
+  let department: string = "";
+
+  let isTitleOpen = false;
   let isFacultyOpen = false;
   let isMajorOpen = false;
-  let errorField: string = ""; 
+  let isDeptOpen = false;
 
-  // --- Data ---
+  let isLoading: boolean = true;
+  let isSaving: boolean = false;
+
+  let originalData: any = {};
+  let isFormDirty: boolean = false;
+
+  let message: string = "";
+  let messageType: "error" | "success" = "error";
+  let messageTimeout: any;
+  let errorTimeout: any;
+
+  let errorFields = {
+      title: false,
+      firstName: false,
+      lastName: false,
+      faculty: false,
+      major: false,
+      department: false,
+  };
+  type ErrorKey = keyof typeof errorFields;
+
+  const titleList = ["Mr.", "Ms.", "Mrs.", "Dr.", "Prof."];
+  const organizerDepartments = [
+      {id: "Academic Affairs", name: "Academic Affairs"},
+      {id: "Student Affairs", name: "Student Affairs"},
+      {id: "Registrar Office", name: "Registrar Office"},
+      {id: "Finance Department", name: "Finance Department"},
+      {id: "IT Support Center", name: "IT Support Center"},
+      {id: "Human Resources", name: "Human Resources"},
+  ];
   const facultyList = [
     { id: "management", name: "Management Sciences" },
     { id: "engineering", name: "Engineering at Sriracha" },
@@ -26,80 +75,120 @@
     { id: "maritime", name: "International Maritime Studies" },
   ];
 
+  type Major = { id: string; name: string };
   const majorData: Record<string, Major[]> = {
     management: [
       { id: "mgt", name: "Management" },
-      { id: "fin", name: "Finance" },
+        {id: "fin", name: "Finance and Investment"},
       { id: "ib", name: "International Business" },
+        {id: "lm", name: "Logistics Management"},
+        {id: "hh", name: "Hospitality - Hotel"},
+        {id: "ht", name: "Hospitality - Tourism"},
       { id: "acc", name: "Accounting" },
+        {id: "amb", name: "Digital Marketing"},
     ],
     engineering: [
-      { id: "cpe", name: "Computer Engineering" },
-      { id: "me", name: "Mechanical Engineering" },
-      { id: "ie", name: "Industrial Engineering" },
+        {id: "med", name: "Mechanical Engineering"},
+        {id: "mme", name: "Mechanical & Mfg Systems"},
+        {id: "eee", name: "Electrical & Electronics"},
+        {id: "ise", name: "Industrial Systems"},
+        {id: "cie", name: "Computer Engineering"},
+        {id: "ce", name: "Civil Engineering"},
       { id: "ee", name: "Electrical Engineering" },
+        {id: "rae", name: "Robotics Engineering"},
+        {id: "die", name: "Digital Electronics"},
+        {id: "dms", name: "Digital Mfg Systems"},
+        {id: "ae", name: "Automotive Engineering"},
     ],
     science: [
       { id: "cs", name: "Computer Science" },
       { id: "it", name: "Information Technology" },
+        {id: "ps", name: "Physics"},
+        {id: "est", name: "Environmental Science"},
+        {id: "dst", name: "Digital Science"},
+        {id: "daa", name: "Data Analytics"},
+        {id: "act", name: "Applied Chemistry"},
     ],
     economics: [{ id: "econ", name: "Economics" }],
-    maritime: [{ id: "ns", name: "Nautical Science" }],
+      maritime: [
+          {id: "nao", name: "Naval Architecture"},
+          {id: "ns", name: "Nautical Science"},
+          {id: "mt", name: "Maritime Transportation"},
+          {id: "me", name: "Marine Engineering"},
+      ],
   };
 
   let currentMajors: Major[] = [];
-
   $: {
     if (faculty && majorData[faculty]) {
       currentMajors = majorData[faculty];
     } else {
-      currentMajors = Object.values(majorData).flat();
+        currentMajors = [];
     }
   }
 
-  let message: string = "";
-  let messageType: "error" | "success" = "error";
-  let messageTimeout: any;
-
-  function closeAllDropdowns() {
-    isFacultyOpen = false;
-    isMajorOpen = false;
+  function getFacultyName(id: string) {
+      const f = facultyList.find((x) => x.id === id);
+      return f ? f.name : "Select Faculty";
   }
 
+  function getMajorName(id: string) {
+      const m = currentMajors.find((x) => x.id === id);
+      return m ? m.name : "Select Major";
+  }
+
+  function getDeptName(id: string) {
+      const d = organizerDepartments.find((x) => x.id === id || x.name === id);
+      return d ? d.name : id || "Select Department";
+  }
+
+  function closeAllDropdowns() {
+      isTitleOpen = false;
+    isFacultyOpen = false;
+    isMajorOpen = false;
+      isDeptOpen = false;
+  }
+
+  function toggleDropdown(
+      type: "title" | "faculty" | "major" | "dept",
+      e: Event
+  ) {
+      e.stopPropagation();
+      const wasOpen =
+          (type === "title" && isTitleOpen) ||
+          (type === "faculty" && isFacultyOpen) ||
+          (type === "major" && isMajorOpen) ||
+          (type === "dept" && isDeptOpen);
+      closeAllDropdowns();
+      if (!wasOpen) {
+          if (type === "title") isTitleOpen = true;
+          if (type === "faculty") isFacultyOpen = true;
+          if (type === "major") isMajorOpen = true;
+          if (type === "dept") isDeptOpen = true;
+      }
+  }
+
+  function selectTitle(t: string) {
+      title = t;
+      isTitleOpen = false;
+      clearMessage();
+  }
   function selectFaculty(id: string) {
     faculty = id;
     major = "";
     isFacultyOpen = false;
     clearMessage();
   }
-
   function selectMajor(id: string) {
     major = id;
     isMajorOpen = false;
-    if (!faculty) {
-      for (const [facKey, majors] of Object.entries(majorData)) {
-        if (majors.find((m) => m.id === id)) {
-          faculty = facKey;
-          break;
-        }
-      }
-    }
     clearMessage();
   }
 
-  function getFacultyName(id: string) {
-    const found = facultyList.find((f) => f.id === id);
-    return found ? found.name : "Select Faculty";
-  }
-
-  function getMajorName(id: string) {
-    let found = currentMajors.find((m) => m.id === id);
-    if (!found) {
-      found = Object.values(majorData)
-        .flat()
-        .find((m) => m.id === id);
-    }
-    return found ? found.name : "Select Major";
+  function selectDepartment(id: string) {
+      department = id;
+      isDeptOpen = false;
+      clearMessage();
   }
 
   function showMessage(msg: string, type: "error" | "success" = "error") {
@@ -108,67 +197,194 @@
     messageType = type;
     messageTimeout = setTimeout(() => {
       message = "";
-      errorField = ""; 
-    }, 3000);
+    }, 5000);
   }
 
   function clearMessage() {
     if (message) {
       message = "";
-      errorField = "";
       if (messageTimeout) clearTimeout(messageTimeout);
     }
   }
 
-  function validateEmail(value: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  function triggerErrorHighlight() {
+      if (errorTimeout) clearTimeout(errorTimeout);
+      errorTimeout = setTimeout(() => {
+          Object.keys(errorFields).forEach(
+              (k) => (errorFields[k as ErrorKey] = false)
+          );
+      }, 3000);
   }
 
-  async function handleSaveChanges(): Promise<void> {
+  onMount(async () => {
+      isLoading = true;
+      try {
+          token = localStorage.getItem("access_token") || "";
+          const userInfoStr = localStorage.getItem("user_info");
+
+          if (userInfoStr) {
+              try {
+                  const userInfo = JSON.parse(userInfoStr);
+                  userId = userInfo.nisit_id || userInfo.id;
+              } catch (e) {
+                  console.error("Error parsing user_info", e);
+              }
+          }
+
+          if (!token || !userId) throw new Error("User not authenticated");
+
+          const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+              method: "GET",
+              headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+              },
+          });
+
+          if (!response.ok) {
+              if (response.status === 401) return goto("/login");
+              throw new Error("Failed to fetch user data");
+          }
+
+          const data = await response.json();
+          console.log("Fetched:", data);
+
+          if (data.role) role = data.role.toLowerCase();
+          else role = data.nisit_id || data.nisitId ? "student" : "officer";
+
+          title = data.title || "";
+          firstName = data.first_name || data.firstName || "";
+          lastName = data.last_name || data.lastName || "";
+          email = data.email || "";
+
+          if (role === "student") {
+              nisitId = data.nisit_id || data.nisitId || "";
+              faculty = data.faculty || "";
+              setTimeout(() => {
+                  major = data.major || "";
+              }, 50);
+          } else {
+              department = data.department || "";
+          }
+
+          originalData = {
+              title,
+              firstName,
+              lastName,
+              faculty,
+              major,
+              department,
+          };
+
+          if (role === "student") {
+              setTimeout(() => {
+                  originalData.major = data.major || "";
+              }, 50);
+          }
+      } catch (error) {
+          console.error(error);
+          showMessage("Could not load profile info.", "error");
+      } finally {
+          isLoading = false;
+      }
+  });
+
+  $: {
+      const basicChanged =
+          title !== originalData.title ||
+          firstName !== originalData.firstName ||
+          lastName !== originalData.lastName;
+
+      let roleChanged = false;
+      if (role === "student") {
+          roleChanged =
+              faculty !== originalData.faculty || major !== originalData.major;
+      } else {
+          roleChanged = department !== originalData.department;
+      }
+
+      isFormDirty = basicChanged || roleChanged;
+  }
+
+  async function handleSaveChanges() {
     clearMessage();
+      let isValid = true;
 
-    if (!fullName) {
-      errorField = "fullname";
-      return showMessage("Please enter your full name.");
+      Object.keys(errorFields).forEach(
+          (k) => (errorFields[k as ErrorKey] = false)
+      );
+
+      // Validate Basic Info
+      if (!title) {
+          errorFields.title = true;
+          isValid = false;
     }
-    if (!nisitId) {
-      errorField = "nisitId";
-      return showMessage("Please enter your Nisit ID.");
+      if (!firstName.trim()) {
+          errorFields.firstName = true;
+          isValid = false;
     }
-    if (!email) {
-      errorField = "email";
-      return showMessage("Please enter your email.");
-    }
-    if (!validateEmail(email)) {
-      errorField = "email";
-      return showMessage("Invalid email format.");
-    }
-    if (!faculty) {
-      errorField = "faculty";
-      return showMessage("Please select a faculty.");
-    }
-    if (!major) {
-      errorField = "major";
-      return showMessage("Please select a major.");
-    }
-    if (!password) {
-      errorField = "password";
-      return showMessage("Please confirm your password to save.");
+      if (!lastName.trim()) {
+          errorFields.lastName = true;
+          isValid = false;
     }
 
-    const updateData = {
-      role: "student",
-      fullName,
-      nisitId,
-      email,
-      faculty,
-      major,
-      password,
-    };
-    console.log("Student Settings Updated:", updateData);
+      if (role === "student") {
+          if (!faculty) {
+              errorFields.faculty = true;
+              isValid = false;
+          }
+          if (!major) {
+              errorFields.major = true;
+              isValid = false;
+          }
+      } else {
+          if (!department) {
+              errorFields.department = true;
+              isValid = false;
+          }
+    }
 
-    showMessage("Account updated successfully!", "success");
-    setTimeout(() => goto("/eventlist"), 1500);
+      if (!isValid) {
+          triggerErrorHighlight();
+          if (!message) showMessage("Please fill in all required fields.");
+          return;
+    }
+
+      isSaving = true;
+
+      try {
+          const updateData = {
+              title: title,
+              first_name: firstName,
+              last_name: lastName,
+              major: role === "student" ? major : null,
+              faculty: role === "student" ? faculty : null,
+              department: role === "officer" ? department : null,
+          };
+
+          console.log("Updating Profile with:", updateData);
+          const putRes = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+              method: "PUT",
+              headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+              },
+              body: JSON.stringify(updateData),
+          });
+
+          if (!putRes.ok) {
+              const err = await putRes.json();
+              throw new Error(err.message || "Failed to update profile info");
+          }
+
+          showMessage("Settings updated successfully!", "success");
+          setTimeout(() => window.location.reload(), 1500);
+      } catch (error: any) {
+          console.error(error);
+          showMessage(error.message, "error");
+      } finally {
+          isSaving = false;
+      }
   }
 </script>
 
@@ -176,7 +392,7 @@
 
 <div class="app-screen">
   <div class="glass-header">
-    <a href="/student/eventlist" class="back-btn" aria-label="Back">
+      <a aria-label="Back" class="back-btn" href={backUrl}>
       <svg
         width="24"
         height="24"
@@ -198,244 +414,352 @@
       <div class="form-card">
         <div class="title-section">
           <h1 class="main-title">ACCOUNT SETTINGS</h1>
-          <p class="sub-title">Update your student profile information.</p>
+            <p class="sub-title">Update your profile information.</p>
         </div>
 
-        <div class="form-section">
-          <div class="form-group">
-            <label class="label" for="fullname">Full Name</label>
-            <div
-              class="input-field"
-              class:error-border={errorField === "fullname"}
-            >
-              <input
-                id="fullname"
-                type="text"
-                placeholder="Enter your name"
-                bind:value={fullName}
-                on:input={clearMessage}
-              />
-            </div>
-          </div>
+          {#if isLoading}
+              <div style="text-align: center; color: #9ca3af; padding: 40px;">
+                  <p>Loading...</p>
+              </div>
+          {:else}
+              <div class="form-section" transition:slide>
+                  <div class="row-group">
+                      <div class="form-group" style="flex: 0 0 90px;">
+                          <label class="label" for="title-trigger">Title</label>
+                          <div class="custom-select-container">
+                              <button
+                                      type="button"
+                                      id="title-trigger"
+                                      class="select-trigger {errorFields.title
+                      ? 'error-border'
+                      : ''}"
+                                      class:active={isTitleOpen}
+                                      on:click={(e) => toggleDropdown("title", e)}
+                              >
+                                  <span>{title || "Title"}</span>
+                                  <div class="arrow-icon" class:rotate={isTitleOpen}>
+                                      <svg
+                                              width="16"
+                                              height="16"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              stroke-width="2">
+                                          <path d="M6 9l6 6 6-6"/>
+                                      </svg
+                                      >
+                                  </div>
+                              </button>
+                              {#if isTitleOpen}
+                                  <div
+                                          class="options-list"
+                                          transition:slide={{ duration: 150 }}
+                                          style="z-index: 101;"
+                                  >
+                                      {#each titleList as t}
+                                          <button
+                                                  type="button"
+                                                  class="option-item"
+                                                  on:click={() => selectTitle(t)}>{t}</button
+                                          >
+                                      {/each}
+                                  </div>
+                              {/if}
+                          </div>
+                      </div>
 
-          <div class="form-group">
-            <label class="label" for="nisitId">Nisit ID</label>
-            <div
-              class="input-field"
-              class:error-border={errorField === "nisitId"}
-            >
-              <input
-                id="nisitId"
-                type="text"
-                placeholder="Enter your ID"
-                bind:value={nisitId}
-                on:input={clearMessage}
-              />
-            </div>
-          </div>
+                      <div class="form-group" style="flex: 1;">
+                          <label class="label" for="firstname">First Name</label>
+                          <div
+                                  class="input-field"
+                                  class:error-border={errorFields.firstName}
+                          >
+                              <input
+                                      id="firstname"
+                                      type="text"
+                                      bind:value={firstName}
+                                      on:input={clearMessage}
+                                      placeholder="First Name"
+                              />
+                          </div>
+                      </div>
+                  </div>
 
-          <div class="form-group">
-            <label class="label" for="email">Email</label>
-            <div
-              class="input-field"
-              class:error-border={errorField === "email"}
-            >
-              <input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                bind:value={email}
-                on:input={clearMessage}
-              />
-            </div>
-          </div>
+                  <div class="form-group">
+                      <label class="label" for="lastname">Last Name</label>
+                      <div
+                              class="input-field"
+                              class:error-border={errorFields.lastName}
+                      >
+                          <input
+                                  id="lastname"
+                                  type="text"
+                                  bind:value={lastName}
+                                  on:input={clearMessage}
+                                  placeholder="Last Name"
+                          />
+                      </div>
+                  </div>
 
-          <div class="form-group">
-            <label class="label" for="faculty-trigger">Faculty</label>
-            <div class="custom-select-container">
-              <button
-                id="faculty-trigger"
-                type="button"
-                class="select-trigger"
-                class:placeholder={!faculty}
-                class:active={isFacultyOpen}
-                class:error-border={errorField === "faculty"}
-                on:click={(e) => {
-                  e.stopPropagation();
-                  isFacultyOpen = !isFacultyOpen;
-                  isMajorOpen = false;
-                }}
-              >
-                <span
-                  >{faculty ? getFacultyName(faculty) : "Select Faculty"}</span
-                >
-                <div class="arrow-icon" class:rotate={isFacultyOpen}>
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+                  <div class="form-group">
+                      <label class="label" for="email">Email</label>
+                      <div class="input-field disabled">
+                          <input id="email" type="email" value={email} disabled/>
+                          <svg
+                                  width="18"
+                                  height="18"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="#6b7280"
+                                  stroke-width="2"
+                          >
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"
+                              ></rect>
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                          </svg
+                          >
+                      </div>
+                  </div>
+
+                  {#if role === "student"}
+                      <div class="form-group" transition:slide|local>
+                          <label class="label" for="nisitId">Nisit ID</label>
+                          <div class="input-field disabled">
+                              <input id="nisitId" type="text" value={nisitId} disabled/>
+                              <svg
+                                      width="18"
+                                      height="18"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="#6b7280"
+                                      stroke-width="2"
+                              >
+                                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"
+                                  ></rect>
+                                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                              </svg
+                              >
+                          </div>
+                      </div>
+
+                      <div class="form-group" transition:slide|local>
+                          <label class="label" for="faculty-trigger">Faculty</label>
+                          <div class="custom-select-container">
+                              <button
+                                      type="button"
+                                      id="faculty-trigger"
+                                      class="select-trigger {errorFields.faculty
+                      ? 'error-border'
+                      : ''}"
+                                      class:active={isFacultyOpen}
+                                      on:click={(e) => toggleDropdown("faculty", e)}
+                              >
+                                  <span>{getFacultyName(faculty)}</span>
+                                  <div class="arrow-icon" class:rotate={isFacultyOpen}>
+                                      <svg
+                                              width="20"
+                                              height="20"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              stroke-width="2">
+                                          <path d="M6 9l6 6 6-6"/>
+                                      </svg
+                                      >
+                                  </div>
+                              </button>
+                              {#if isFacultyOpen}
+                                  <div
+                                          class="options-list"
+                                          transition:slide={{ duration: 150 }}
+                                  >
+                                      {#each facultyList as f}
+                                          <button
+                                                  type="button"
+                                                  class="option-item"
+                                                  on:click={() => selectFaculty(f.id)}
+                                          >
+                                              {f.name}
+                                          </button>
+                                      {/each}
+                                  </div>
+                              {/if}
+                          </div>
+                      </div>
+
+                      <div class="form-group" transition:slide|local>
+                          <label class="label" for="major-trigger">Major</label>
+                          <div class="custom-select-container" class:disabled={!faculty}>
+                              <button
+                                      type="button"
+                                      id="major-trigger"
+                                      class="select-trigger {errorFields.major
+                      ? 'error-border'
+                      : ''}"
+                                      class:active={isMajorOpen}
+                                      disabled={!faculty}
+                                      class:placeholder={!major}
+                                      on:click={(e) => {
+                      if (faculty) toggleDropdown("major", e);
+                    }}
+                              >
+                                  <span>{getMajorName(major)}</span>
+                                  <div class="arrow-icon" class:rotate={isMajorOpen}>
+                                      <svg
+                                              width="20"
+                                              height="20"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              stroke-width="2">
+                                          <path d="M6 9l6 6 6-6"/>
+                                      </svg
+                                      >
+                                  </div>
+                              </button>
+                              {#if isMajorOpen}
+                                  <div
+                                          class="options-list"
+                                          transition:slide={{ duration: 150 }}
+                                  >
+                                      {#each currentMajors as m}
+                                          <button
+                                                  type="button"
+                                                  class="option-item"
+                                                  on:click={() => selectMajor(m.id)}
+                                          >
+                                              {m.name}
+                                          </button>
+                                      {/each}
+                                  </div>
+                              {/if}
+                          </div>
+                      </div>
+                  {:else}
+                      <div class="form-group" transition:slide|local>
+                          <label class="label" for="dept-trigger">Department</label>
+                          <div class="custom-select-container">
+                              <button
+                                      type="button"
+                                      id="dept-trigger"
+                                      class="select-trigger {errorFields.department
+                      ? 'error-border'
+                      : ''}"
+                                      class:active={isDeptOpen}
+                                      on:click={(e) => toggleDropdown("dept", e)}
+                              >
+                                  <span>{getDeptName(department)}</span>
+                                  <div class="arrow-icon" class:rotate={isDeptOpen}>
+                                      <svg
+                                              width="20"
+                                              height="20"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              stroke-width="2">
+                                          <path d="M6 9l6 6 6-6"/>
+                                      </svg
+                                      >
+                                  </div>
+                              </button>
+                              {#if isDeptOpen}
+                                  <div
+                                          class="options-list"
+                                          transition:slide={{ duration: 150 }}
+                                  >
+                                      {#each organizerDepartments as dept}
+                                          <button
+                                                  type="button"
+                                                  class="option-item"
+                                                  on:click={() => selectDepartment(dept.id)}
+                                          >
+                                              {dept.name}
+                                          </button>
+                                      {/each}
+                                  </div>
+                              {/if}
+                          </div>
+                      </div>
+                  {/if}
+
+                  <div class="form-group">
+                      <div class="password-label-row">
+                          <span class="label">Password</span>
+                          <a
+                                  href="/auth/forgot-password?return_to={$page.url.pathname}"
+                                  class="text-btn">CHANGE</a
+                          >
+                      </div>
+
+                      <div class="input-field disabled" transition:slide|local>
+                          <input type="password" value="••••••••" disabled/>
+                          <svg
+                                  width="18"
+                                  height="18"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="#6b7280"
+                                  stroke-width="2"
+                          >
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"
+                              ></rect>
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                          </svg
+                          >
+                      </div>
+                  </div>
+
+                  {#if message}
+                      <div
+                              class="message-container {messageType}"
+                              transition:slide={{ duration: 200 }}
+                      >
+                          {#if messageType === "error"}
+                              <svg
+                                      style="flex-shrink: 0;"
+                                      width="20"
+                                      height="20"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      stroke-width="2"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                              >
+                                  <circle cx="12" cy="12" r="10"></circle>
+                                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                              </svg>
+                          {:else}
+                              <svg
+                                      style="flex-shrink: 0;"
+                                      width="20"
+                                      height="20"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      stroke-width="2"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                              >
+                                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                              </svg>
+                          {/if}
+                          <span>{message}</span>
+                      </div>
+                  {/if}
+
+                  <button
+                          class="primary-btn"
+                          type="button"
+                          on:click={handleSaveChanges}
+                          disabled={!isFormDirty || isSaving}
                   >
-                </div>
-              </button>
-
-              {#if isFacultyOpen}
-                <div class="options-list" transition:slide={{ duration: 150 }}>
-                  {#each facultyList as f}
-                    <button
-                      type="button"
-                      class="option-item"
-                      on:click={() => selectFaculty(f.id)}
-                    >
-                      {f.name}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="label" for="major-trigger">Major</label>
-            <div class="custom-select-container">
-              <button
-                id="major-trigger"
-                type="button"
-                class="select-trigger"
-                class:placeholder={!major}
-                class:active={isMajorOpen}
-                class:error-border={errorField === "major"}
-                on:click={(e) => {
-                  e.stopPropagation();
-                  isMajorOpen = !isMajorOpen;
-                  isFacultyOpen = false;
-                }}
-              >
-                <span>{major ? getMajorName(major) : "Select Major"}</span>
-                <div class="arrow-icon" class:rotate={isMajorOpen}>
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
-                  >
-                </div>
-              </button>
-
-              {#if isMajorOpen}
-                <div class="options-list" transition:slide={{ duration: 150 }}>
-                  {#each currentMajors as m}
-                    <button
-                      type="button"
-                      class="option-item"
-                      on:click={() => selectMajor(m.id)}
-                    >
-                      {m.name}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="label" for="password">Confirm Password</label>
-            <div
-              class="input-field"
-              class:error-border={errorField === "password"}
-            >
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                bind:value={password}
-                on:input={clearMessage}
-              />
-              <button
-                type="button"
-                class="toggle-password"
-                on:click={() => (showPassword = !showPassword)}
-              >
-                {#if showPassword}
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    ><path
-                      d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
-                    /><circle cx="12" cy="12" r="3" /></svg
-                  >
-                {:else}
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    ><path
-                      d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                    /><line x1="1" y1="1" x2="23" y2="23" /></svg
-                  >
-                {/if}
-              </button>
-            </div>
-          </div>
-
-          {#if message}
-            <div
-              class="message-container {messageType}"
-              transition:slide={{ duration: 200 }}
-            >
-              {#if messageType === "error"}
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="8" x2="12" y2="12"></line>
-                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                </svg>
-              {:else}
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-              {/if}
-              <span>{message}</span>
-            </div>
+                      {isSaving ? "SAVING..." : "SAVE CHANGES"}
+                  </button>
+              </div>
           {/if}
-
-          <button
-            class="primary-btn"
-            type="button"
-            on:click={handleSaveChanges}
-          >
-            SAVE CHANGES
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -452,26 +776,19 @@
     font-family: "Inter", sans-serif;
     overflow: hidden;
   }
-
   :global(button),
   :global(input),
-  :global(textarea),
-  :global(select),
-  :global(h1),
-  :global(h2),
-  :global(h3),
-  :global(h4),
-  :global(h5),
-  :global(h6),
-  :global(p),
+  :global(label),
   :global(span),
+  :global(h1),
+  :global(p),
   :global(a),
-  :global(div),
-  :global(label) {
+  :global(div) {
     font-family: "Inter", sans-serif !important;
   }
   :global(::placeholder) {
     font-family: "Inter", sans-serif !important;
+      color: #6b7280;
   }
 
   .app-screen {
@@ -515,14 +832,6 @@
     background: rgba(255, 255, 255, 0.2);
   }
 
-  .page-title {
-    color: white;
-    font-size: 20px;
-    font-weight: 700;
-    margin: 0;
-    letter-spacing: 1px;
-  }
-
   .scroll-container {
     flex: 1;
     overflow-y: auto;
@@ -542,6 +851,7 @@
     padding: 0 20px;
     box-sizing: border-box;
   }
+
   .form-card {
     width: 100%;
     display: flex;
@@ -568,6 +878,18 @@
     display: flex;
     flex-direction: column;
   }
+
+  .row-group {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      margin-bottom: 20px;
+  }
+
+  .row-group .form-group {
+      margin-bottom: 0;
+  }
+
   .form-group {
     display: flex;
     flex-direction: column;
@@ -577,8 +899,29 @@
   }
   .label {
     color: #f3f4f6;
-    font-size: 18px;
+      font-size: 14px;
     font-weight: 600;
+  }
+
+  .password-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+  }
+
+  .text-btn {
+      background: none;
+      border: none;
+      color: #10b981;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+  }
+
+  .text-btn:hover {
+      text-decoration: underline;
   }
 
   .input-field {
@@ -605,11 +948,24 @@
     outline: none;
     height: 100%;
   }
-  .input-field input::placeholder {
-    color: #6b7280;
+
+  .input-field.disabled,
+  .custom-select-container.disabled .select-trigger {
+      background: #111827;
+      border-color: #374151;
+      opacity: 0.7;
+      cursor: not-allowed;
   }
 
-  /* Custom Dropdown */
+  .input-field.disabled input {
+      color: #9ca3af;
+  }
+
+  .error-border {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25) !important;
+  }
+
   .custom-select-container {
     position: relative;
     width: 100%;
@@ -680,20 +1036,6 @@
     background: #374151;
   }
 
-  .toggle-password {
-    background: none;
-    border: none;
-    color: #9ca3af;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .toggle-password:hover {
-    color: #f3f4f6;
-  }
-
-
   .message-container {
     display: flex;
     align-items: center;
@@ -716,9 +1058,9 @@
     border: 1px solid #a7f3d0;
     color: #047857;
   }
-  .error-border {
-    border-color: #ef4444 !important;
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25) !important;
+
+  .message-container svg {
+      flex-shrink: 0;
   }
 
   .primary-btn {
@@ -740,5 +1082,13 @@
   }
   .primary-btn:active {
     transform: scale(0.98);
+  }
+
+  .primary-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: #374151;
+      color: #9ca3af;
+      box-shadow: none;
   }
 </style>
