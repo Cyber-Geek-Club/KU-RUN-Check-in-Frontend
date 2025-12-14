@@ -56,21 +56,23 @@
 
   // --- Helper Functions ---
 
-  function formatTimeRange(startDateStr: string, endDateStr: string): string {
-    if (!startDateStr) return "";
+  const formatTimeRange = (startDateStr: string, endDateStr?: string) => {
+    if (!startDateStr) return "N/A";
     const options: Intl.DateTimeFormatOptions = {
-      hour: "numeric",
+      hour: "2-digit",
       minute: "2-digit",
-      hour12: true,
+      hour12: false,
+      timeZone: "Asia/Bangkok",
     };
-    const start = new Date(startDateStr);
-    const timeStart = start.toLocaleTimeString("en-US", options);
+    const start = new Date(startDateStr).toLocaleTimeString("th-TH", options);
 
-    if (!endDateStr) return timeStart;
-    const end = new Date(endDateStr);
-    const timeEnd = end.toLocaleTimeString("en-US", options);
-    return `${timeStart} - ${timeEnd}`;
-  }
+    if (endDateStr) {
+      const end = new Date(endDateStr).toLocaleTimeString("th-TH", options);
+      if (start === end) return start;
+      return `${start} - ${end}`;
+    }
+    return start;
+  };
 
   function resolveImageUrl(path: string | undefined | null): string {
     if (!path) return "";
@@ -78,7 +80,6 @@
     return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   }
 
-  // ✅ แก้ไข 1: เช็คจาก End Date แทน Start Date
   function isEventEnded(eventEndDate: Date): boolean {
     const now = new Date();
     return eventEndDate < now;
@@ -139,18 +140,14 @@
               const eData = await eventRes.json();
               const resolvedImage = resolveImageUrl(eData.banner_image_url);
 
-              // ✅ 1. จัดการเวลาเริ่ม
               const rawDate = eData.event_date
                 ? new Date(eData.event_date)
                 : new Date();
 
-              // ✅ 2. จัดการเวลาจบ (สำคัญ!)
               let rawEndDate: Date;
               if (eData.event_end_date) {
-                // ถ้ามีเวลาจบ ให้ใช้เวลาจบจริง
                 rawEndDate = new Date(eData.event_end_date);
               } else {
-                // ถ้าไม่มีเวลาจบ ให้ถือว่าจบ "สิ้นวันของวันเริ่มงาน" (23:59:59)
                 rawEndDate = new Date(rawDate);
                 rawEndDate.setHours(23, 59, 59, 999);
               }
@@ -168,13 +165,12 @@
                 ...eData,
                 image: resolvedImage,
                 date: dateStr,
-                rawDate: rawDate, // ใช้สำหรับดูวันเริ่ม
-                rawEndDate: rawEndDate, // ✅ ใช้สำหรับดูว่าจบหรือยัง
+                rawDate: rawDate,
+                rawEndDate: rawEndDate,
                 time: timeStr,
                 location: eData.location || "-",
               };
             } else {
-              // Fallback กรณีโหลดไม่ติด
               const now = new Date();
               const endOfDay = new Date(now);
               endOfDay.setHours(23, 59, 59, 999);
@@ -184,7 +180,7 @@
                 title: `Unknown Event #${p.event_id}`,
                 date: "N/A",
                 rawDate: now,
-                rawEndDate: endOfDay, // กันไม่ให้หายไปทันที
+                rawEndDate: endOfDay,
                 time: "",
                 image: "",
                 location: "-",
@@ -203,7 +199,6 @@
             } as Participation;
           } catch (err) {
             console.error(`Error loading event ${p.event_id}`, err);
-            // Error Fallback
             return {
               id: p.id,
               event: {
@@ -232,33 +227,61 @@
     }
   }
 
+  // ✅ FIXED: Two-step upload process
   async function submitProof(participationId: number) {
     if (!selectedFile || !token) return;
     isSubmitting = true;
 
-    const formData = new FormData();
-    formData.append("proof_image", selectedFile);
-
     try {
-      const res = await fetch(
+      // Step 1: Upload image to /api/images/upload
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", selectedFile);
+      uploadFormData.append("subfolder", "proofs");
+
+      const uploadRes = await fetch(`${API_BASE_URL}/api/images/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: uploadFormData,
+      });
+
+      if (!uploadRes.ok) {
+        const errData = await uploadRes.json();
+        throw new Error(errData.detail || "Image upload failed");
+      }
+
+      const uploadData = await uploadRes.json();
+      const imageUrl = uploadData.url || uploadData.path || uploadData.file_path;
+
+      if (!imageUrl) {
+        throw new Error("No image URL returned from upload");
+      }
+
+      // Step 2: Submit proof with the uploaded image URL
+      const proofRes = await fetch(
         `${API_BASE_URL}/api/participations/${participationId}/submit-proof`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            proof_image_url: imageUrl,
+          }),
         },
       );
 
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || "Upload failed");
+      if (!proofRes.ok) {
+        const errData = await proofRes.json();
+        throw new Error(errData.detail || "Proof submission failed");
       }
 
       await fetchUserParticipations();
       resetFileState();
       alert("อัปโหลดหลักฐานเรียบร้อย!");
-    } catch (error) {
-      alert("เกิดข้อผิดพลาด: " + error);
+    } catch (error: any) {
+      alert("เกิดข้อผิดพลาด: " + (error.message || error));
+      console.error("Submit proof error:", error);
     } finally {
       isSubmitting = false;
     }
@@ -315,18 +338,15 @@
     if (fileInput) fileInput.value = "";
   }
 
-  // --- Logic การกรอง ---
+  // --- Filtering Logic ---
   $: filteredEvents = participations.filter((p) => {
     if (!p.event) return false;
 
-    // ✅ แก้ไข: เช็คการจบงานจาก End Date
     const isEnded = isEventEnded(p.event.rawEndDate);
 
     if (activeTab === "upcoming") {
-      // Upcoming: สถานะต้องไม่จบ, ไม่ยกเลิก และ **เวลายังไม่หมด**
       return p.status !== "completed" && p.status !== "cancel" && !isEnded;
     } else {
-      // History: จบแล้ว, ยกเลิก หรือ **เวลาหมดแล้ว**
       return p.status === "completed" || p.status === "cancel" || isEnded;
     }
   });
