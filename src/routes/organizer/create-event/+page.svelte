@@ -18,9 +18,10 @@
   let events: any[] = [];
   let fileInput!: HTMLInputElement;
   let searchQuery = "";
-  let selDistance = ""; 
+  let selDistance = "";
   let isActive = true;
   let isPublished = false;
+  let result;
 
   let currentPage = 1;
   const itemsPerPage = 4;
@@ -88,6 +89,11 @@
     return matchesSearch && matchesMonth && matchesYear;
   });
 
+  $: if (!isEditMode) {
+    isActive = false;
+    isPublished = false;
+  }
+
   const months = [
     "January",
     "February",
@@ -150,6 +156,17 @@
           let participantCount = 0;
           let studentCount = 0;
           let officerCount = 0;
+
+          const rawActive = e.is_active ?? e.isActive ?? e.active;
+          const rawPublished = e.is_published ?? e.isPublished ?? e.published;
+
+          // 2. แปลงค่าที่ได้เป็น Boolean ทันที
+          const finalActive =
+            String(rawActive) === "1" || rawActive === true || rawActive === 1;
+          const finalPublished =
+            String(rawPublished) === "1" ||
+            rawPublished === true ||
+            rawPublished === 1;
           try {
             const statsRes = await fetch(
               `${API_BASE_URL}/api/events/${e.id}/stats`,
@@ -192,9 +209,9 @@
             currentParticipants: participantCount,
             studentCount: studentCount,
             officerCount: officerCount,
-            distance_km: e.distance_km, 
-            is_active: e.is_active,
-            is_published: e.is_published,
+            distance_km: e.distance_km,
+            is_active: finalActive,
+            is_published: finalPublished,
             ...parseISOToUI(e.event_date, e.event_end_date),
           };
         })
@@ -282,25 +299,47 @@
   }
 
   function goToEdit(id: number) {
+    console.log("Click Edit ID:", id);
+
     const event = events.find((e) => e.id === id);
+
     if (event) {
+      console.log("Found Event Data:", event); 
+      console.log(
+        "Raw Active:",
+        event.is_active,
+        "Raw Published:",
+        event.is_published
+      );
+
       eventName = event.title;
       eventDescription = event.description;
       previewImage = event.image;
       selSlots = event.maxParticipants ? event.maxParticipants.toString() : "";
       eventLocation = event.location || "";
+      selDistance = event.distance_km ? event.distance_km.toString() : "";
+
+
       selDay = event.day || "";
       selMonth = event.month || "";
       selYear = event.year || "";
       selStartTime = event.startTime || "";
       selEndTime = event.endTime || "";
+
       editingId = id;
       isEditMode = true;
       currentView = "form";
-      selDistance = event.distance_km ? event.distance_km.toString() : "";
-      isActive = event.is_active !== undefined ? event.is_active : true;
-      isPublished =
-        event.is_published !== undefined ? event.is_published : false;
+      isActive = !!event.is_active; 
+      isPublished = !!event.is_published;
+    
+      console.log(
+        "Converted -> isActive:",
+        isActive,
+        "isPublished:",
+        isPublished
+      );
+    } else {
+      console.error("Event not found in list");
     }
   }
 
@@ -351,8 +390,8 @@
     errorMessage = "";
     successMessage = "";
     errorField = "";
-    selDistance = ""; 
-    isActive = true;
+    selDistance = "";
+    isActive = false;
     isPublished = false;
     editingId = null;
     if (fileInput) fileInput.value = "";
@@ -399,7 +438,6 @@
 
     try {
       const token = localStorage.getItem("access_token");
-
       console.log("Start Uploading...");
 
       const res = await fetch(`${API_BASE_URL}/api/images/upload`, {
@@ -409,44 +447,46 @@
         },
         body: formData,
       });
+
       const responseText = await res.text();
-      console.log("Server Response (Raw):", responseText);
+      console.log("Server Response (Raw):", responseText); 
+
       if (!res.ok) throw new Error(responseText || "Upload failed");
-      let imageUrl = "";
+
+
+      let serverUrl = "";
       try {
         const data = JSON.parse(responseText);
-        imageUrl =
-          data.url ||
-          data.path ||
-          data.filePath ||
-          data.secure_url ||
-          data.image_url;
-        if (!imageUrl && typeof data === "string") {
-          imageUrl = data;
-        }
+
+        serverUrl = data.url || data.path || data.secure_url || "";
       } catch (e) {
-        imageUrl = responseText.replace(/"/g, "");
-      }
-      if (imageUrl) {
-        console.log("Final Preview Image URL:", previewImage);
+
+        serverUrl = responseText;
       }
 
-      if (imageUrl) {
-        if (!imageUrl.startsWith("http")) {
-          const cleanPath = imageUrl.startsWith("/")
-            ? imageUrl
-            : `/${imageUrl}`;
-          previewImage = `${API_BASE_URL}${cleanPath}`;
-        } else {
-          previewImage = imageUrl;
-        }
-        console.log("Final Preview Image URL:", previewImage);
-      } else {
+      if (!serverUrl) {
         throw new Error("Cannot find image URL in response");
       }
+      let finalUrl = "";
+      if (serverUrl.startsWith("http")) {
+        finalUrl = serverUrl;
+      } else {
+        const cleanPath = serverUrl.startsWith("/")
+          ? serverUrl
+          : `/${serverUrl}`;
+
+        finalUrl = `${API_BASE_URL}${cleanPath}`;
+      }
+
+      console.log("Calculated URL:", finalUrl); 
+
+      // 3. Assign ค่าเข้าตัวแปรหลัก
+      previewImage = finalUrl;
+      previewImage = previewImage;
     } catch (err: any) {
       console.error("Upload Error:", err);
       errorMessage = "Upload failed: " + err.message;
+      previewImage = "";
     } finally {
       isImageUploading = false;
       input.value = "";
@@ -510,12 +550,10 @@
   }
 
   async function handlePublish() {
-
     if (msgTimeout) clearTimeout(msgTimeout);
     errorMessage = "";
     successMessage = "";
     errorField = "";
-
 
     if (!eventName) {
       errorField = "eventName";
@@ -553,7 +591,6 @@
       }, 3000);
       return;
     }
-
     const isoStartDate = combineDateToISO(
       selDay,
       selMonth,
@@ -561,23 +598,13 @@
       selStartTime
     );
     const isoEndDate = combineDateToISO(selDay, selMonth, selYear, selEndTime);
-    const startDateObj = new Date(isoStartDate || "");
-    const endDateObj = new Date(isoEndDate || "");
-    if (endDateObj <= startDateObj) {
-      errorField = "endTime";
-      errorMessage = "End time must be after Start time.";
-      msgTimeout = setTimeout(() => {
-        errorMessage = "";
-        errorField = "";
-      }, 3000);
-      return;
-    }
 
     let maxParticipantsInt = 0;
     if (selSlots !== "Unlimited") {
       maxParticipantsInt = parseInt(selSlots);
       if (isNaN(maxParticipantsInt)) maxParticipantsInt = 0;
     }
+
     let finalDistance = parseFloat(selDistance);
     if (isNaN(finalDistance)) finalDistance = 0;
 
@@ -589,8 +616,9 @@
       location: eventLocation,
       max_participants: maxParticipantsInt,
       distance_km: finalDistance,
-      is_active: isActive === undefined ? true : isActive,
-      is_published: isPublished === undefined ? false : isPublished,
+      is_active: isActive ? 1 : 0,
+      is_published: isPublished ? 1 : 0,
+
       banner_image_url: previewImage || "",
     };
 
@@ -600,7 +628,6 @@
     try {
       const headers = getAuthHeaders();
       let response;
-      let result;
       if (isEditMode && editingId) {
         response = await fetch(`${API_BASE_URL}/api/events/${editingId}`, {
           method: "PUT",
@@ -621,21 +648,39 @@
           errorData.message || errorData.detail || "Failed to save event"
         );
       }
-      result = await response.json();
+
+  
+      const result = await response.json();
+
+      let valActive = result.is_active ?? result.isActive ?? result.active;
+      if (valActive === undefined) {
+        valActive = isActive; 
+      }
+
+      let valPublished =
+        result.is_published ?? result.isPublished ?? result.published;
+      if (valPublished === undefined) {
+        valPublished = isPublished; 
+      }
+
       const newEventMapped = {
         id: result.id,
-        title: result.title,
+        title: result.title || eventName,
         description: result.description,
-        image: result.banner_image_url || "",
+        image: result.banner_image_url || previewImage || "",
         currentParticipants: result.current_participants || 0,
-        maxParticipants: result.max_participants,
-        location: result.location,
-        distance_km: result.distance_km,
-        is_active: result.is_active,
-        is_published: result.is_published,
+        maxParticipants: result.max_participants || maxParticipantsInt,
+        location: result.location || eventLocation,
+        distance_km: result.distance_km || finalDistance,
+        is_active: isActive === true,
+        is_published: isPublished === true,
 
-        ...parseISOToUI(result.event_date, result.event_end_date),
+        ...parseISOToUI(
+          result.event_date || isoStartDate,
+          result.event_end_date || isoEndDate
+        ),
       };
+
       if (isEditMode) {
         events = events.map((e) => (e.id === editingId ? newEventMapped : e));
         successMessage = "Event updated successfully.";
@@ -644,11 +689,9 @@
         successMessage = "Event created successfully.";
       }
 
-      await fetchEvents();
-
       msgTimeout = setTimeout(() => {
         successMessage = "";
-        backToList(); 
+        backToList();
       }, 1500);
     } catch (error: any) {
       console.error("Save Error:", error);
@@ -735,9 +778,13 @@
         <span class="icon">&#x1F4CB;</span> Event Log
       </a>
 
-      <a href="/organizer/monthly-reward" class="menu-item">
+      <div
+        class="menu-item"
+        style="opacity: 0.5; cursor: not-allowed; pointer-events: none;"
+      >
         <span class="icon">&#x1F381;</span> Monthly Reward
-      </a>
+        <span style="font-size: 12px; margin-left: 4px;">🔒</span>
+      </div>
 
       <a href="/organizer/setting-account" class="menu-item">
         <span class="icon">&#x2699;&#xFE0F;</span> Settings
@@ -1565,31 +1612,57 @@
           </div>
 
           <div class="toggles-container">
-            <div class="toggle-item">
-              <label class="switch">
-                <input type="checkbox" bind:checked={isActive} />
+            <div
+              class="toggle-item"
+              style={!isEditMode
+                ? "pointer-events: none; opacity: 0.5; filter: grayscale(1);"
+                : ""}
+            >
+              <label class="switch" class:disabled={!isEditMode}>
+                <input
+                  type="checkbox"
+                  bind:checked={isActive}
+                  disabled={!isEditMode}
+                />
                 <span class="slider round"></span>
               </label>
+
               <div class="toggle-label">
-                <span>Active Status</span>
                 <small class:text-green={isActive} class:text-gray={!isActive}>
-                  {isActive ? "Event is active" : "Event is inactive"}
+                  {#if !isEditMode}
+                    (Saved as Inactive)
+                  {:else}
+                    {isActive ? "Event is active" : "Event is inactive"}
+                  {/if}
                 </small>
               </div>
             </div>
 
-            <div class="toggle-item">
-              <label class="switch">
-                <input type="checkbox" bind:checked={isPublished} />
+            <div
+              class="toggle-item"
+              style={!isEditMode
+                ? "pointer-events: none; opacity: 0.5; filter: grayscale(1);"
+                : ""}
+            >
+              <label class="switch" class:disabled={!isEditMode}>
+                <input
+                  type="checkbox"
+                  bind:checked={isPublished}
+                  disabled={!isEditMode}
+                />
                 <span class="slider round publish"></span>
               </label>
+
               <div class="toggle-label">
-                <span>Publish Now</span>
                 <small
                   class:text-blue={isPublished}
                   class:text-gray={!isPublished}
                 >
-                  {isPublished ? "Visible to public" : "Draft mode"}
+                  {#if !isEditMode}
+                    (Saved as Draft)
+                  {:else}
+                    {isPublished ? "Visible to public" : "Draft mode"}
+                  {/if}
                 </small>
               </div>
             </div>
@@ -2900,8 +2973,8 @@
 
   .toggles-container {
     display: flex;
-    justify-content: center; 
-    gap: 10px; 
+    justify-content: center;
+    gap: 10px;
     margin-top: -20px;
     margin-bottom: 25px;
     background: rgba(255, 255, 255, 0.03);
@@ -2914,23 +2987,15 @@
   .toggle-item {
     display: flex;
     flex-direction: column;
-    align-items: center; 
-    gap: 1px; 
+    align-items: center;
+    gap: 1px;
     flex: 1;
   }
-
 
   .toggle-label {
     display: flex;
     flex-direction: column;
-    text-align: center; 
-  }
-
-  .toggle-label span {
-    font-weight: 600;
-    color: #e5e7eb;
-    font-size: 1rem;
-    margin-bottom: -15px;
+    text-align: center;
   }
 
   .toggle-label small {
@@ -2953,7 +3018,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #374151; 
+    background-color: #374151;
     transition: 0.4s;
     border-radius: 34px;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2991,7 +3056,6 @@
     -webkit-appearance: none;
     margin: 0;
   }
-
 
   @keyframes spin {
     to {

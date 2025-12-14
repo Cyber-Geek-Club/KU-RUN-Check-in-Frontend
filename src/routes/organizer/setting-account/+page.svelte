@@ -255,12 +255,13 @@
       email = data.email || "";
 
       if (role === "student") {
-        nisitId = data.nisit_id || data.nisitId || "";
-        faculty = data.faculty || "";
-        setTimeout(() => {
-          major = data.major || "";
-        }, 50);
-      } else {
+    nisitId = data.nisit_id || data.nisitId || "";
+    faculty = (data.faculty || "").toLowerCase();
+    setTimeout(() => {
+        major = (data.major || "").toLowerCase();
+        originalData = { ...originalData, faculty, major };
+    }, 100);
+} else {
         department = data.department || "";
       }
 
@@ -354,11 +355,14 @@
         title: title,
         first_name: firstName,
         last_name: lastName,
-        major: role === "student" ? major : null,
-        faculty: role === "student" ? faculty : null,
-        department: role === "officer" ? department : null,
+        major: major || originalData.major,
+    faculty: faculty || originalData.faculty,
+    department: department || originalData.department,
       };
 
+
+      console.log("Sending Payload:", JSON.stringify(updateData, null, 2));
+console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
       console.log("Updating Profile with:", updateData);
       const putRes = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
         method: "PUT",
