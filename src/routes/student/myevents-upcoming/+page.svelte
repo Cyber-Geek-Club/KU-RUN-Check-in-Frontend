@@ -1,7 +1,8 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
   import { onMount } from "svelte";
-  import Swal from 'sweetalert2';
+  import Swal from "sweetalert2";
+  import { goto } from "$app/navigation";
 
   // --- Configuration ---
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(
@@ -40,6 +41,8 @@
     proof_image_url?: string;
   }
 
+  let isRefreshing = false;
+
   // --- State ---
   let participations: Participation[] = [];
   let isLoading = true;
@@ -75,6 +78,166 @@
     return start;
   };
 
+  async function handleSessionExpired() {
+    await Swal.fire({
+      icon: "warning",
+      title: "Session Expired",
+      text: "Your token is times up",
+      confirmButtonText: "Login",
+      confirmButtonColor: "#10B981",
+      allowOutsideClick: false,
+    });
+    localStorage.removeItem("user_info");
+    localStorage.removeItem("access_token");
+    goto("/auth/login", { replaceState: true });
+  }
+
+  async function loadData() {
+    if (!token || !currentUserId) {
+      errorMessage = "ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่";
+      isLoading = false;
+      return;
+    }
+
+    if (!isRefreshing) isLoading = true;
+    isRefreshing = true;
+    errorMessage = "";
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/participations/user/${currentUserId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      if (res.status === 401) {
+        await handleSessionExpired();
+        return;
+      }
+
+      if (!res.ok) throw new Error("Failed to load participations");
+
+      const rawData: RawParticipation[] = await res.json();
+
+      const enrichedData = await Promise.all(
+        rawData.map(async (p) => {
+          try {
+            const eventRes = await fetch(
+              `${API_BASE_URL}/api/events/${p.event_id}`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+
+            if (eventRes.status === 401) {
+              await handleSessionExpired();
+              throw new Error("Session Expired");
+            }
+
+            let eventDetail: EventDetail;
+
+            if (eventRes.ok) {
+              const eData = await eventRes.json();
+              const resolvedImage = resolveImageUrl(eData.banner_image_url);
+
+              const rawDate = eData.event_date
+                ? new Date(eData.event_date)
+                : new Date();
+
+              let rawEndDate: Date;
+              if (eData.event_end_date) {
+                rawEndDate = new Date(eData.event_end_date);
+              } else {
+                rawEndDate = new Date(rawDate);
+                rawEndDate.setHours(23, 59, 59, 999);
+              }
+
+              const dateStr = eData.event_date
+                ? new Date(eData.event_date).toLocaleDateString("th-TH", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    timeZone: "Asia/Bangkok",
+                  })
+                : "N/A";
+              const displayTime =
+                eData.time || eData.event_time
+                  ? eData.time || eData.event_time
+                  : formatTimeRange(eData.event_date, eData.event_end_date);
+
+              eventDetail = {
+                ...eData,
+                image: resolvedImage,
+                date: dateStr,
+                rawDate: rawDate,
+                rawEndDate: rawEndDate,
+                time: displayTime,
+                location: eData.location || "-",
+              };
+            } else {
+              const now = new Date();
+              const endOfDay = new Date(now);
+              endOfDay.setHours(23, 59, 59, 999);
+
+              eventDetail = {
+                id: p.event_id,
+                title: `Unknown Event #${p.event_id}`,
+                date: "N/A",
+                rawDate: now,
+                rawEndDate: endOfDay,
+                time: "",
+                image: "",
+                location: "-",
+              };
+            }
+
+            const resolvedProofUrl = resolveImageUrl(p.proof_image_url);
+
+            return {
+              id: p.id,
+              event: eventDetail,
+              status: p.status,
+              join_code: p.join_code,
+              rejection_reason: p.rejection_reason,
+              proof_image_url: resolvedProofUrl,
+            } as Participation;
+          } catch (err) {
+            console.error(`Error loading event ${p.event_id}`, err);
+            return {
+              id: p.id,
+              event: {
+                id: p.event_id,
+                title: "Error loading event",
+                date: "N/A",
+                rawDate: new Date(),
+                rawEndDate: new Date(),
+                time: "",
+                image: "",
+                location: "",
+              },
+              status: p.status,
+              join_code: p.join_code,
+            } as Participation;
+          }
+        }),
+      );
+
+      participations = enrichedData;
+    } catch (error: any) {
+      if (error.message !== "Session Expired") {
+        console.error(error);
+        errorMessage = "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้";
+      }
+    } finally {
+      isLoading = false;
+      isRefreshing = false;
+    }
+  }
+
+  function isPast24Hours(eventEndDate: Date): boolean {
+    const now = new Date();
+    const oneDayAfter = new Date(eventEndDate);
+    oneDayAfter.setTime(oneDayAfter.getTime() + 24 * 60 * 60 * 1000); // บวกเพิ่ม 24 ชม.
+    return now > oneDayAfter;
+  }
+
   function resolveImageUrl(path: string | undefined | null): string {
     if (!path) return "";
     if (path.startsWith("http")) return path;
@@ -106,7 +269,6 @@
     return eDate <= todayStart;
   }
 
-  // --- API Functions ---
   async function fetchUserParticipations() {
     if (!token || !currentUserId) {
       errorMessage = "ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่";
@@ -228,27 +390,27 @@
     }
   }
 
-  // ✅ FIXED: Two-step upload process with logic for Submit vs Resubmit
-  async function submitProof(participationId: number, participationStatus: string) {
+  async function submitProof(
+    participationId: number,
+    participationStatus: string,
+  ) {
     if (!selectedFile || !token) {
-       Swal.fire("Error", "กรุณาเลือกไฟล์รูปภาพก่อนส่ง", "warning");
-       return;
+      Swal.fire("Error", "กรุณาเลือกไฟล์รูปภาพก่อนส่ง", "warning");
+      return;
     }
 
-    // ตรวจสอบว่าเป็นเคส Resubmit หรือไม่ (ตามเงื่อนไข: ต้องเป็น REJECTED เท่านั้น)
     const isResubmit = participationStatus === "rejected";
-    
-    // ถามยืนยันก่อนส่ง
+
     const confirmResult = await Swal.fire({
       title: isResubmit ? "ส่งหลักฐานใหม่?" : "ยืนยันการส่งหลักฐาน?",
-      text: isResubmit 
-        ? "คุณต้องการส่งภาพนี้เพื่อแก้ไขการถูกปฏิเสธใช่หรือไม่?" 
+      text: isResubmit
+        ? "คุณต้องการส่งภาพนี้เพื่อแก้ไขการถูกปฏิเสธใช่หรือไม่?"
         : "เมื่อส่งแล้วสถานะจะเปลี่ยนเป็น 'รอตรวจสอบ' (Proof Submitted)",
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#10B981",
       cancelButtonColor: "#6B7280",
-      confirmButtonText: isResubmit ? "Yes, Resubmit" : "Yes, Submit"
+      confirmButtonText: isResubmit ? "Yes, Resubmit" : "Yes, Submit",
     });
 
     if (!confirmResult.isConfirmed) return;
@@ -256,19 +418,14 @@
     isSubmitting = true;
 
     try {
-      // -----------------------------------------------------
-      // Step 1: Upload image to /api/images/upload
-      // -----------------------------------------------------
       const uploadFormData = new FormData();
       uploadFormData.append("file", selectedFile);
-      uploadFormData.append("subfolder", "proofs"); // ระบุ subfolder ตาม API Doc
+      uploadFormData.append("subfolder", "proofs");
 
       const uploadRes = await fetch(`${API_BASE_URL}/api/images/upload`, {
         method: "POST",
-        headers: { 
-            Authorization: `Bearer ${token}` 
-            // หมายเหตุ: ห้ามใส่ Content-Type: multipart/form-data 
-            // เพราะ Browser จะจัดการ Boundary ให้เองเมื่อใช้ FormData
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
         body: uploadFormData,
       });
@@ -279,28 +436,23 @@
       }
 
       const uploadData = await uploadRes.json();
-      // รองรับการตอบกลับหลายรูปแบบเผื่อ Backend ส่ง key มาต่างกัน
-      const imageUrl = uploadData.url || uploadData.path || uploadData.file_path;
+      const imageUrl =
+        uploadData.url || uploadData.path || uploadData.file_path;
 
       if (!imageUrl) {
         throw new Error("Server ไม่ส่ง URL รูปภาพกลับมา");
       }
-
-      // -----------------------------------------------------
-      // Step 2: Submit or Resubmit logic
-      // -----------------------------------------------------
       let proofRes;
       const bodyPayload = JSON.stringify({
-         proof_image_url: imageUrl,
+        proof_image_url: imageUrl,
       });
 
       if (isResubmit) {
         // --- CASE: RESUBMIT (PUT) ---
-        // ใช้สำหรับแก้ตัวเมื่อ status เป็น REJECTED
         proofRes = await fetch(
           `${API_BASE_URL}/api/participations/${participationId}/resubmit-proof`,
           {
-            method: "PUT", // ใช้ PUT ตาม API Doc
+            method: "PUT",
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
@@ -310,11 +462,10 @@
         );
       } else {
         // --- CASE: SUBMIT FIRST TIME (POST) ---
-        // ใช้สำหรับส่งครั้งแรกเมื่อ status เป็น CHECKED_IN
         proofRes = await fetch(
           `${API_BASE_URL}/api/participations/${participationId}/submit-proof`,
           {
-            method: "POST", // ใช้ POST ตาม API Doc
+            method: "POST",
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
@@ -329,27 +480,25 @@
         throw new Error(errData.detail || "Proof submission failed");
       }
 
-      // -----------------------------------------------------
-      // Success Handling
-      // -----------------------------------------------------
-      await fetchUserParticipations(); // ดึงข้อมูลใหม่เพื่ออัปเดตสถานะ
-      resetFileState(); // เคลียร์ไฟล์ออกจาก input
-      expandedEventId = null; // ปิดการ์ด
+      await fetchUserParticipations();
+      resetFileState();
+      expandedEventId = null;
 
       await Swal.fire({
         title: "Success!",
-        text: isResubmit ? "ส่งหลักฐานใหม่เรียบร้อยแล้ว" : "ส่งหลักฐานเรียบร้อยแล้ว",
+        text: isResubmit
+          ? "ส่งหลักฐานใหม่เรียบร้อยแล้ว"
+          : "ส่งหลักฐานเรียบร้อยแล้ว",
         icon: "success",
         timer: 2000,
-        showConfirmButton: false
+        showConfirmButton: false,
       });
-
     } catch (error: any) {
       console.error("Submit proof error:", error);
       Swal.fire({
         title: "Error",
         text: error.message || "เกิดข้อผิดพลาดในการส่งข้อมูล",
-        icon: "error"
+        icon: "error",
       });
     } finally {
       isSubmitting = false;
@@ -360,21 +509,22 @@
   function getStepNumber(status: string): number {
     switch (status) {
       case "joined":
-        return 1;
+        return 1; // PIN
       case "checked_in":
-        return 3;
-      case "proof_submitted":
-        return 3;
+        return 2; // PROOF (Upload)
       case "rejected":
-        return 3;
+        return 2; // PROOF (Re-upload)
+      case "proof_submitted":
+        return 3; // VERIFIED (Waiting)
       case "completed":
-        return 4;
+        return 4; // DONE
       default:
         return 1;
     }
   }
 
   function toggleExpand(p: Participation) {
+    if (activeTab === "history") return;
     if (activeTab === "upcoming" && isFutureEvent(p.event.rawDate)) return;
 
     if (expandedEventId === p.id) {
@@ -412,11 +562,22 @@
     if (!p.event) return false;
 
     const isEnded = isEventEnded(p.event.rawEndDate);
+    const isPast24 = isPast24Hours(p.event.rawEndDate);
+    const status = p.status ? p.status.toLowerCase() : "";
 
     if (activeTab === "upcoming") {
-      return p.status !== "completed" && p.status !== "cancel" && !isEnded;
+      if (status === "completed") {
+        return !isPast24;
+      }
+      return status !== "cancel" && status !== "cancelled" && !isEnded;
     } else {
-      return p.status === "completed" || p.status === "cancel" || isEnded;
+      if (status === "cancel" || status === "cancelled") {
+        return false;
+      }
+      if (status === "completed") {
+        return isPast24;
+      }
+      return isEnded;
     }
   });
 
@@ -426,16 +587,14 @@
       const userInfoStr = localStorage.getItem("user_info");
 
       if (!storedToken || !userInfoStr) {
-        errorMessage = "กรุณาเข้าสู่ระบบก่อนใช้งาน";
-        isLoading = false;
+        handleSessionExpired();
         return;
       }
 
       const userInfo = JSON.parse(userInfoStr);
       token = storedToken;
       currentUserId = userInfo.id;
-
-      await fetchUserParticipations();
+      await loadData();
     } catch (err) {
       console.error("Auth Error:", err);
       errorMessage = "ข้อมูลผู้ใช้ผิดพลาด";
@@ -462,6 +621,30 @@
       >
     </a>
     <h1 class="page-title">MY EVENTS</h1>
+    <button
+      class="refresh-btn"
+      on:click={loadData}
+      disabled={isRefreshing}
+      class:spinning={isRefreshing}
+      aria-label="Refresh data"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M23 4v6h-6"></path>
+        <path d="M1 20v-6h6"></path>
+        <path
+          d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+        ></path>
+      </svg>
+    </button>
   </div>
 
   <div class="pinned-tabs-wrapper">
@@ -501,67 +684,36 @@
             {@const step = getStepNumber(p.status)}
 
             <div
-              class="event-card {isFuture
-                ? 'locked'
-                : 'clickable'} {expandedEventId === p.id ? 'expanded' : ''}"
+              class="event-card {activeTab === 'upcoming' && !isFuture ? 'clickable' : ''} {expandedEventId === p.id ? 'expanded' : ''} {isFuture ? 'locked' : ''}"
               role="button"
               tabindex="0"
               on:click={() => toggleExpand(p)}
               on:keydown={() => {}}
             >
               <div class="card-image-wrapper">
-                <img
+                 <img
                   src={p.event.image || "https://via.placeholder.com/400x200"}
                   alt={p.event.title}
                   class="card-img"
                 />
-
                 {#if activeTab === "upcoming" && isFuture}
                   <div class="lock-overlay">
                     <div class="lock-icon-circle">
-                      <svg
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        ><rect x="3" y="11" width="18" height="11" rx="2" ry="2"
-                        ></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg
-                      >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
                     <span>Available on {p.event.date}</span>
                   </div>
                 {/if}
               </div>
-
               <div class="card-content">
                 <h2 class="event-title">{p.event.title}</h2>
-
                 <div class="meta-row">
                   <div class="meta-left">
                     <div class="info-item">
                       <span class="icon">📅</span>
                       <span>{p.event.date}</span>
                     </div>
-
-                    {#if activeTab === "history"}
-                      <div class="info-item status-row-left">
-                        {#if p.status === "completed"}
-                          <span class="status-pill completed">COMPLETED</span>
-                        {:else if p.status === "cancel"}
-                          <span class="status-pill cancel">CANCELLED</span>
-                        {:else if isEventEnded(p.event.rawDate)}
-                          <span class="status-pill cancel"
-                            >CANCELLED (EXPIRED)</span
-                          >
-                        {:else}
-                          <span class="status-pill {p.status}"
-                            >{p.status.toUpperCase()}</span
-                          >
-                        {/if}
-                      </div>
-                    {:else if p.event.time}
+                    {#if p.event.time}
                       <div class="info-item">
                         <span class="icon">🕒</span>
                         <span>{p.event.time}</span>
@@ -569,26 +721,28 @@
                     {/if}
                   </div>
 
-                  {#if activeTab === "upcoming"}
-                    <div class="meta-right">
-                      <span class="status-text {p.status}">
-                        {#if p.status === "rejected"}
-                          REJECTED
-                        {:else if isActive}
-                          {#if p.status === "joined"}
-                            REGISTERED
-                          {:else if p.status === "checked_in" || p.status === "proof_submitted"}
-                            UPLOAD<br />PROOF
-                          {/if}
-                        {:else}
-                          JOINED
-                        {/if}
-                      </span>
-                    </div>
-                  {/if}
+                  <div class="meta-right">
+                    {#if p.status === "completed"}
+                      <span class="status-badge complete-glow">COMPLETED</span>
+                    {:else if isEventEnded(p.event.rawEndDate)}
+                      <span class="status-badge expired-glow">TIME OUT</span>
+                    {:else if p.status === "rejected"}
+                      <span class="status-badge rejected-glow">REJECTED</span>
+                    {:else if p.status === "proof_submitted"}
+                      <span class="status-badge waiting-glow">WAITING</span>
+                    {:else if p.status === "checked_in"}
+                      <span class="status-badge upload-glow">UPLOAD PROOF</span>
+                    {:else if p.status === "joined"}
+                      <span class="status-badge joined-glow">REGISTERED</span>
+                    {:else}
+                      <span class="status-badge joined-glow">{p.status}</span>
+                    {/if}
+                  </div>
                 </div>
+                {#if activeTab === "upcoming" && !isFuture}
+                  <div class="interaction-handle"></div>
+                {/if}
               </div>
-
               {#if expandedEventId === p.id}
                 <div
                   class="details-section"
@@ -606,7 +760,7 @@
                         ></div>
                       </div>
                       <div class="steps-row">
-                        {#each ["PIN", "VERIFIED", "PROOF", "DONE"] as label, i}
+                        {#each ["PIN", "PROOF", "VERIFIED", "DONE"] as label, i}
                           <div class="step-col {step >= i + 1 ? 'active' : ''}">
                             <div class="step-circle">
                               {#if step > i + 1}✓{:else}{i + 1}{/if}
@@ -626,7 +780,17 @@
                             {p.join_code || "LOADING..."}
                           </div>
                         </div>
-                      {:else if p.status === "checked_in" || p.status === "rejected" || p.status === "proof_submitted"}
+                      {:else if p.status === "proof_submitted"}
+                        <div class="info-content">
+                          <div class="waiting-icon">⏳</div>
+                          <h3 style="margin-top: 10px; color: #8b5cf6;">
+                            Verification Pending
+                          </h3>
+                          <p style="margin-bottom: 0;">
+                            You are sending, and wait organizer approve.
+                          </p>
+                        </div>
+                      {:else if p.status === "checked_in" || p.status === "rejected"}
                         <div class="upload-content">
                           {#if p.status === "rejected"}
                             <div class="rejection-box">
@@ -672,16 +836,13 @@
                                   fill="none"
                                   stroke="currentColor"
                                   stroke-width="2"
-                                  ><path
-                                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
-                                  ></path><polyline points="17 8 12 3 7 8"
-                                  ></polyline><line
-                                    x1="12"
-                                    y1="3"
-                                    x2="12"
-                                    y2="15"
-                                  ></line></svg
                                 >
+                                  <path
+                                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                  ></path>
+                                  <polyline points="17 8 12 3 7 8"></polyline>
+                                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
                               </div>
                               <span class="upload-hint"
                                 >Tap to upload {p.status === "rejected"
@@ -715,7 +876,8 @@
                                   type="button"
                                   class="action-btn edit"
                                   on:click|stopPropagation={triggerFileUpload}
-                                  ><svg
+                                >
+                                  <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     width="20"
                                     height="20"
@@ -724,13 +886,14 @@
                                     ><path
                                       d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152.69a16,16,0,0,0-4.69,11.31v44.69a16,16,0,0,0,16,16H92.69a16,16,0,0,0,11.31-4.69L227.31,96a16,16,0,0,0,0-22.63ZM51.31,160l90.35-90.35,16,16L67.31,176H51.31Zm41.38,41.38L76.69,185.31,166.63,95.31,182.69,111.38ZM202,114.75,141.25,54,160,35.31,220.69,96Z"
                                     ></path></svg
-                                  ></button
-                                >
+                                  >
+                                </button>
                                 <button
                                   type="button"
                                   class="action-btn remove"
                                   on:click|stopPropagation={removeFile}
-                                  ><svg
+                                >
+                                  <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     width="20"
                                     height="20"
@@ -739,15 +902,17 @@
                                     ><path
                                       d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM112,168a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm0-120V48H96V40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8Z"
                                     ></path></svg
-                                  ></button
-                                >
+                                  >
+                                </button>
                               </div>
                             </div>
                           {/if}
+
                           <button
                             class="primary-btn"
                             disabled={!selectedFile || isSubmitting}
-                            on:click|stopPropagation={() => submitProof(p.id, p.status)}
+                            on:click|stopPropagation={() =>
+                              submitProof(p.id, p.status)}
                           >
                             {isSubmitting
                               ? "Uploading..."
@@ -756,33 +921,29 @@
                                 : "SUBMIT PROOF"}
                           </button>
                         </div>
+                      {:else if p.status === "completed"}
+                        <div class="info-content success">
+                          <div
+                            class="success-icon"
+                            style="margin-bottom: 10px;"
+                          >
+                            🎉
+                          </div>
+                          <h3 style="color: #10b981;">Mission Complete!</h3>
+                          <p>You have successfully completed this event.</p>
+                        </div>
                       {/if}
                     </div>
                   {:else}
                     <div
                       class="action-box"
                       style="min-height: auto; padding: 1px;"
-                    >
-                      {#if p.status === "completed"}
-                        <div class="info-content success"></div>
-                      {:else if p.status === "cancel" || isEventEnded(p.event.rawDate)}
-                        <div class="info-content">
-                          <div class="error-icon">✕</div>
-                          <h3 style="color: #ef4444;">Event Cancelled</h3>
-                          <p>
-                            {isEventEnded(p.event.rawDate)
-                              ? "This event has ended."
-                              : "This event did not take place."}
-                          </p>
-                        </div>
-                      {/if}
-                    </div>
+                    ></div>
                   {/if}
                 </div>
               {/if}
             </div>
           {/each}
-
           {#if filteredEvents.length === 0}
             <div
               style="text-align: center; color: #6b7280; margin-top: 40px; font-size: 14px;"
@@ -983,11 +1144,6 @@
     font-weight: 500;
   }
 
-  .info-row .icon {
-    font-size: 14px;
-    min-width: 20px;
-  }
-
   .status-row {
     margin-top: 4px;
   }
@@ -1018,11 +1174,74 @@
   .status-pill.rejected {
     color: #dc2626;
   }
+  .status-pill.expired {
+    color: #6b7280;
+  }
+  .status-badge {
+    padding: 8px 12px;
+    border-radius: 30px;
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    min-width: 100px;
+    text-align: center;
+  }
+  .complete-glow {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+  }
+
+  /* 2. TIME OUT (เทา) */
+  .expired-glow {
+    background-color: rgba(107, 114, 128, 0.15);
+    color: #9ca3af;
+    border: 1px solid rgba(107, 114, 128, 0.4);
+    box-shadow: 0 0 15px rgba(107, 114, 128, 0.2);
+  }
+
+  /* 3. REGISTERED (ฟ้า) */
+  .joined-glow {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+  }
+
+  /* 4. UPLOAD PROOF (ส้ม) */
+  .upload-glow {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+  }
+
+  /* 5. WAITING (ม่วง) */
+  .waiting-glow {
+    background-color: rgba(139, 92, 246, 0.15);
+    color: #8b5cf6;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+  }
+
+  /* 6. REJECTED (แดง) */
+  .rejected-glow {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+  }
 
   .meta-left {
     display: flex;
     flex-direction: column;
-    gap: 6px; /* ระยะห่างระหว่างบรรทัด วัน กับ เวลา */
+    gap: 6px;
   }
 
   .info-item {
@@ -1202,6 +1421,25 @@
     display: inline-block;
     border: 1px solid #e5e7eb;
   }
+  .history-status-row {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .history-desc {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .history-desc.success {
+    color: #059669;
+  }
+
+  .history-desc.error {
+    color: #6b7280;
+  }
   .loc-label {
     display: block;
     font-size: 11px;
@@ -1226,6 +1464,11 @@
     font-size: 12px;
     line-height: 1.4;
   }
+  .waiting-icon {
+    font-size: 32px;
+    animation: pulse 2s infinite;
+  }
+
   .hidden-input {
     display: none;
   }
@@ -1365,16 +1608,22 @@
   }
   .primary-btn {
     width: 100%;
-    padding: 14px 16px;
+    padding: 16px 20px;
     background: #10b981;
     color: #111827;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 800;
     border: none;
-    border-radius: 12px;
+    border-radius: 14px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition:
+      transform 0.1s,
+      background 0.2s;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .primary-btn:active {
+    transform: scale(0.98);
   }
   .primary-btn:hover {
     background: #059669;
@@ -1446,5 +1695,77 @@
     padding: 6px 10px;
     border-radius: 6px;
     display: inline-block;
+  }
+  .refresh-btn {
+    position: absolute;
+    right: 20px; /* วางชิดขวา */
+    top: 50%;
+    transform: translateY(-50%);
+
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+
+    /* Glassmorphism */
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    z-index: 52;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #fff;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+  }
+
+  .refresh-btn:active {
+    transform: translateY(-50%) scale(0.95);
+  }
+
+  /* State: Loading */
+  .refresh-btn.spinning {
+    cursor: wait;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #10b981; /* สีเขียวตอนโหลด */
+    transform: translateY(-50%) scale(1);
+  }
+
+  .refresh-btn.spinning svg {
+    animation: spin 1s linear infinite;
+  }
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 0.7;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  .status-text.proof_submitted {
+    color: #8b5cf6; /* สีม่วง (Purple/Violet) เพื่อให้ต่างจากสีส้ม Upload */
+  }
+
+  /* สีสำหรับ Completed (เผื่อยังไม่มี) */
+  .status-text.completed {
+    color: #10b981; /* สีเขียว */
   }
 </style>
