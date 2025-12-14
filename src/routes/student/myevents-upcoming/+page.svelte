@@ -3,7 +3,10 @@
   import { onMount } from "svelte";
 
   // --- Configuration ---
-  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(
+    /\/$/,
+    "",
+  );
 
   // --- Interfaces ---
   interface EventDetail {
@@ -55,7 +58,11 @@
 
   function formatTimeRange(startDateStr: string, endDateStr: string): string {
     if (!startDateStr) return "";
-    const options: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit", hour12: true };
+    const options: Intl.DateTimeFormatOptions = {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    };
     const start = new Date(startDateStr);
     const timeStart = start.toLocaleTimeString("en-US", options);
 
@@ -74,7 +81,7 @@
   // ✅ แก้ไข 1: เช็คจาก End Date แทน Start Date
   function isEventEnded(eventEndDate: Date): boolean {
     const now = new Date();
-    return eventEndDate < now; 
+    return eventEndDate < now;
   }
 
   function isFutureEvent(eventDate: Date): boolean {
@@ -111,7 +118,7 @@
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/participations/user/${currentUserId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       if (!res.ok) throw new Error("Failed to load participations");
@@ -123,7 +130,7 @@
           try {
             const eventRes = await fetch(
               `${API_BASE_URL}/api/events/${p.event_id}`,
-              { headers: { Authorization: `Bearer ${token}` } }
+              { headers: { Authorization: `Bearer ${token}` } },
             );
 
             let eventDetail: EventDetail;
@@ -133,7 +140,9 @@
               const resolvedImage = resolveImageUrl(eData.banner_image_url);
 
               // ✅ 1. จัดการเวลาเริ่ม
-              const rawDate = eData.event_date ? new Date(eData.event_date) : new Date();
+              const rawDate = eData.event_date
+                ? new Date(eData.event_date)
+                : new Date();
 
               // ✅ 2. จัดการเวลาจบ (สำคัญ!)
               let rawEndDate: Date;
@@ -149,14 +158,17 @@
               const dateStr = eData.event_date
                 ? new Date(eData.event_date).toLocaleDateString()
                 : "N/A";
-                
-              const timeStr = formatTimeRange(eData.event_date, eData.event_end_date);
+
+              const timeStr = formatTimeRange(
+                eData.event_date,
+                eData.event_end_date,
+              );
 
               eventDetail = {
                 ...eData,
                 image: resolvedImage,
                 date: dateStr,
-                rawDate: rawDate,       // ใช้สำหรับดูวันเริ่ม
+                rawDate: rawDate, // ใช้สำหรับดูวันเริ่ม
                 rawEndDate: rawEndDate, // ✅ ใช้สำหรับดูว่าจบหรือยัง
                 time: timeStr,
                 location: eData.location || "-",
@@ -191,7 +203,7 @@
             } as Participation;
           } catch (err) {
             console.error(`Error loading event ${p.event_id}`, err);
-             // Error Fallback
+            // Error Fallback
             return {
               id: p.id,
               event: {
@@ -208,7 +220,7 @@
               join_code: p.join_code,
             } as Participation;
           }
-        })
+        }),
       );
 
       participations = enrichedData;
@@ -255,12 +267,18 @@
   // --- UI Helpers ---
   function getStepNumber(status: string): number {
     switch (status) {
-      case "joined": return 1;
-      case "checked_in": return 3;
-      case "proof_submitted": return 3;
-      case "rejected": return 3;
-      case "completed": return 4;
-      default: return 1;
+      case "joined":
+        return 1;
+      case "checked_in":
+        return 3;
+      case "proof_submitted":
+        return 3;
+      case "rejected":
+        return 3;
+      case "completed":
+        return 4;
+      default:
+        return 1;
     }
   }
 
@@ -285,8 +303,12 @@
     }
   }
 
-  function triggerFileUpload() { if (fileInput) fileInput.click(); }
-  function removeFile() { resetFileState(); }
+  function triggerFileUpload() {
+    if (fileInput) fileInput.click();
+  }
+  function removeFile() {
+    resetFileState();
+  }
   function resetFileState() {
     selectedFile = null;
     previewUrl = null;
@@ -931,7 +953,7 @@
   }
   .meta-right {
     text-align: right;
-    padding-left: 10px; 
+    padding-left: 10px;
     flex-shrink: 0;
   }
 

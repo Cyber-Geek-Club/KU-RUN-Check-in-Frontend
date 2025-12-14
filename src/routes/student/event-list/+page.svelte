@@ -181,7 +181,6 @@
                 })
               : "N/A",
             
-            // ใช้ค่าที่เตรียมไว้
             time: displayTime, 
             
             isReadMore: false,
