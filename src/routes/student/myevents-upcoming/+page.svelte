@@ -228,7 +228,7 @@
   }
 
   // ✅ FIXED: Two-step upload process
-  async function submitProof(participationId: number) {
+  async function submitProof(participationId: number, isResubmit: boolean = false) {
     if (!selectedFile || !token) return;
     isSubmitting = true;
 
@@ -256,20 +256,58 @@
         throw new Error("No image URL returned from upload");
       }
 
-      // Step 2: Submit proof with the uploaded image URL
-      const proofRes = await fetch(
-        `${API_BASE_URL}/api/participations/${participationId}/submit-proof`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+      // Step 2: Submit or Resubmit proof
+      let proofRes;
+      
+      if (isResubmit) {
+        // For REJECTED status - use resubmit endpoint if available
+        // Try resubmit endpoint first, fallback to regular submit
+        proofRes = await fetch(
+          `${API_BASE_URL}/api/participations/${participationId}/resubmit-proof`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              proof_image_url: imageUrl,
+            }),
           },
-          body: JSON.stringify({
-            proof_image_url: imageUrl,
-          }),
-        },
-      );
+        );
+
+        // If resubmit endpoint doesn't exist (404), try regular submit
+        if (proofRes.status === 404) {
+          proofRes = await fetch(
+            `${API_BASE_URL}/api/participations/${participationId}/submit-proof`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                proof_image_url: imageUrl,
+              }),
+            },
+          );
+        }
+      } else {
+        // Regular submit for first-time submission
+        proofRes = await fetch(
+          `${API_BASE_URL}/api/participations/${participationId}/submit-proof`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              proof_image_url: imageUrl,
+            }),
+          },
+        );
+      }
 
       if (!proofRes.ok) {
         const errData = await proofRes.json();
@@ -278,7 +316,8 @@
 
       await fetchUserParticipations();
       resetFileState();
-      alert("อัปโหลดหลักฐานเรียบร้อย!");
+      expandedEventId = null; // Close the expanded card after successful upload
+      alert(isResubmit ? "ส่งหลักฐานใหม่เรียบร้อย!" : "อัปโหลดหลักฐานเรียบร้อย!");
     } catch (error: any) {
       alert("เกิดข้อผิดพลาด: " + (error.message || error));
       console.error("Submit proof error:", error);
