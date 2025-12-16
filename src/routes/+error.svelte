@@ -1,10 +1,11 @@
 <script lang="ts">
-    import { page } from '$app/stores';
-    import { goto } from '$app/navigation';
-    import { browser } from '$app/environment';
-    import { onMount } from 'svelte';
+    import {page} from '$app/stores';
+    import {goto} from '$app/navigation';
+    import {browser} from '$app/environment';
+    import {onMount} from 'svelte';
 
     let homePath = '/';
+
 
     // --- Config Error Map (เหมือนเดิม) ---
     const errorMap: Record<number, { title: string; defaultDesc: string }> = {
