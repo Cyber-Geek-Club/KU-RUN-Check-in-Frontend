@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import Swal from "sweetalert2";
   import { goto } from "$app/navigation";
+  import { auth } from "$lib/utils/auth";
 
   // --- Configuration ---
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(
@@ -87,8 +88,7 @@
       confirmButtonColor: "#10B981",
       allowOutsideClick: false,
     });
-    localStorage.removeItem("user_info");
-    localStorage.removeItem("access_token");
+    auth.logout();
     goto("/auth/login", { replaceState: true });
   }
 

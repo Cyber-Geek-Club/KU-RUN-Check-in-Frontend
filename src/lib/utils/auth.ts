@@ -196,10 +196,19 @@ function createAuthStore() {
         }
 
         if (browser) {
+            // Clear all auth-related localStorage items
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('token_expiry');
             localStorage.removeItem('user_info');
+            localStorage.removeItem('strict_allowed_path');
+            localStorage.removeItem('strict_allowed_path_ts');
+            localStorage.removeItem('token'); // legacy key
+            
+            // Clear sessionStorage items
+            sessionStorage.removeItem('access_token');
+            sessionStorage.removeItem('user_info');
+            sessionStorage.removeItem('authorized_ticket');
         }
 
         set({

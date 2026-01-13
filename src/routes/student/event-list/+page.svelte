@@ -819,8 +819,7 @@
   async function handleSessionExpired() {
     if (sessionExpiredAlertShown) return;
     sessionExpiredAlertShown = true;
-    localStorage.removeItem("token");
-    localStorage.removeItem("access_token");
+    auth.logout();
     if (timerInterval) clearInterval(timerInterval);
     if (pollInterval) clearInterval(pollInterval);
     await Swal.fire({ icon: 'error', title: 'Session Expired', text: 'Expired', timer: 3000, showConfirmButton: false, allowOutsideClick: false });
@@ -917,8 +916,8 @@
   }
 
   function handleLogout() {
-    auth.logout();
     isMobileMenuOpen = false;
+    auth.logout();
     goto("/auth/login", { replaceState: true });
   }
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fade, slide, scale } from "svelte/transition";
   import { goto } from "$app/navigation";
+  import { auth } from "$lib/utils/auth";
   import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
 
@@ -848,9 +849,7 @@ async function handleCheckInConfirm() {
 }
 
   function handleSessionExpired() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("user_info");
+    auth.logout();
     Swal.fire({
       icon: 'error',
       title: 'Session Expired',
@@ -863,8 +862,8 @@ async function handleCheckInConfirm() {
   }
 
   function handleLogout() { 
-    isMobileMenuOpen = false; 
-    localStorage.clear();
+    isMobileMenuOpen = false;
+    auth.logout();
     goto("/auth/login", { replaceState: true });
   }
 
