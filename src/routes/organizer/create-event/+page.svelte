@@ -405,10 +405,7 @@
     }
   }
 
-  function clearClientData() {
-    localStorage.removeItem("user_info");
-    isMenuOpen = false;
-  }
+  // clearClientData removed - auth.logout() now handles all cleanup
 
   function handleImageUpload() {
     clearMessages();
@@ -798,7 +795,6 @@
 
           return async ({ result, update }) => {
             if (result.type === "redirect") {
-              clearClientData();
               await goto(result.location);
             } else {
               await update();

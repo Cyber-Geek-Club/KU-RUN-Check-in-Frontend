@@ -332,9 +332,8 @@
   });
 
   function handleLogout() {
-    auth.logout();
     isMenuOpen = false;
-    clearClientData();
+    auth.logout();
     goto("/auth/login", { replaceState: true });
   }
 
@@ -343,11 +342,7 @@
     events = [...events];
   }
 
-  function clearClientData() {
-    localStorage.removeItem("user_info");
-    localStorage.removeItem("access_token");
-    isMenuOpen = false;
-  }
+  // clearClientData removed - auth.logout() now handles all cleanup
 
   async function handleRegister(eventItem: EventItem) {
     if (eventItem.isJoined) {
@@ -578,7 +573,6 @@
           isMenuOpen = false;
           return async ({ result, update }) => {
             if (result.type === "redirect") {
-              clearClientData();
               await goto(result.location);
             } else {
               await update();
