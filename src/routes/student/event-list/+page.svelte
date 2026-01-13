@@ -1426,7 +1426,6 @@
   .user-zone { display: flex; align-items: center; gap: 16px; margin-left: auto; flex-shrink: 0; }
   
   .timer-pill { background-color: #0f172a; color: #10b981; font-weight: 700; font-size: 0.95rem; padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); letter-spacing: 1px; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
-  .timer-pill.warning { color: #f59e0b; border-color: #f59e0b; }
 
   .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 8px; transition: 0.2s; display: flex; align-items: center; }
   .logout-btn:hover { color: #ef4444; transform: translateX(2px); }
@@ -1485,7 +1484,6 @@
   
   .card-image { height: 180px; background-size: cover; background-position: center; border-bottom: 1px solid rgba(255, 255, 255, 0.05); background-color: #1e293b; transition: opacity 0.3s ease; }
   .card-image:not(.lazy-loaded) { opacity: 0.6; }
-  .card-image.lazy-loaded { opacity: 1; }
   .card-content { padding: 20px; flex: 1; display: flex; flex-direction: column; }
   
   .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 10px; }
@@ -1494,7 +1492,6 @@
   .badges-col { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
   .status-badge { font-size: 0.65rem; font-weight: 700; color: #10b981; border: 1px solid #10b981; padding: 2px 8px; border-radius: 12px; letter-spacing: 0.5px; }
   .status-badge.no-active { color: #ef4444; border-color: #ef4444; }
-  .status-badge.resubmit { color: #ef4444; border-color: #ef4444; }
   .status-badge.pending { color: #f59e0b; border-color: #f59e0b; }
 
   .type-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -1516,7 +1513,6 @@
   
   .card-separator { height: 1px; background-color: rgba(255, 255, 255, 0.1); width: 100%; margin-bottom: 16px; }
   .card-footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: 10px; }
-  .joined-actions { display: flex; flex-direction: row; gap: 8px; align-items: center; }
 
   /* =========================================
      4. BUTTONS
@@ -1527,8 +1523,6 @@
   .register-btn { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; padding: 9px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); transition: 0.2s; flex-shrink: 0; }
   .register-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
   
-  .register-btn.joined { background: #3b82f6; box-shadow: none; cursor: pointer; width: auto; }
-  .register-btn.joined:hover { background: #2563eb; filter: brightness(1.1); transform: translateY(-1px); }
   
   .register-btn.coming-soon { background: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: 0.8; }
   .register-btn.completed { background: rgba(16, 185, 129, 0.12); color: #10b981; box-shadow: none; cursor: not-allowed; border: 1px solid rgba(16, 185, 129, 0.4); }
@@ -1536,8 +1530,6 @@
 
   .register-btn.unpublished { background: #ef4444 !important; color: #ffffff !important; opacity: 1; cursor: not-allowed; box-shadow: none; border: none; }
 
-  .cancel-btn { background: #ef4444; border: none; color: white; padding: 9px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); transition: 0.2s; flex-shrink: 0; width: auto; }
-  .cancel-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
   .loading-container { text-align: center; color: var(--text-muted); margin-top: 50px; }
   .no-events { text-align: center; color: var(--text-muted); margin-top: 50px; } 
