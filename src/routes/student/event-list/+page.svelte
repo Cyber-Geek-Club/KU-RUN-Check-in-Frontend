@@ -241,14 +241,32 @@
         .filter((item: any) => {
           // [FIX] Filter: ไม่แสดงกิจกรรมที่เลยเวลาสิ้นสุดแล้ว (รวมเวลาด้วย)
           if (item.event_end_date && item.end_time) {
-            // สร้าง datetime โดยใช้ event_end_date + end_time
-            const endDateTime = new Date(`${item.event_end_date}T${item.end_time}`);
-            if (now > endDateTime) return false;
+            try {
+              // สร้าง datetime โดยใช้ event_end_date + end_time
+              const endDateTime = new Date(`${item.event_end_date}T${item.end_time}`);
+              if (isNaN(endDateTime.getTime())) {
+                console.warn(`Invalid end datetime for event ${item.id}:`, item.event_end_date, item.end_time);
+                return true; // ถ้า parse ไม่ได้ ให้แสดงต่อไป
+              }
+              if (now > endDateTime) return false;
+            } catch (err) {
+              console.warn(`Error parsing end datetime for event ${item.id}:`, err);
+              return true; // ถ้าเกิด error ให้แสดงต่อไป
+            }
           } else if (item.event_end_date) {
-            // Fallback: ถ้าไม่มี end_time ให้เช็คแค่วันจบเท่านั้น
-            const endDate = new Date(item.event_end_date);
-            endDate.setHours(23, 59, 59, 999);
-            if (now > endDate) return false;
+            try {
+              // Fallback: ถ้าไม่มี end_time ให้เช็คแค่วันจบเท่านั้น
+              const endDate = new Date(item.event_end_date);
+              if (isNaN(endDate.getTime())) {
+                console.warn(`Invalid end date for event ${item.id}:`, item.event_end_date);
+                return true;
+              }
+              endDate.setHours(23, 59, 59, 999);
+              if (now > endDate) return false;
+            } catch (err) {
+              console.warn(`Error parsing end date for event ${item.id}:`, err);
+              return true;
+            }
           }
           return true;
         })
@@ -268,6 +286,7 @@
             is_full: item.is_full || (item.participant_count >= item.max_participants),
             startDate: item.event_date,
             endDate: item.event_end_date,
+            end_time: item.end_time || "23:59",
             isJoined: existing ? existing.isJoined : false,
             isJoinedToday: existing ? existing.isJoinedToday : false,
             participationId: existing ? existing.participationId : null,
@@ -275,7 +294,8 @@
             participationDate: existing ? existing.participationDate : null,
             isExpanded: existing ? existing.isExpanded : false,
             isUpcoming: existing ? existing.isUpcoming : false,
-            canRegisterToday: existing ? existing.canRegisterToday : false
+            canRegisterToday: existing ? existing.canRegisterToday : false,
+            completionCount: existing ? existing.completionCount : 0
           };
         });
 
@@ -396,12 +416,12 @@
               else {
                 console.log(`[AUTO CANCEL] Event ${e.id}: Previous day record (${status}), auto-canceling.`);
                 fetch(`${BASE_URL}/api/participations/${anyActiveRecord.id}/cancel`, {
-                  method: "PATCH",
+                  method: "POST",
                   headers: { 
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                   },
-                  body: JSON.stringify({ reason: "Auto-canceled: Previous day incomplete" })
+                  body: JSON.stringify({ cancellation_reason: "Auto-canceled: Previous day incomplete" })
                 }).catch(err => console.error("Auto-cancel error:", err));
                 
                 anyActiveRecord = null;
@@ -927,11 +947,19 @@
     // ดึงไปแล้วในฟังก์ชัน fetchEvents เลย ดังนั้นควรจะไม่มีเหตุการณ์ที่เลยวันแล้ว
     // แต่เราเช็คตรงนี้เพิ่มเติมเพื่อความปลอดภัย
     if (event.endDate) {
-        const now = new Date();
-        const end = new Date(event.endDate);
-        end.setHours(23, 59, 59, 999);
-        // ถ้าเวลาปัจจุบัน เลยเวลาจบกิจกรรมไปแล้ว -> ไม่แสดง
-        if (now > end) return false;
+        try {
+            const now = new Date();
+            const end = new Date(event.endDate);
+            if (isNaN(end.getTime())) {
+                console.warn(`Invalid endDate for event ${event.id}:`, event.endDate);
+            } else {
+                end.setHours(23, 59, 59, 999);
+                // ถ้าเวลาปัจจุบัน เลยเวลาจบกิจกรรมไปแล้ว -> ไม่แสดง
+                if (now > end) return false;
+            }
+        } catch (err) {
+            console.warn(`Error checking endDate for event ${event.id}:`, err);
+        }
     }
 
     // [NEW] แสดงทั้งกิจกรรมที่ยังไม่สมัคร และกิจกรรมที่สมัครของวันนี้แล้ว
@@ -986,14 +1014,14 @@
           <button class:active={lang === 'en'} on:click={() => setLang('en')}>EN</button>
         </div>
 
-        <button class="logout-btn desktop-only" on:click={handleLogout}><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
-        <button class="mobile-toggle mobile-only" on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 9h16M4 15h16"></path></svg></button>
+        <button class="logout-btn desktop-only" on:click={handleLogout} aria-label="Logout"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
+        <button class="mobile-toggle mobile-only" on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)} aria-label="Toggle menu"><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 9h16M4 15h16"></path></svg></button>
       </div>
     </div>
   </header>
 
   {#if isMobileMenuOpen}
-    <div class="mobile-overlay" on:click={() => (isMobileMenuOpen = false)} transition:fade={{ duration: 200 }}></div>
+    <div class="mobile-overlay" on:click={() => (isMobileMenuOpen = false)} on:keydown={(e) => e.key === 'Escape' && (isMobileMenuOpen = false)} role="button" tabindex="0" aria-label="Close menu" transition:fade={{ duration: 200 }}></div>
     <div class="mobile-drawer" transition:slide={{ axis: 'x', duration: 300 }}>
       <div class="drawer-header"><span class="brand-name" style="font-size: 1.4rem;">MENU</span><button class="close-btn" on:click={() => (isMobileMenuOpen = false)}>&times;</button></div>
       <div class="drawer-search"><input type="text" placeholder="Search..." class="drawer-search-input" bind:value={searchQuery} /></div>
@@ -1273,7 +1301,6 @@
   .user-zone { display: flex; align-items: center; gap: 16px; margin-left: auto; flex-shrink: 0; }
   
   .timer-pill { background-color: #0f172a; color: #10b981; font-weight: 700; font-size: 0.95rem; padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); letter-spacing: 1px; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
-  .timer-pill.warning { color: #f59e0b; border-color: #f59e0b; }
 
   .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 8px; transition: 0.2s; display: flex; align-items: center; }
   .logout-btn:hover { color: #ef4444; transform: translateX(2px); }
@@ -1339,13 +1366,12 @@
   .badges-col { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
   .status-badge { font-size: 0.65rem; font-weight: 700; color: #10b981; border: 1px solid #10b981; padding: 2px 8px; border-radius: 12px; letter-spacing: 0.5px; }
   .status-badge.no-active { color: #ef4444; border-color: #ef4444; }
-  .status-badge.resubmit { color: #ef4444; border-color: #ef4444; }
   .status-badge.pending { color: #f59e0b; border-color: #f59e0b; }
   
   .count-badge { background-color: #3b82f6; color: white; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 12px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
   
-  .card-desc { font-size: 0.85rem; color: #94a3b8; margin: 0 0 24px 0; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
-  .card-desc.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; height: auto; }
+  .card-desc { font-size: 0.85rem; color: #94a3b8; margin: 0 0 24px 0; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
+  .card-desc.expanded { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; height: auto; }
   
   .info-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
   .info-pill { background-color: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px 10px; display: flex; align-items: flex-start; gap: 8px; font-size: 0.75rem; color: #cbd5e1; line-height: 1.4; word-break: break-word; }
@@ -1354,7 +1380,6 @@
   
   .card-separator { height: 1px; background-color: rgba(255, 255, 255, 0.1); width: 100%; margin-bottom: 16px; }
   .card-footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: 10px; }
-  .joined-actions { display: flex; flex-direction: row; gap: 8px; align-items: center; }
 
   /* =========================================
      4. BUTTONS
@@ -1365,15 +1390,9 @@
   .register-btn { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; padding: 9px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); transition: 0.2s; flex-shrink: 0; }
   .register-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
   
-  .register-btn.joined { background: #3b82f6; box-shadow: none; cursor: pointer; width: auto; }
-  .register-btn.joined:hover { background: #2563eb; filter: brightness(1.1); transform: translateY(-1px); }
-  
   .register-btn.coming-soon { background: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: 0.8; }
 
   .register-btn.unpublished { background: #ef4444 !important; color: #ffffff !important; opacity: 1; cursor: not-allowed; box-shadow: none; border: none; }
-
-  .cancel-btn { background: #ef4444; border: none; color: white; padding: 9px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); transition: 0.2s; flex-shrink: 0; width: auto; }
-  .cancel-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
   .loading-container { text-align: center; color: var(--text-muted); margin-top: 50px; }
   .no-events { text-align: center; color: var(--text-muted); margin-top: 50px; } 
@@ -1426,182 +1445,4 @@
   .lang-toggle-pill { display: flex; background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); }
   .lang-toggle-pill button { background: transparent; border: none; color: #64748b; font-size: 0.8rem; font-weight: 700; padding: 6px 12px; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; }
   .lang-toggle-pill button.active { background: #10b981; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-
-  /* =========================================
-     INBOX / NOTIFICATIONS
-     ========================================= */
-  .inbox-fab {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      width: 56px;
-      height: 56px;
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      border-radius: 50%;
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
-      cursor: pointer;
-      z-index: 2000;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-  .inbox-fab:hover {
-      transform: scale(1.05) translateY(-2px);
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
-  }
-  .notification-badge {
-      position: absolute;
-      top: -5px;
-      right: -5px;
-      background: #ef4444;
-      color: white;
-      font-size: 0.75rem;
-      font-weight: 700;
-      min-width: 20px;
-      height: 20px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid var(--bg-body);
-  }
-
-  .inbox-panel {
-      position: fixed;
-      bottom: 90px;
-      right: 24px;
-      width: 350px;
-      max-width: calc(100vw - 48px);
-      background: #1e293b;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 16px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-      z-index: 1999;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      max-height: 500px;
-  }
-  .inbox-header {
-      padding: 16px;
-      background: rgba(15, 23, 42, 0.8);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-  }
-  .inbox-header h3 {
-      margin: 0;
-      font-size: 1.1rem;
-      color: white;
-      font-weight: 600;
-  }
-  .close-inbox-btn {
-      background: transparent;
-      border: none;
-      color: #94a3b8;
-      font-size: 1.5rem;
-      cursor: pointer;
-      line-height: 1;
-  }
-  .inbox-content {
-      overflow-y: auto;
-      flex: 1;
-  }
-  .empty-state {
-      padding: 40px 20px;
-      text-align: center;
-      color: #64748b;
-  }
-  .empty-state svg {
-      margin-bottom: 10px;
-      opacity: 0.5;
-  }
-  .inbox-actions {
-      padding: 10px 16px;
-      text-align: right;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  }
-  .inbox-actions button {
-      background: transparent;
-      border: none;
-      color: var(--primary);
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-  }
-  
-  .notif-item {
-      padding: 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      display: flex;
-      gap: 12px;
-      position: relative;
-      cursor: pointer;
-      transition: background 0.2s;
-  }
-  .notif-item:hover {
-      background: rgba(255, 255, 255, 0.02);
-  }
-  .notif-item.unread {
-      background: rgba(16, 185, 129, 0.05);
-  }
-  .notif-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      color: #94a3b8;
-  }
-  .notif-icon.reward {
-      background: rgba(251, 191, 36, 0.1);
-      color: #fbbf24;
-  }
-  .notif-content {
-      flex: 1;
-  }
-  .notif-title {
-      font-weight: 600;
-      color: white;
-      font-size: 0.95rem;
-      margin-bottom: 4px;
-  }
-  .notif-message {
-      font-size: 0.85rem;
-      color: #94a3b8;
-      margin-bottom: 6px;
-      line-height: 1.4;
-  }
-  .notif-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.75rem;
-      color: #64748b;
-  }
-  .del-btn {
-      background: transparent;
-      border: none;
-      color: #64748b;
-      cursor: pointer;
-      font-size: 1.1rem;
-      padding: 0 4px;
-  }
-  .del-btn:hover { color: #ef4444; }
-  .unread-dot {
-      width: 8px;
-      height: 8px;
-      background: var(--primary);
-      border-radius: 50%;
-      position: absolute;
-      top: 16px;
-      right: 16px;
-  }
 </style>
