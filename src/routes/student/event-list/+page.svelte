@@ -74,7 +74,12 @@
   let timeLeftStr = "--:--:--";
   let timeLeftSeconds = 0;
   let timerInterval: ReturnType<typeof setInterval> | null = null;
-  let pollInterval: ReturnType<typeof setInterval> | null = null;
+  // Adaptive polling via setTimeout loop (better control vs setInterval)
+  let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+  let currentPollDelay = 15000; // 15s base polling for status refresh
+  let isUpdatingStatus = false;
+  let eventsController: AbortController | null = null;
+  let statusController: AbortController | null = null;
   let sessionExpiredAlertShown = false;
 
 
@@ -226,6 +231,28 @@
     startSessionTimer();
     await fetchEvents();
     startPolling();
+
+    // Pause/resume polling on tab visibility
+    const onVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        startPolling();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    // Pause polling when offline, resume when online
+    const onOffline = () => stopPolling();
+    const onOnline = () => startPolling();
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('online', onOnline);
+
+    onDestroy(() => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('offline', onOffline);
+      window.removeEventListener('online', onOnline);
+    });
   });
 
   onDestroy(() => {
@@ -234,14 +261,19 @@
   });
 
   function startPolling() {
-    if (pollInterval) return;
-    pollInterval = setInterval(async () => { await updateUserStatus(); }, 5000);
+    if (pollTimeout) return;
+    const loop = async () => {
+      pollTimeout = null; // clear handle before running
+      await updateUserStatus();
+      pollTimeout = setTimeout(loop, currentPollDelay);
+    };
+    pollTimeout = setTimeout(loop, currentPollDelay);
   }
 
   function stopPolling() {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      pollInterval = null;
+    if (pollTimeout) {
+      clearTimeout(pollTimeout);
+      pollTimeout = null;
     }
   }
 
@@ -250,10 +282,17 @@
   // =========================================
   async function fetchEvents() {
     try {
+      // Abort previous events request if still in-flight
+      if (eventsController) {
+        eventsController.abort();
+      }
+      eventsController = new AbortController();
+
       const token = getToken();
       const response = await fetch(`${BASE_URL}/api/events/`, {
         method: "GET",
-        headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) }
+        headers: { "Content-Type": "application/json", ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+        signal: eventsController.signal
       });
       if (response.status === 401) { handleSessionExpired(); return; }
       if (!response.ok) throw new Error(`Server Error: ${response.status}`);
@@ -329,6 +368,15 @@
 
   async function updateUserStatus() {
     try {
+      if (isUpdatingStatus) return; // prevent concurrent runs
+      isUpdatingStatus = true;
+
+      // Abort previous status request if still in-flight
+      if (statusController) {
+        statusController.abort();
+      }
+      statusController = new AbortController();
+
       const token = getToken();
       const userInfoStr = localStorage.getItem("user_info") || localStorage.getItem("user");
       if (!token || !userInfoStr) return;
@@ -342,6 +390,7 @@
       // 1. ดึงข้อมูลประวัติ (History)
       const res = await fetch(`${BASE_URL}/api/participations/user/${userId}`, {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        signal: statusController.signal
       });
 
       if (res.ok) {
@@ -451,8 +500,15 @@
         });
       }
 
+      // Reset polling delay to base on success
+      currentPollDelay = 15000;
+
     } catch (err: any) { 
+      // Increase delay on errors to reduce server pressure (exponential-ish backoff)
+      currentPollDelay = Math.min(currentPollDelay * 2, 60000); // cap at 60s
       console.error("updateUserStatus error:", err);
+    } finally {
+      isUpdatingStatus = false;
     }
   }
 
@@ -883,7 +939,7 @@
     sessionExpiredAlertShown = true;
     auth.logout();
     if (timerInterval) clearInterval(timerInterval);
-    if (pollInterval) clearInterval(pollInterval);
+    if (pollTimeout) { clearTimeout(pollTimeout); pollTimeout = null; }
     await Swal.fire({ icon: 'error', title: 'Session Expired', text: 'Expired', timer: 3000, showConfirmButton: false, allowOutsideClick: false });
     goto("/auth/login");
   }
@@ -983,6 +1039,16 @@
     goto("/auth/login", { replaceState: true });
   }
 
+  // Debounce search to reduce frequent recomputation
+  let debouncedQuery = "";
+  let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  $: {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      debouncedQuery = searchQuery.toLowerCase().trim();
+    }, 250);
+  }
+
   $: filteredEvents = events.filter(event => {
     // [NEW] เงื่อนไขเวลา: ต้องยังไม่เลยช่วงเวลา (Not Expired)
     // ดึงไปแล้วในฟังก์ชัน fetchEvents เลย ดังนั้นควรจะไม่มีเหตุการณ์ที่เลยวันแล้ว
@@ -1001,7 +1067,7 @@
     }
 
     // --- Search Query Logic (คงเดิม) ---
-    const query = searchQuery.toLowerCase().trim();
+    const query = debouncedQuery;
     if (!query) return true;
     
     return (
