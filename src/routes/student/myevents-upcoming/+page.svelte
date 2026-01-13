@@ -4,6 +4,7 @@
   import { auth } from "$lib/utils/auth";
   import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
+  import { lazyLoadBg } from "$lib/utils/lazyLoad";
 
   // --- CONFIG ---
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -1449,7 +1450,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
             <div class="events-grid">
             {#each filteredUpcoming as event, i}
                 <div class="event-card" class:locked-card={event.isLocked}>
-                <div class="card-image" style="background-image: url('{event.banner_image_url}');">
+                <div class="card-image" use:lazyLoadBg={event.banner_image_url}>
                     {#if event.isLocked}
                         <div class="lock-overlay">
                             <svg width="40" height="40" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
@@ -2088,7 +2089,9 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
 
   .event-card { background-color: #1e293b; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); transition: transform 0.2s ease; }
   .event-card:hover { transform: translateY(-4px); }
-  .card-image { height: 180px; background-size: cover; background-position: center; width: 100%; position: relative; }
+  .card-image { height: 180px; background-size: cover; background-position: center; width: 100%; position: relative; background-color: #1e293b; transition: opacity 0.3s ease; }
+  .card-image:not(.lazy-loaded) { opacity: 0.6; }
+  .card-image.lazy-loaded { opacity: 1; }
   .card-content { padding: 20px; flex: 1; display: flex; flex-direction: column; }
   .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 10px; }
   .card-title { font-size: 1.25rem; font-weight: 700; color: white; margin: 0; line-height: 1.4; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.8em; line-clamp: 2; }
