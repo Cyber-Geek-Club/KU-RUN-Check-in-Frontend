@@ -578,8 +578,12 @@
       }
 
       if (joinRes.ok) {
-          // สำเร็จ
+          // สำเร็จ - Update state correctly
+          const responseData = await joinRes.json();
           eventItem.isJoined = true;
+          eventItem.isJoinedToday = true;  // [FIX] Set today's registration status
+          eventItem.participationId = responseData.id || null;
+          eventItem.participationStatus = 'JOINED';
           eventItem.participant_count++;
           events = [...events];
           
@@ -589,7 +593,7 @@
               timer: 1500,
               showConfirmButton: false
           });
-          updateUserStatus();
+          updateUserStatus();  // Refresh full state from server
       } else {
           // Error
           const contentType = joinRes.headers.get("content-type");

@@ -347,7 +347,18 @@
 
   async function handleRegister(eventItem: EventItem) {
     if (eventItem.isJoined) {
-      await goto("/student/myevents-upcoming");
+      await goto("/officer/myevents-upcoming");
+      return;
+    }
+
+    // [FIX] Check if event is active and published
+    if (!eventItem.is_active) {
+      Swal.fire("Unavailable", "This event is not currently active", "warning");
+      return;
+    }
+
+    if (!eventItem.is_published) {
+      Swal.fire("Unavailable", "This event is not yet published", "warning");
       return;
     }
 
@@ -386,8 +397,12 @@
         const responseData = await res.json();
 
         if (res.ok) {
+          // [FIX] Properly update all registration state
           eventItem.isJoined = true;
-          if (responseData.id) eventItem.participationId = responseData.id;
+          if (responseData.id) {
+            eventItem.participationId = responseData.id;
+            eventItem.participationStatus = 'JOINED';
+          }
 
           // ดึงยอดใหม่ทันทีหลังสมัคร
           const newCount = await fetchEventStats(eventItem.id, token, base);
@@ -405,6 +420,9 @@
             timer: 2000,
             showConfirmButton: false,
           });
+          
+          // [FIX] Reload data to ensure consistency
+          await loadData();
         } else {
           console.error("Register Failed:", responseData);
           const errorMsg =
@@ -414,11 +432,13 @@
           if (errorMsg.includes("joined") || res.status === 409) {
             eventItem.isJoined = true;
             events = [...events];
-            Swal.fire(
+            await Swal.fire(
               "Already Registered",
               "คุณได้ลงทะเบียนกิจกรรมนี้ไปแล้ว",
               "warning",
             );
+            // [FIX] Redirect to my events if already registered
+            await goto("/officer/myevents-upcoming");
           } else if (errorMsg.includes("full")) {
             Swal.fire("Event Full", "กิจกรรมนี้ผู้เข้าร่วมเต็มแล้ว", "error");
           } else {
