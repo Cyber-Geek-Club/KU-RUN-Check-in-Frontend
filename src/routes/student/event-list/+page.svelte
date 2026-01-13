@@ -23,6 +23,9 @@
     is_full: boolean;
     is_active: boolean;
     is_published: boolean;
+    event_type?: 'single_day' | 'multi_day';
+    allow_daily_checkin?: boolean;
+    max_checkins_per_user?: number;
     startDate: string;
     endDate: string;
     end_time: string;  // [NEW] เวลาสิ้นสุด
@@ -267,6 +270,9 @@
             is_active: item.is_active !== undefined ? item.is_active : true,
             is_published: item.is_published !== undefined ? item.is_published : true,
             is_full: item.is_full || (item.participant_count >= item.max_participants),
+            event_type: item.event_type || 'single_day',
+            allow_daily_checkin: !!item.allow_daily_checkin,
+            max_checkins_per_user: item.max_checkins_per_user ?? undefined,
             startDate: item.event_date,
             endDate: item.event_end_date,
             isJoined: existing ? existing.isJoined : false,
@@ -1052,6 +1058,14 @@
                   <div class="card-header-row">
                     <h3 class="card-title">{event.title}</h3>
                     <div class="badges-col">
+                      {#if event.event_type === 'multi_day'}
+                        <span class="type-badge multi">{lang === 'th' ? 'Multi Day' : 'Multi Day'}</span>
+                        {#if event.allow_daily_checkin}
+                          <span class="type-badge daily">{lang === 'th' ? 'เช็คอินรายวัน' : 'Daily Check-in'}{#if event.max_checkins_per_user}&nbsp;({event.max_checkins_per_user}){/if}</span>
+                        {/if}
+                      {:else}
+                        <span class="type-badge single">{lang === 'th' ? 'Single Day' : 'Single Day'}</span>
+                      {/if}
                       {#if !event.is_published}
                         <span class="status-badge no-active">
                              {#if lang === 'th'}
@@ -1344,6 +1358,10 @@
   .status-badge.pending { color: #f59e0b; border-color: #f59e0b; }
   
   .count-badge { background-color: #3b82f6; color: white; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 12px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  .type-badge { font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; letter-spacing: 0.3px; }
+  .type-badge.single { color: #60a5fa; border: 1px solid #60a5fa; }
+  .type-badge.multi { color: #a78bfa; border: 1px solid #a78bfa; }
+  .type-badge.daily { color: #10b981; border: 1px solid #10b981; }
   
   .card-desc { font-size: 0.85rem; color: #94a3b8; margin: 0 0 24px 0; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
   .card-desc.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; height: auto; }

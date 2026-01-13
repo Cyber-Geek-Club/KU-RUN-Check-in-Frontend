@@ -251,6 +251,9 @@
     lockMessage?: string;
     completion_rank?: number;
     total_days?: number;
+    event_type?: 'single_day' | 'multi_day';
+    allow_daily_checkin?: boolean;
+    max_checkins_per_user?: number;
 }
 
   // --- DATA FETCHING ---
@@ -450,7 +453,11 @@
 
           // --- จัดการเรื่องวันและเวลา ---
           const startIso = ev.event_date || ev.startDate || ev.event_start_date;
-          const endIso = ev.event_end_date || ev.endDate;
+          let endIso = ev.event_end_date || ev.endDate;
+          // สำหรับ single_day (หรือไม่มี end) ให้ถือว่าเป็นวันเดียว
+          if (!endIso && startIso) {
+              endIso = startIso;
+          }
           
           const extractTimeRaw = (isoStr: string) => {
               if (!isoStr) return "";
@@ -577,6 +584,9 @@
               banner_image_url: ev.banner_image_url || "https://via.placeholder.com/400",
               participant_count: ev.participant_count || 0,
               max_participants: ev.max_participants || 0,
+              event_type: ev.event_type || 'single_day',
+              allow_daily_checkin: !!ev.allow_daily_checkin,
+              max_checkins_per_user: ev.max_checkins_per_user ?? undefined,
               
               join_code: joinCode,
               completion_code: compCode,
@@ -1461,6 +1471,14 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                     <div class="card-header-row">
                         <h3 class="card-title">{event.title}</h3>
                     <div class="badges-col">
+                        {#if event.event_type === 'multi_day'}
+                            <span class="type-badge multi">{lang === 'th' ? 'Multi Day' : 'Multi Day'}</span>
+                            {#if event.allow_daily_checkin}
+                                <span class="type-badge daily">{lang === 'th' ? 'เช็คอินรายวัน' : 'Daily Check-in'}{#if event.max_checkins_per_user}&nbsp;({event.max_checkins_per_user}){/if}</span>
+                            {/if}
+                        {:else}
+                            <span class="type-badge single">{lang === 'th' ? 'Single Day' : 'Single Day'}</span>
+                        {/if}
                         {#if event.status === 'proof_submitted'}
                             <span class="status-badge running">{t[lang].status_waiting}</span>
                         {:else if event.status === 'REJECTED'}
@@ -2105,6 +2123,10 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .status-badge.proof-badge { color: #d8b4fe; border: 1px solid #d8b4fe; background: rgba(168, 85, 247, 0.1); }
 
   .count-badge { background-color: #3b82f6; color: white; font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border-radius: 12px; display: flex; align-items: center; white-space: nowrap; }
+.type-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 10px; border-radius: 12px; letter-spacing: 0.3px; text-transform: uppercase; }
+.type-badge.single { color: #60a5fa; border: 1px solid #60a5fa; }
+.type-badge.multi { color: #a78bfa; border: 1px solid #a78bfa; }
+.type-badge.daily { color: #10b981; border: 1px solid #10b981; }
   .card-desc { font-size: 0.9rem; color: #94a3b8; margin: 0 0 20px 0; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 3.2em; line-clamp: 2; }
   .card-desc.expanded { -webkit-line-clamp: unset; overflow: visible; min-height: auto; line-clamp: unset; }
 
