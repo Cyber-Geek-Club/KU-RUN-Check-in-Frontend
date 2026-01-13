@@ -5,6 +5,8 @@
   import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
   import { lazyLoadBg } from "$lib/utils/lazyLoad";
+  import { ROUTES } from "$lib/utils/routes";
+  import { navigateToEventList } from "$lib/utils/navigation";
 
   // --- CONFIG ---
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -1008,7 +1010,7 @@ async function handleCheckInConfirm() {
             text: 'กรุณาสมัครกิจกรรมนี้จากหน้า "ค้นหากิจกรรม" ก่อน',
             confirmButtonText: 'ไปสมัคร'
         }).then(result => {
-            if (result.isConfirmed) goto('/student/event-list');
+            if (result.isConfirmed) navigateToEventList('student');
         });
         return;
     }
@@ -1388,14 +1390,14 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
             <button class:active={lang === 'en'} on:click={() => setLang('en')}>EN</button>
         </div>
 
-        <button class="logout-btn desktop-only" on:click={handleLogout}><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
-        <button class="mobile-toggle mobile-only" on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 9h16M4 15h16"></path></svg></button>
+        <button class="logout-btn desktop-only" aria-label="Logout" on:click={handleLogout}><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
+        <button class="mobile-toggle mobile-only" aria-label="Toggle menu" on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 9h16M4 15h16"></path></svg></button>
       </div>
     </div>
   </header>
 
-  {#if isMobileMenuOpen}
-    <div class="mobile-overlay" on:click={() => (isMobileMenuOpen = false)} transition:fade={{ duration: 200 }}></div>
+    {#if isMobileMenuOpen}
+        <div class="mobile-overlay" role="button" tabindex="0" aria-label="Close menu" on:click={() => (isMobileMenuOpen = false)} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { isMobileMenuOpen = false; } }} transition:fade={{ duration: 200 }}></div>
     <div class="mobile-drawer" transition:slide={{ axis: 'x', duration: 300 }}>
        <div class="drawer-header"><span class="brand-name" style="font-size: 1.4rem;">MENU</span><button class="close-btn" on:click={() => (isMobileMenuOpen = false)}>&times;</button></div>
        <div class="drawer-search">
@@ -1819,10 +1821,10 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                     </div>
 
                     <div class="upload-area" style="margin-top: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">{lang === 'th' ? 'รูปภาพหลักฐาน' : 'Proof Image'}</label>
+                        <p style="display: block; margin-bottom: 5px; font-weight: 600;">{lang === 'th' ? 'รูปภาพหลักฐาน' : 'Proof Image'}</p>
                         {#if !proofImage}
                             <label class="upload-label" style="border: 2px dashed #ccc; padding: 20px; text-align: center; display: block; cursor: pointer; border-radius: 8px;">
-                                <input type="file" accept="image/*" on:change={handleImageUpload} hidden />
+                                <input id="proofImageInput" type="file" accept="image/*" on:change={handleImageUpload} hidden />
                                 <div class="upload-placeholder">
                                      <span>📸 {t[lang].modal_upload_txt}</span>
                                 </div>

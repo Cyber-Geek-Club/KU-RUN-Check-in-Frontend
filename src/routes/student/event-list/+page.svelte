@@ -5,6 +5,8 @@
   import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
   import { lazyLoadBg } from "$lib/utils/lazyLoad";
+  import { ROUTES } from "$lib/utils/routes";
+  import { navigateToMyEvents } from "$lib/utils/navigation";
 
   // =========================================
   // 1. CONFIGURATION & INTERFACES
@@ -94,9 +96,9 @@
   ];
 
   const menuItems = [
-    { id: "event-list", label: "Event list", path: "/student/event-list", svg: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
-    { id: "my-event", label: "My event", path: "/student/myevents-upcoming", svg: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
-    { id: "account-setting", label: "Account setting", path: "/student/setting-account", svg: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+    { id: "event-list", label: "Event list", path: ROUTES.student.eventList, svg: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
+    { id: "my-event", label: "My event", path: ROUTES.student.myEvents, svg: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
+    { id: "account-setting", label: "Account setting", path: ROUTES.student.settings, svg: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
   ];
 
   // =========================================
@@ -487,7 +489,7 @@
         confirmButtonText: 'OK',
         confirmButtonColor: '#3b82f6'
       }).then(() => {
-        goto('/student/myevents-upcoming');
+        navigateToMyEvents('student');
       });
       return;
     }
@@ -985,14 +987,14 @@
           <button class:active={lang === 'en'} on:click={() => setLang('en')}>EN</button>
         </div>
 
-        <button class="logout-btn desktop-only" on:click={handleLogout}><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
-        <button class="mobile-toggle mobile-only" on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 9h16M4 15h16"></path></svg></button>
+        <button class="logout-btn desktop-only" aria-label="Logout" on:click={handleLogout}><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
+        <button class="mobile-toggle mobile-only" aria-label="Toggle menu" on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 9h16M4 15h16"></path></svg></button>
       </div>
     </div>
   </header>
 
   {#if isMobileMenuOpen}
-    <div class="mobile-overlay" on:click={() => (isMobileMenuOpen = false)} transition:fade={{ duration: 200 }}></div>
+    <div class="mobile-overlay" role="button" tabindex="0" aria-label="Close menu" on:click={() => (isMobileMenuOpen = false)} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { isMobileMenuOpen = false; } }} transition:fade={{ duration: 200 }}></div>
     <div class="mobile-drawer" transition:slide={{ axis: 'x', duration: 300 }}>
       <div class="drawer-header"><span class="brand-name" style="font-size: 1.4rem;">MENU</span><button class="close-btn" on:click={() => (isMobileMenuOpen = false)}>&times;</button></div>
       <div class="drawer-search"><input type="text" placeholder="Search..." class="drawer-search-input" bind:value={searchQuery} /></div>
@@ -1106,7 +1108,7 @@
                       </button>
 
                       {#if event.isJoinedToday}
-                        <button class="register-btn running" on:click={() => goto('/student/myevents-upcoming')}>
+                        <button class="register-btn running" on:click={() => navigateToMyEvents('student')}>
                           {lang === 'th' ? '🏃 Running' : '🏃 Running'}
                         </button>
 
