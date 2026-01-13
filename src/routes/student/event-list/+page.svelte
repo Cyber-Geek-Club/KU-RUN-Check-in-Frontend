@@ -808,15 +808,10 @@
 
   function getToken() {
     if (typeof localStorage === 'undefined') return "";
-    let token = localStorage.getItem("token") || localStorage.getItem("access_token") || "";
+    // [FIX] Use consistent access_token key only
+    const token = localStorage.getItem("access_token") || "";
     if (!token) {
-      const userStr = localStorage.getItem("user") || localStorage.getItem("user_info");
-      if (userStr) {
-        try {
-          const userObj = JSON.parse(userStr);
-          token = userObj.token || userObj.accessToken || userObj.access_token || "";
-        } catch (e) { }
-      }
+      console.warn("No access token found in localStorage");
     }
     return token;
   }
