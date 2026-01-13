@@ -37,6 +37,9 @@
     isJoined: boolean;
     participationId: number | null;
     participationStatus: string | null;
+    event_type?: 'single_day' | 'multi_day';
+    allow_daily_checkin?: boolean;
+    max_checkins_per_user?: number;
   }
 
   let events: EventItem[] = [];
@@ -170,6 +173,9 @@
             image: e.banner_image_url,
             participants: finalCount,
             maxParticipants: e.max_participants,
+            event_type: e.event_type || 'single_day',
+            allow_daily_checkin: !!e.allow_daily_checkin,
+            max_checkins_per_user: e.max_checkins_per_user ?? undefined,
             rawDate: e.event_date ? new Date(e.event_date) : new Date(),
             date: e.event_date
               ? new Date(e.event_date).toLocaleDateString("th-TH", {
@@ -647,6 +653,17 @@
             <div class="card-body">
               <h3 class="event-title">{event.title}</h3>
 
+              <div style="display:flex; gap:6px; margin-bottom:8px; justify-content:flex-start;">
+                {#if event.event_type === 'multi_day'}
+                  <span class="type-badge multi">Multi Day</span>
+                  {#if event.allow_daily_checkin}
+                    <span class="type-badge daily">Daily Check-in{#if event.max_checkins_per_user}&nbsp;({event.max_checkins_per_user}){/if}</span>
+                  {/if}
+                {:else}
+                  <span class="type-badge single">Single Day</span>
+                {/if}
+              </div>
+
               {#if event.description && event.description !== "string"}
                 <p class="event-desc">{event.description}</p>
               {:else}
@@ -982,6 +999,10 @@
     align-items: center;
     gap: 4px;
   }
+  .type-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px; letter-spacing: 0.3px; color: #111827; border: 1px solid transparent; }
+  .type-badge.single { border-color: #60a5fa; color: #1e3a8a; }
+  .type-badge.multi { border-color: #a78bfa; color: #4c1d95; }
+  .type-badge.daily { border-color: #10b981; color: #065f46; }
   .card-body {
     padding: 16px;
     text-align: left;
