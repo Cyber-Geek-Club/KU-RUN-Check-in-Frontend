@@ -689,7 +689,7 @@
 
                     <button
                       class="running-btn"
-                      on:click={() => goto("/student/myevents-upcoming")}
+                      on:click={() => goto("/officer/myevents-upcoming")}
                     >
                       RUNNING
                     </button>
