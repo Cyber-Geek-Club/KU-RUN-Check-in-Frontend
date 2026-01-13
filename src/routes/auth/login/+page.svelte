@@ -86,6 +86,7 @@
       }
 
       const accessToken = data.access_token;
+      const refreshToken = data.refresh_token;
       const rawRole = data.role || data.user?.role;
       const userRole = normalizeRole(rawRole);
 
@@ -96,32 +97,28 @@
         return showError("System Error: Invalid response from server.", "both");
       }
 
-      const sessionUser = {
-        ...(data.user ?? data),
-        role: userRole,
+      // Prepare user data matching LoginResponse interface
+      const loginResponse = {
+        access_token: accessToken,
+        refresh_token: refreshToken || undefined,
+        token_type: data.token_type || "Bearer",
+        expires_in: data.expires_in || 3600,
+        user_id: data.user_id || data.id || data.user?.id,
+        email: data.email || data.user?.email || email,
+        name: data.name || data.user?.name || data.username || data.user?.username || email.split('@')[0],
+        role: userRole
       };
 
+      // Use auth store - it will handle all localStorage operations
+      auth.login(loginResponse);
+
+      // Store additional role-based routing info
       try {
-        localStorage.setItem("access_token", accessToken);
-        localStorage.setItem("user_info", JSON.stringify(sessionUser));
         localStorage.setItem("strict_allowed_path", getRoleHome(userRole));
         localStorage.setItem("strict_allowed_path_ts", Date.now().toString());
       } catch (e) {
         console.warn("localStorage write failed:", e);
       }
-
-      try {
-        sessionStorage.setItem("access_token", accessToken);
-        sessionStorage.setItem("user_info", JSON.stringify(sessionUser));
-      } catch (e) {
-        console.warn("sessionStorage write failed:", e);
-      }
-
-      auth.login({
-        ...data,
-        access_token: accessToken,
-        user: sessionUser,
-      });
 
       const home = getRoleHome(userRole);
       console.log("REDIRECTING TO:", home);
