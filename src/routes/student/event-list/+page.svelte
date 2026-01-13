@@ -223,6 +223,10 @@
   // =========================================
   // 4. LIFECYCLE HOOKS
   // =========================================
+  let onVisibility: (() => void) | null = null;
+  let onOffline: (() => void) | null = null;
+  let onOnline: (() => void) | null = null;
+
   onMount(async () => {
     if (typeof localStorage !== 'undefined') {
       const savedLang = localStorage.getItem('app_lang') as 'th' | 'en';
@@ -233,7 +237,7 @@
     startPolling();
 
     // Pause/resume polling on tab visibility
-    const onVisibility = () => {
+    onVisibility = () => {
       if (document.hidden) {
         stopPolling();
       } else {
@@ -243,21 +247,18 @@
     document.addEventListener('visibilitychange', onVisibility);
 
     // Pause polling when offline, resume when online
-    const onOffline = () => stopPolling();
-    const onOnline = () => startPolling();
+    onOffline = () => stopPolling();
+    onOnline = () => startPolling();
     window.addEventListener('offline', onOffline);
     window.addEventListener('online', onOnline);
-
-    onDestroy(() => {
-      document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('offline', onOffline);
-      window.removeEventListener('online', onOnline);
-    });
   });
 
   onDestroy(() => {
     if (timerInterval) clearInterval(timerInterval);
     stopPolling();
+    if (onVisibility) document.removeEventListener('visibilitychange', onVisibility);
+    if (onOffline) window.removeEventListener('offline', onOffline);
+    if (onOnline) window.removeEventListener('online', onOnline);
   });
 
   function startPolling() {
