@@ -37,6 +37,11 @@
     isUpcoming: boolean;  // [NEW] เช็คว่าเป็นวันในอนาคตหรือไม่
     canRegisterToday: boolean;  // [NEW] เช็คว่าสามารถสมัครได้วันนี้หรือไม่
     completionCount: number;  // [NEW] จำนวน COMPLETED ของกิจกรรมนี้
+    // [NEW] Single Day / Multi Day fields
+    event_type: 'single_day' | 'multi_day';
+    allow_daily_checkin: boolean;
+    max_checkins_per_user: number | null;
+    checkin_count: number;  // จำนวนครั้งที่ check-in แล้ว
   }
 
   // Interface สำหรับการแจ้งเตือนรางวัล
@@ -142,7 +147,16 @@
       // Inbox translations
       inbox_title: "รางวัลและการแจ้งเตือน",
       inbox_empty: "ไม่มีรายการแจ้งเตือน",
-      mark_all_read: "อ่านทั้งหมด"
+      mark_all_read: "อ่านทั้งหมด",
+
+      // Event Type translations
+      event_type_single: "วันเดียว",
+      event_type_multi: "หลายวัน",
+      event_type_challenge: "ท้าทาย",
+      daily_checkin: "เช็คอินรายวัน",
+      checkin_progress: "ความคืบหน้า",
+      days_remaining: "วันที่เหลือ",
+      day_unit: "วัน"
     },
     en: {
       search_placeholder: "Search...",
@@ -181,7 +195,16 @@
       // Inbox translations
       inbox_title: "Rewards & Notifications",
       inbox_empty: "No notifications",
-      mark_all_read: "Mark all read"
+      mark_all_read: "Mark all read",
+
+      // Event Type translations
+      event_type_single: "Single Day",
+      event_type_multi: "Multi Day",
+      event_type_challenge: "Challenge",
+      daily_checkin: "Daily Check-in",
+      checkin_progress: "Progress",
+      days_remaining: "Days Left",
+      day_unit: "days"
     }
   };
 
