@@ -15,7 +15,7 @@
 
   $: {
     if (role === "student") {
-      backUrl = "/student/event-list";
+      backUrl = ROUTES.student.eventList;
     } else {
       backUrl = "/organizer/create-event";
     }

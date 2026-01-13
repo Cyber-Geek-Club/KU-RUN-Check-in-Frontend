@@ -7,6 +7,8 @@
   import { auth } from "$lib/utils/auth";
   import { onMount, onDestroy } from "svelte";
   import { lazyLoadBg } from "$lib/utils/lazyLoad";
+  import { ROUTES } from "$lib/utils/routes";
+  import { navigateToMyEvents } from "$lib/utils/navigation";
 
   const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -347,7 +349,7 @@
 
   async function handleRegister(eventItem: EventItem) {
     if (eventItem.isJoined) {
-      await goto("/officer/myevents-upcoming");
+      await navigateToMyEvents('officer');
       return;
     }
 
@@ -438,7 +440,7 @@
               "warning",
             );
             // [FIX] Redirect to my events if already registered
-            await goto("/officer/myevents-upcoming");
+            await navigateToMyEvents('officer');
           } else if (errorMsg.includes("full")) {
             Swal.fire("Event Full", "กิจกรรมนี้ผู้เข้าร่วมเต็มแล้ว", "error");
           } else {
@@ -689,7 +691,7 @@
 
                     <button
                       class="running-btn"
-                      on:click={() => goto("/officer/myevents-upcoming")}
+                      on:click={() => navigateToMyEvents('officer')}
                     >
                       RUNNING
                     </button>

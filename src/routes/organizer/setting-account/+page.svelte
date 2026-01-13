@@ -3,6 +3,7 @@
   import { slide } from "svelte/transition";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
+  import { ROUTES } from "$lib/utils/routes";
 
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "";
@@ -14,8 +15,10 @@
   let backUrl: string = "/";
 
   $: {
-    if (role === "student") {
-      backUrl = "/student/event-list";
+    if (role === "organizer") {
+      backUrl = ROUTES.organizer.eventLog;
+    } else if (role === "student") {
+      backUrl = ROUTES.student.eventList;
     } else {
       backUrl = "/organizer/create-event";
     }
