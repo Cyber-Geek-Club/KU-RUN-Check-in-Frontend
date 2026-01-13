@@ -891,7 +891,7 @@
   function formatDate(startStr: string, endStr: string, currentLang: string) {
     if (!startStr) return "-";
     const locale = currentLang === 'th' ? 'th-TH' : 'en-GB';
-    const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' , timeZone: 'UTC'};
+    const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' , timeZone: 'Asia/Bangkok'};
 
     const startDate = new Date(startStr);
     const startText = startDate.toLocaleDateString(locale, options);
@@ -914,14 +914,14 @@
     if (!start) return "-";
     const s = new Date(start);
     const e = end ? new Date(end) : null;
-    const options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false , timeZone: 'UTC' };
+    const options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false , timeZone: 'Asia/Bangkok' };
     const timeStart = s.toLocaleTimeString('en-GB', options);
     const timeEnd = e ? e.toLocaleTimeString('en-GB', options) : "";
 
     if (currentLang === 'th') {
-      return e ? `${timeStart} - ${timeEnd} น.` : `${timeStart} น.`;
+      return e ? `${timeStart} - ${timeEnd} น. (GMT+7)` : `${timeStart} น. (GMT+7)`;
     } else {
-      return e ? `${timeStart} - ${timeEnd}` : `${timeStart}`;
+      return e ? `${timeStart} - ${timeEnd} GMT+7` : `${timeStart} GMT+7`;
     }
   }
 
@@ -929,7 +929,7 @@
   function getDisplayDate(startStr: string, endStr: string = '', lang: string = 'th'): string {
     if (!startStr) return "-";
     const locale = lang === 'th' ? 'th-TH' : 'en-GB';
-    const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' };
+    const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' };
     
     const startDate = new Date(startStr);
     const startText = startDate.toLocaleDateString(locale, options);

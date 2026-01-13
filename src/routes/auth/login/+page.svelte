@@ -6,6 +6,7 @@
   let email = "";
   let password = "";
   let showPassword = false;
+  let isSubmitting = false;
 
   let errorMessage = "";
   let errorTimeout: any = null;
@@ -61,12 +62,15 @@
   async function submitLogin() {
     clearError();
 
+    if (isSubmitting) return;
+
     if (!email) return showError("Please enter your email.", "email");
     if (!validateEmail(email))
       return showError("Invalid email format.", "email");
     if (!password) return showError("Please enter your password.", "password");
 
     try {
+      isSubmitting = true;
       const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
       const API_URL = `${base}/api/users/login`;
 
@@ -79,6 +83,8 @@
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        // Clear any stale auth state on failed login
+        auth.logout();
         return showError(
           data?.detail ?? "Login failed. Please check your credentials.",
           "both"
@@ -127,6 +133,8 @@
     } catch (err) {
       console.error("Login Error:", err);
       showError("Cannot connect to server. Please try again later.", "both");
+    } finally {
+      isSubmitting = false;
     }
   }
 </script>
@@ -238,7 +246,7 @@
             </div>
           {/if}
 
-          <button class="login-button" type="submit"> LOGIN NOW </button>
+          <button class="login-button" type="submit" disabled={isSubmitting}> {isSubmitting ? 'LOGGING IN…' : 'LOGIN NOW'} </button>
           <div class="signup-section">
             <span class="signup-text">Don't have an account?</span>
             <a href="/auth/register" class="signup-link">Sign up</a>
