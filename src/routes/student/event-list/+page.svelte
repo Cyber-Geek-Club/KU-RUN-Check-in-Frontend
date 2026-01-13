@@ -5,8 +5,6 @@
   import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
   import { lazyLoadBg } from "$lib/utils/lazyLoad";
-  import { ROUTES } from "$lib/utils/routes";
-  import { navigateToMyEvents } from "$lib/utils/navigation";
 
   // =========================================
   // 1. CONFIGURATION & INTERFACES
