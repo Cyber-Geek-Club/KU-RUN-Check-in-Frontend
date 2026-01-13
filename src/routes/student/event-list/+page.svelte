@@ -349,38 +349,7 @@
         const now = new Date();
         now.setHours(0, 0, 0, 0);
 
-        // [NEW] ดึง all participations เพื่อนับคนไม่ซ้ำต่อ 1 event
-        let allParticipations: any[] = [];
-        try {
-          const allPartRes = await fetch(`${BASE_URL}/api/participations/`, {
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          });
-          if (allPartRes.ok) {
-            allParticipations = await allPartRes.json();
-          }
-        } catch (err) {
-          console.warn("Could not fetch all participations:", err);
-        }
-
-        // [NEW] ฟังก์ชัน helper สำหรับนับ distinct participants และ completions ต่อ event
-        const getEventStats = (eventId: number) => {
-          const eventParticipations = allParticipations.filter((p: any) => Number(p.event_id) === eventId);
-          const distinctUsers = new Set<number>();
-          let completionCount = 0;
-
-          eventParticipations.forEach((p: any) => {
-            const status = p.status ? p.status.toUpperCase() : "";
-            if (status !== 'CANCELLED' && status !== 'CANCEL') {
-              if (p.user_id) distinctUsers.add(Number(p.user_id));
-              if (status === 'COMPLETED') completionCount++;
-            }
-          });
-
-          return {
-            distinctCount: distinctUsers.size,
-            completionCount: completionCount
-          };
-        };
+        // ตัดการดึงข้อมูลทั้งหมดของทุกคน (ป้องกัน 404 และลดภาระ)
 
         // Map ข้อมูลลง UI ตามปกติ
         events = events.map(e => {
@@ -392,10 +361,8 @@
             return s === 'COMPLETED' ? count + 1 : count;
           }, 0);
           
-          // [UPDATED] ใช้ helper function เพื่อนับ distinct participants และ completions
-          const eventStats = getEventStats(e.id);
-          const actualParticipantCount = eventStats.distinctCount > 0 ? eventStats.distinctCount : e.participant_count;
-          const completionCount = eventStats.completionCount;
+          // ใช้จำนวนจากข้อมูลกิจกรรมที่มีอยู่ในหน้า (ไม่ดึงรวมทั้งหมด)
+          const actualParticipantCount = e.participant_count;
           
           // [NEW LOGIC] หา participation ที่เป็นของวันนี้เท่านั้น
           let todayRecord = null;
@@ -478,7 +445,7 @@
             isUpcoming: e.startDate ? new Date(e.startDate) > now : false,
             canRegisterToday: e.is_active && e.is_published && !isJoinedToday && !e.is_full && !reachedLimit,
             participant_count: actualParticipantCount,
-            completionCount: completionCount,  // [NEW] เพิ่ม completionCount
+            completionCount: e.completionCount,  // คงค่าเดิมไว้
             checkin_count: myCompletedCheckins,
           };
         });
@@ -711,11 +678,12 @@
 
   // [NEW] Cancel participation when completionCount = 0
   async function handleDirectCancel(event: EventItem) {
-    if (event.completionCount > 0) {
+    // ไม่อนุญาตยกเลิกหากมีการเช็คอิน/ทำสำเร็จแล้วของผู้ใช้เอง
+    if (event.checkin_count > 0) {
       Swal.fire({ 
         icon: 'info', 
         title: lang === 'th' ? 'ไม่สามารถยกเลิก' : 'Cannot Cancel', 
-        text: lang === 'th' ? 'เฉพาะกิจกรรมที่ยังไม่มีการสำเร็จเท่านั้น' : 'Only events with 0 completions can be cancelled',
+        text: lang === 'th' ? 'ยกเลิกได้เฉพาะกิจกรรมที่ยังไม่มีการเช็คอิน/ทำสำเร็จ' : 'Can cancel only when you have 0 check-ins/completions',
         confirmButtonColor: '#3b82f6' 
       });
       return;
@@ -1256,7 +1224,7 @@
                         </button>
                       {/if}
 
-                      {#if event.isJoined && event.completionCount === 0}
+                      {#if event.isJoined && event.checkin_count === 0}
                         <button class="cancel-direct-btn" on:click={() => handleDirectCancel(event)}>
                           {lang === 'th' ? '❌ ยกเลิก' : '❌ Cancel'}
                         </button>
