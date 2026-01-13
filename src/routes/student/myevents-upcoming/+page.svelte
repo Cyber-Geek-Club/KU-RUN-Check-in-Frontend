@@ -777,7 +777,6 @@ async function handleCheckInConfirm() {
     // --- CASE: CHECKOUT (จบงานวันนี้) ---
     if (selectedEvent.status === 'CHECKED_OUT') {
         
-        // [แก้ไข] ตัด Logic วนลูป Auto-Join ออกทั้งหมด เหลือแค่นี้ครับ
         Swal.fire({
             icon: 'success',
             title: t[lang].alert_success_title, // "สำเร็จ"

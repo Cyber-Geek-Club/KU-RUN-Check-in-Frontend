@@ -840,8 +840,6 @@
     const endDate = new Date(endStr);
     const endText = endDate.toLocaleDateString(locale, options);
 
-    // [FIX] เทียบจากข้อความที่จะโชว์ตรงๆ เลย
-    // ถ้าข้อความเหมือนกัน (เช่น "11 มกราคม 2569" เหมือนกัน) ให้ส่งกลับแค่อันเดียว
     if (startText === endText) {
         return startText;
     }
