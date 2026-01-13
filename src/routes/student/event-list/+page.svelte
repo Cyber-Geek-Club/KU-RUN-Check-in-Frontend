@@ -618,6 +618,9 @@
       return;
     }
 
+    // ตั้งสถานะกำลังสมัครทันทีเพื่อกันการเปิดหลายครั้ง
+    isRegistering = true;
+
     // แสดง Modal ยืนยัน
     const result = await Swal.fire({
       title: lang === 'th' ? 'ยืนยันการสมัครวันนี้?' : 'Confirm Daily Registration?',
@@ -633,7 +636,6 @@
     });
 
     if (result.isConfirmed) {
-      isRegistering = true;
       try {
         const token = getToken();
         if (!token) {
@@ -651,6 +653,9 @@
       } finally {
         isRegistering = false;
       }
+    } else {
+      // ยกเลิก
+      isRegistering = false;
     }
   }
 
@@ -674,7 +679,6 @@
           eventItem.isJoinedToday = true;  // [FIX] Set today's registration status
           eventItem.participationId = responseData.id || null;
           eventItem.participationStatus = 'JOINED';
-          eventItem.participant_count++;
           events = [...events];
           
           Swal.fire({
@@ -683,7 +687,7 @@
               timer: 1500,
               showConfirmButton: false
           });
-          updateUserStatus();  // Refresh full state from server
+          await updateUserStatus();  // Refresh full state from server
       } else {
           // Error
           const contentType = joinRes.headers.get("content-type");
@@ -1247,7 +1251,7 @@
                         </button>
                       
                       {:else}
-                        <button class="register-btn" on:click={() => handleRegister(event)}>
+                        <button class="register-btn" disabled={isRegistering} on:click={() => handleRegister(event)}>
                           {lang === 'th' ? '📝 สมัครวันนี้' : '📝 Register Today'}
                         </button>
                       {/if}
