@@ -6,6 +6,7 @@
   import { enhance } from "$app/forms";
   import { auth } from "$lib/utils/auth";
   import { onMount, onDestroy } from "svelte";
+  import { lazyLoadBg } from "$lib/utils/lazyLoad";
 
   const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -599,7 +600,7 @@
           <div class="event-card">
             <div
               class="card-image"
-              style="background-image: url('{event.image}');"
+              use:lazyLoadBg={event.image}
             >
               <div class="participant-badge">
                 <svg
@@ -935,7 +936,15 @@
     height: 180px;
     background-size: cover;
     background-position: center;
+    background-color: #f3f4f6;
     position: relative;
+    transition: opacity 0.3s ease;
+  }
+  .card-image:not(.lazy-loaded) {
+    opacity: 0.6;
+  }
+  .card-image.lazy-loaded {
+    opacity: 1;
   }
   .participant-badge {
     position: absolute;

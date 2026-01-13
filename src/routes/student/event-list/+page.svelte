@@ -4,6 +4,7 @@
   import { auth } from "$lib/utils/auth";
   import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
+  import { lazyLoadBg } from "$lib/utils/lazyLoad";
 
   // =========================================
   // 1. CONFIGURATION & INTERFACES
@@ -1329,7 +1330,9 @@
   .event-card { background-color: var(--bg-card); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); transition: transform 0.2s ease, box-shadow 0.2s ease; }
   .event-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4); }
   
-  .card-image { height: 180px; background-size: cover; background-position: center; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+  .card-image { height: 180px; background-size: cover; background-position: center; border-bottom: 1px solid rgba(255, 255, 255, 0.05); background-color: #1e293b; transition: opacity 0.3s ease; }
+  .card-image:not(.lazy-loaded) { opacity: 0.6; }
+  .card-image.lazy-loaded { opacity: 1; }
   .card-content { padding: 20px; flex: 1; display: flex; flex-direction: column; }
   
   .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 10px; }

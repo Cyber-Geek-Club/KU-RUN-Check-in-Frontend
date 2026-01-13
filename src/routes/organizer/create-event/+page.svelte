@@ -6,6 +6,7 @@
   import { enhance } from "$app/forms";
   import { goto } from "$app/navigation";
   import { auth } from "$lib/utils/auth";
+  import { lazyLoadBg } from "$lib/utils/lazyLoad";
 
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
     /\/$/,
@@ -1837,6 +1838,14 @@
     height: 200px;
     width: 100%;
     position: relative;
+    background-color: #f3f4f6;
+    transition: opacity 0.3s ease;
+  }
+  .card-image:not(.lazy-loaded) {
+    opacity: 0.6;
+  }
+  .card-image.lazy-loaded {
+    opacity: 1;
   }
   .card-image img {
     height: 100%;
