@@ -530,6 +530,22 @@
     // ป้องกันการกดซ้ำ
     if (isRegistering) return;
 
+    // [RULE] จำกัดสมัครได้ครั้งเดียวต่อกิจกรรม
+    if (eventItem.isJoined) {
+      Swal.fire({
+        icon: 'info',
+        title: lang === 'th' ? 'สมัครได้ครั้งเดียว' : 'One-time Registration',
+        text: lang === 'th'
+          ? 'คุณได้สมัครกิจกรรมนี้ไปแล้ว ไม่สามารถสมัครซ้ำได้'
+          : 'You have already registered for this event and cannot register again.',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#3b82f6'
+      }).then(() => {
+        navigateToMyEvents('student');
+      });
+      return;
+    }
+
     // [NEW] ตรวจสอบว่าสามารถสมัครได้วันนี้หรือไม่
     if (eventItem.isJoinedToday) {
       Swal.fire({
@@ -1007,19 +1023,9 @@
         if (now > end) return false;
     }
 
-    // [FIX MULTI-DAY] แสดงกิจกรรมที่:
-    // 1. ยังไม่ได้สมัครเลย (isJoined = false)
-    // 2. สมัครวันนี้แล้ว (isJoinedToday = true)
-    // 3. หรือเป็น multi-day ที่ยังทำไม่ครบ (checkin_count < max)
-    const isMultiDayIncomplete = 
-      event.event_type === 'multi_day' && 
-      event.allow_daily_checkin && 
-      typeof event.max_checkins_per_user === 'number' &&
-      event.checkin_count < event.max_checkins_per_user;
-
-    if (event.isJoined && !event.isJoinedToday && !isMultiDayIncomplete) {
-        // Single-day ที่สมัครวันก่อนหน้า หรือ multi-day ที่ทำครบแล้ว -> ไม่แสดง
-        return false;
+    // [RULE] จำกัดสมัครได้ครั้งเดียวต่อกิจกรรม: ถ้าเคยสมัครแล้วและไม่ใช่การสมัครของวันนี้ → ไม่แสดง
+    if (event.isJoined && !event.isJoinedToday) {
+      return false;
     }
 
     // --- Search Query Logic (คงเดิม) ---
