@@ -314,6 +314,7 @@
                   ? Number(item.max_checkins_per_user)
                   : null,
             checkin_count: existing ? existing.checkin_count : 0,
+            completionCount: existing ? existing.completionCount : 0,
           };
         });
 
@@ -423,8 +424,10 @@
             }
           }
 
-          // [AUTO CLEANUP] ถ้าข้อมูลเก่า (ไม่ใช่วันนี้) → ลบออก/ยกเลิก
-          if (anyActiveRecord && !todayRecord) {
+          // [AUTO CLEANUP] ถ้าข้อมูลเก่า (ไม่ใช่วันนี้) → ลบออก/ยกเลิก (เฉพาะ single_day)
+          const isMultiDay = e.event_type === 'multi_day' && e.allow_daily_checkin;
+          
+          if (anyActiveRecord && !todayRecord && !isMultiDay) {
             const recordDate = new Date(anyActiveRecord.created_at || anyActiveRecord.date || anyActiveRecord.start_date);
             recordDate.setHours(0, 0, 0, 0);
             
@@ -436,7 +439,7 @@
                 console.log(`[COMPLETED] Event ${e.id}: Previous day completed, allowing new registration today.`);
                 anyActiveRecord = null;
               }
-              // [CASE 2] ถ้า status ≠ COMPLETED (เช่น CHECKED_IN, PENDING) → Auto-cancel
+              // [CASE 2] ถ้า status ≠ COMPLETED (เช่น CHECKED_IN, PENDING) → Auto-cancel (single_day only)
               else {
                 console.log(`[AUTO CANCEL] Event ${e.id}: Previous day record (${status}), auto-canceling.`);
                 fetch(`${BASE_URL}/api/participations/${anyActiveRecord.id}/cancel`, {
@@ -458,6 +461,7 @@
           const isJoined = !!finalRecord;
           const isJoinedToday = !!todayRecord;
 
+          // [FIX] สำหรับ multi-day: ถ้ายังไม่สมัครวันนี้ และ COMPLETED ครบแล้ว → ห้ามสมัครต่อ
           const isMultiDaily = e.event_type === 'multi_day' && e.allow_daily_checkin;
           const maxCheckins = e.max_checkins_per_user;
           const reachedLimit = isMultiDaily && typeof maxCheckins === 'number' && maxCheckins > 0
@@ -1003,9 +1007,18 @@
         if (now > end) return false;
     }
 
-    // [NEW] แสดงทั้งกิจกรรมที่ยังไม่สมัคร และกิจกรรมที่สมัครของวันนี้แล้ว
-    // ถ้าสมัครวันก่อนหน้า ก็ไม่ต้องแสดง (เพราะจะถูก CANCELED อยู่แล้ว หรือ COMPLETED ไปแล้ว)
-    if (event.isJoined && !event.isJoinedToday) {
+    // [FIX MULTI-DAY] แสดงกิจกรรมที่:
+    // 1. ยังไม่ได้สมัครเลย (isJoined = false)
+    // 2. สมัครวันนี้แล้ว (isJoinedToday = true)
+    // 3. หรือเป็น multi-day ที่ยังทำไม่ครบ (checkin_count < max)
+    const isMultiDayIncomplete = 
+      event.event_type === 'multi_day' && 
+      event.allow_daily_checkin && 
+      typeof event.max_checkins_per_user === 'number' &&
+      event.checkin_count < event.max_checkins_per_user;
+
+    if (event.isJoined && !event.isJoinedToday && !isMultiDayIncomplete) {
+        // Single-day ที่สมัครวันก่อนหน้า หรือ multi-day ที่ทำครบแล้ว -> ไม่แสดง
         return false;
     }
 

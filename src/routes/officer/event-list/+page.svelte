@@ -230,10 +230,18 @@
         }),
       );
 
-      // ✅ Filter: single-day ที่ COMPLETED ไม่ต้องแสดง, แต่ multi-day ยังต้องแสดงได้ (เพื่อทำวันถัดไป)
+      // ✅ Filter: single-day ที่ COMPLETED ไม่ต้องแสดง, แต่ multi-day ยังต้องแสดงได้ถ้ายังทำไม่ครบ
       events = enrichedEvents.filter((e) => {
         if (e.participationStatus !== 'COMPLETED') return true;
-        return e.event_type === 'multi_day';
+        
+        // ถ้า COMPLETED แล้ว แต่เป็น multi-day และยังทำไม่ครบ -> ยังแสดง
+        const isMultiDayIncomplete = 
+          e.event_type === 'multi_day' && 
+          e.allow_daily_checkin &&
+          typeof e.max_checkins_per_user === 'number' &&
+          e.checkin_count < e.max_checkins_per_user;
+          
+        return isMultiDayIncomplete;
       });
 
       // เริ่ม Polling ถ้ามีข้อมูล (เรียกฟังก์ชัน startPolling ของเดิม)
@@ -772,6 +780,13 @@
                       RUNNING
                     </button>
                   </div>
+                {:else if event.event_type === 'multi_day' && event.allow_daily_checkin && typeof event.max_checkins_per_user === 'number' && event.max_checkins_per_user > 0 && event.checkin_count >= event.max_checkins_per_user}
+                  <button
+                    class="register-btn completed"
+                    disabled
+                  >
+                    COMPLETED {event.checkin_count}/{event.max_checkins_per_user}
+                  </button>
                 {:else}
                   <button
                     class="register-btn"
@@ -1132,6 +1147,15 @@
   }
   .register-btn:hover {
     background-color: #059669;
+  }
+  .register-btn.completed {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    cursor: not-allowed;
+  }
+  .register-btn.completed:hover {
+    background-color: rgba(16, 185, 129, 0.1);
   }
   .running-btn {
     background-color: #f59e0b; /* สีเหลือง Amber */
