@@ -15,7 +15,7 @@
 
   $: {
     if (role === "student") {
-      backUrl = "/student/event-lios";
+      backUrl = "/student/event-list";
     } else {
       backUrl = "/organizer/create-event";
     }
