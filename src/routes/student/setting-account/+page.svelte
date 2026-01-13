@@ -3,6 +3,7 @@
   import { slide } from "svelte/transition";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
+  import { ROUTES } from "$lib/utils/routes";
 
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "";

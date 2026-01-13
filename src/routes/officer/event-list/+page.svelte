@@ -35,8 +35,15 @@
     time: string;
     isReadMore: boolean;
     isJoined: boolean;
+    isJoinedToday: boolean;
     participationId: number | null;
     participationStatus: string | null;
+
+    // [NEW] Single Day / Multi Day fields
+    event_type: 'single_day' | 'multi_day';
+    allow_daily_checkin: boolean;
+    max_checkins_per_user: number | null;
+    checkin_count: number;
   }
 
   let events: EventItem[] = [];
@@ -114,19 +121,42 @@
 
       const myParticipationMap = new Map<
         number,
-        { id: number; status: string }
+        { id: number; status: string; joinedToday: boolean; completedCount: number }
       >();
 
       if (myParticipationsRes.ok) {
         const myData = await myParticipationsRes.json();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const normalizeDate = (record: any): Date | null => {
+          const raw = record?.created_at || record?.date || record?.start_date;
+          if (!raw) return null;
+          const d = new Date(raw);
+          if (Number.isNaN(d.getTime())) return null;
+          d.setHours(0, 0, 0, 0);
+          return d;
+        };
+
         myData.forEach((item: any) => {
           const status = item.status ? item.status.toUpperCase() : "";
           if (status !== "CANCELLED" && status !== "CANCEL") {
-            // เก็บทั้ง ID และ Status
-            myParticipationMap.set(Number(item.event_id), {
-              id: Number(item.id),
-              status: status,
-            });
+            const eventId = Number(item.event_id);
+            const existing = myParticipationMap.get(eventId);
+
+            const recordDay = normalizeDate(item);
+            const isToday = !!recordDay && recordDay.getTime() === today.getTime();
+            const completedInc = status === 'COMPLETED' ? 1 : 0;
+
+            // Always keep latest participation id/status (for cancel today)
+            const next = {
+              id: existing ? (Number(item.id) > existing.id ? Number(item.id) : existing.id) : Number(item.id),
+              status: existing ? (Number(item.id) > existing.id ? status : existing.status) : status,
+              joinedToday: (existing?.joinedToday ?? false) || isToday,
+              completedCount: (existing?.completedCount ?? 0) + completedInc,
+            };
+
+            myParticipationMap.set(eventId, next);
           }
         });
       }
@@ -149,6 +179,7 @@
 
           const myPartData = myParticipationMap.get(e.id);
           const amIJoined = !!myPartData;
+          const amIJoinedToday = !!myPartData?.joinedToday;
           const myStatus = myPartData ? myPartData.status : null;
 
           const displayTime =
@@ -182,16 +213,28 @@
             time: displayTime,
             isReadMore: false,
             isJoined: amIJoined,
+            isJoinedToday: amIJoinedToday,
             participationId: myPartData ? myPartData.id : null,
             participationStatus: myStatus, // ✅ Set status
+
+            event_type: (e.event_type === 'multi_day' ? 'multi_day' : 'single_day'),
+            allow_daily_checkin: Boolean(e.allow_daily_checkin),
+            max_checkins_per_user:
+              typeof e.max_checkins_per_user === 'number'
+                ? e.max_checkins_per_user
+                : e.max_checkins_per_user
+                  ? Number(e.max_checkins_per_user)
+                  : null,
+            checkin_count: myPartData?.completedCount ?? 0,
           };
         }),
       );
 
-      // ✅ Filter: กรองกิจกรรมที่ COMPLETED ออกไป ไม่ให้แสดง
-      events = enrichedEvents.filter(
-        (e) => e.participationStatus !== "COMPLETED",
-      );
+      // ✅ Filter: single-day ที่ COMPLETED ไม่ต้องแสดง, แต่ multi-day ยังต้องแสดงได้ (เพื่อทำวันถัดไป)
+      events = enrichedEvents.filter((e) => {
+        if (e.participationStatus !== 'COMPLETED') return true;
+        return e.event_type === 'multi_day';
+      });
 
       // เริ่ม Polling ถ้ามีข้อมูล (เรียกฟังก์ชัน startPolling ของเดิม)
       if (events.length > 0) startPolling(30000);
@@ -348,8 +391,28 @@
   // clearClientData removed - auth.logout() now handles all cleanup
 
   async function handleRegister(eventItem: EventItem) {
-    if (eventItem.isJoined) {
+    if (eventItem.isJoinedToday) {
       await navigateToMyEvents('officer');
+      return;
+    }
+
+    if (eventItem.isJoined && (eventItem.event_type !== 'multi_day' || !eventItem.allow_daily_checkin)) {
+      await navigateToMyEvents('officer');
+      return;
+    }
+
+    if (
+      eventItem.event_type === 'multi_day' &&
+      eventItem.allow_daily_checkin &&
+      typeof eventItem.max_checkins_per_user === 'number' &&
+      eventItem.max_checkins_per_user > 0 &&
+      eventItem.checkin_count >= eventItem.max_checkins_per_user
+    ) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Completed',
+        text: `You have completed ${eventItem.checkin_count}/${eventItem.max_checkins_per_user} days`,
+      });
       return;
     }
 
@@ -666,6 +729,19 @@
                     {event.time}
                   </div>
                   <div class="detail-row">
+                    <span class="detail-icon">🏷️</span>
+                    {event.event_type === 'multi_day' ? 'Multi Day' : 'Single Day'}
+                    {#if event.event_type === 'multi_day' && event.allow_daily_checkin}
+                      <span style="opacity: 0.85;"> • Daily</span>
+                    {/if}
+                  </div>
+                  {#if event.event_type === 'multi_day' && event.allow_daily_checkin}
+                    <div class="detail-row">
+                      <span class="detail-icon">✅</span>
+                      Progress: {event.checkin_count}/{event.max_checkins_per_user ?? '-'} days
+                    </div>
+                  {/if}
+                  <div class="detail-row">
                     <span class="detail-icon">📍</span>
                     {event.location}
                   </div>
@@ -680,7 +756,7 @@
                   {event.isReadMore ? "Read less" : "Read more"}
                 </button>
 
-                {#if event.isJoined}
+                {#if event.isJoinedToday}
                   <div style="display: flex; gap: 8px;">
                     <button
                       class="cancel-btn"

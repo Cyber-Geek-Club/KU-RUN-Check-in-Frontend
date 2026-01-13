@@ -294,6 +294,7 @@
             is_full: item.is_full || (item.participant_count >= item.max_participants),
             startDate: item.event_date,
             endDate: item.event_end_date,
+            end_time: item.end_time || "",
             isJoined: existing ? existing.isJoined : false,
             isJoinedToday: existing ? existing.isJoinedToday : false,
             participationId: existing ? existing.participationId : null,
@@ -301,7 +302,18 @@
             participationDate: existing ? existing.participationDate : null,
             isExpanded: existing ? existing.isExpanded : false,
             isUpcoming: existing ? existing.isUpcoming : false,
-            canRegisterToday: existing ? existing.canRegisterToday : false
+            canRegisterToday: existing ? existing.canRegisterToday : false,
+
+            // [NEW] Single Day / Multi Day fields
+            event_type: (item.event_type === 'multi_day' ? 'multi_day' : 'single_day'),
+            allow_daily_checkin: Boolean(item.allow_daily_checkin),
+            max_checkins_per_user:
+              typeof item.max_checkins_per_user === 'number'
+                ? item.max_checkins_per_user
+                : item.max_checkins_per_user
+                  ? Number(item.max_checkins_per_user)
+                  : null,
+            checkin_count: existing ? existing.checkin_count : 0,
           };
         });
 
@@ -372,6 +384,12 @@
         // Map ข้อมูลลง UI ตามปกติ
         events = events.map(e => {
           const myRecords = myData.filter((item: any) => Number(item.event_id) === e.id);
+
+          const myCompletedCheckins = myRecords.reduce((count: number, record: any) => {
+            const s = record?.status ? String(record.status).toUpperCase() : "";
+            if (s === 'CANCELLED' || s === 'CANCEL') return count;
+            return s === 'COMPLETED' ? count + 1 : count;
+          }, 0);
           
           // [UPDATED] ใช้ helper function เพื่อนับ distinct participants และ completions
           const eventStats = getEventStats(e.id);
@@ -440,6 +458,12 @@
           const isJoined = !!finalRecord;
           const isJoinedToday = !!todayRecord;
 
+          const isMultiDaily = e.event_type === 'multi_day' && e.allow_daily_checkin;
+          const maxCheckins = e.max_checkins_per_user;
+          const reachedLimit = isMultiDaily && typeof maxCheckins === 'number' && maxCheckins > 0
+            ? myCompletedCheckins >= maxCheckins
+            : false;
+
           return {
             ...e,
             isJoined,
@@ -448,9 +472,10 @@
             participationStatus: finalRecord ? finalRecord.status.toUpperCase() : null,
             participationDate: finalRecord ? (finalRecord.created_at || finalRecord.date) : null,
             isUpcoming: e.startDate ? new Date(e.startDate) > now : false,
-            canRegisterToday: e.is_active && e.is_published && !isJoinedToday && !e.is_full,
+            canRegisterToday: e.is_active && e.is_published && !isJoinedToday && !e.is_full && !reachedLimit,
             participant_count: actualParticipantCount,
-            completionCount: completionCount  // [NEW] เพิ่ม completionCount
+            completionCount: completionCount,  // [NEW] เพิ่ม completionCount
+            checkin_count: myCompletedCheckins,
           };
         });
       }
@@ -513,6 +538,26 @@
         confirmButtonColor: '#3b82f6'
       }).then(() => {
         navigateToMyEvents('student');
+      });
+      return;
+    }
+
+    // [NEW] Multi-day: enforce max check-ins per user (if provided)
+    if (
+      eventItem.event_type === 'multi_day' &&
+      eventItem.allow_daily_checkin &&
+      typeof eventItem.max_checkins_per_user === 'number' &&
+      eventItem.max_checkins_per_user > 0 &&
+      eventItem.checkin_count >= eventItem.max_checkins_per_user
+    ) {
+      Swal.fire({
+        icon: 'info',
+        title: lang === 'th' ? 'ทำครบแล้ว' : 'Completed',
+        text:
+          lang === 'th'
+            ? `คุณทำกิจกรรมครบ ${eventItem.checkin_count}/${eventItem.max_checkins_per_user} วันแล้ว`
+            : `You have completed ${eventItem.checkin_count}/${eventItem.max_checkins_per_user} days`,
+        confirmButtonText: 'OK',
       });
       return;
     }
@@ -1092,6 +1137,15 @@
                       {:else}
                         <span class="status-badge">{t[lang].status_active}</span>
                       {/if}
+
+                      <div class="type-badges">
+                        <span class="type-badge" class:multi={event.event_type === 'multi_day'}>
+                          {event.event_type === 'multi_day' ? t[lang].event_type_multi : t[lang].event_type_single}
+                        </span>
+                        {#if event.event_type === 'multi_day' && event.allow_daily_checkin}
+                          <span class="type-badge daily">{t[lang].daily_checkin}</span>
+                        {/if}
+                      </div>
                       <div class="count-badge">
                         <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         {event.participant_count}/{event.max_participants}
@@ -1120,6 +1174,17 @@
                           <svg class="pill-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                           <span>{event.distance_km} KM</span>
                         </div>
+
+                        {#if event.event_type === 'multi_day' && event.allow_daily_checkin}
+                          <div class="info-pill progress-pill">
+                            <svg class="pill-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>
+                              {t[lang].checkin_progress}: {event.checkin_count}/{event.max_checkins_per_user ?? '-'} {t[lang].day_unit}
+                            </span>
+                          </div>
+                        {/if}
                       </div>
                       <div class="card-separator"></div>
                     </div>
@@ -1153,6 +1218,13 @@
                       {:else if isUpcomingTomorrow(event)}
                         <button class="register-btn coming-soon" disabled>
                           {lang === 'th' ? '⏳ รอเปิด' : '⏳ Coming Soon'}
+                        </button>
+
+                      {:else if event.event_type === 'multi_day' && event.allow_daily_checkin && typeof event.max_checkins_per_user === 'number' && event.max_checkins_per_user > 0 && event.checkin_count >= event.max_checkins_per_user}
+                        <button class="register-btn completed" disabled>
+                          {lang === 'th'
+                            ? `${t[lang].checkin_progress}: ${event.checkin_count}/${event.max_checkins_per_user}`
+                            : `${t[lang].checkin_progress}: ${event.checkin_count}/${event.max_checkins_per_user}`}
                         </button>
                       
                       {:else}
@@ -1367,11 +1439,18 @@
   .status-badge.no-active { color: #ef4444; border-color: #ef4444; }
   .status-badge.resubmit { color: #ef4444; border-color: #ef4444; }
   .status-badge.pending { color: #f59e0b; border-color: #f59e0b; }
+
+  .type-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .type-badge { font-size: 0.65rem; font-weight: 700; color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.65); padding: 2px 8px; border-radius: 12px; letter-spacing: 0.4px; }
+  .type-badge.multi { color: #a78bfa; border-color: rgba(167, 139, 250, 0.65); }
+  .type-badge.daily { color: #34d399; border-color: rgba(52, 211, 153, 0.65); }
+
+  .info-pill.progress-pill { background-color: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.22); }
   
   .count-badge { background-color: #3b82f6; color: white; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 12px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
   
-  .card-desc { font-size: 0.85rem; color: #94a3b8; margin: 0 0 24px 0; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
-  .card-desc.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; height: auto; }
+  .card-desc { font-size: 0.85rem; color: #94a3b8; margin: 0 0 24px 0; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
+  .card-desc.expanded { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; height: auto; }
   
   .info-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
   .info-pill { background-color: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px 10px; display: flex; align-items: flex-start; gap: 8px; font-size: 0.75rem; color: #cbd5e1; line-height: 1.4; word-break: break-word; }
@@ -1395,6 +1474,8 @@
   .register-btn.joined:hover { background: #2563eb; filter: brightness(1.1); transform: translateY(-1px); }
   
   .register-btn.coming-soon { background: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: 0.8; }
+  .register-btn.completed { background: rgba(16, 185, 129, 0.12); color: #10b981; box-shadow: none; cursor: not-allowed; border: 1px solid rgba(16, 185, 129, 0.4); }
+  .register-btn.completed:hover { filter: none; transform: none; }
 
   .register-btn.unpublished { background: #ef4444 !important; color: #ffffff !important; opacity: 1; cursor: not-allowed; box-shadow: none; border: none; }
 
