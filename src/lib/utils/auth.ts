@@ -151,16 +151,21 @@ function createAuthStore() {
     }
 
     function login(data: LoginResponse) {
+        if (!data.access_token) {
+            console.error('Login error: Missing access token');
+            return;
+        }
+
         const token = data.access_token;
         const refreshToken = data.refresh_token || null;
         const expiresIn = data.expires_in || 3600; // default 1 hour
         const expiry = calculateExpiry(expiresIn);
 
         const user: UserData = {
-            id: data.user_id,
-            email: data.email,
-            name: data.name,
-            role: data.role
+            id: data.user_id || 0,
+            email: data.email || '',
+            name: data.name || '',
+            role: data.role || ''
         };
 
         if (browser) {
@@ -224,13 +229,43 @@ function createAuthStore() {
         return true;
     }
 
+    // Get current user data
+    function getUser(): UserData | null {
+        if (!browser) return null;
+        
+        const storedUser = localStorage.getItem('user_info');
+        if (storedUser) {
+            try {
+                return JSON.parse(storedUser);
+            } catch (e) {
+                console.error('Failed to parse user info:', e);
+                return null;
+            }
+        }
+        return null;
+    }
+
+    // Check if user is authenticated
+    function isAuthenticated(): boolean {
+        if (!browser) return false;
+        const token = localStorage.getItem('access_token');
+        const expiryStr = localStorage.getItem('token_expiry');
+        
+        if (!token || !expiryStr) return false;
+        
+        const expiry = parseInt(expiryStr);
+        return !isTokenExpired(expiry);
+    }
+
     // Expose methods
     return {
         subscribe,
         login,
         logout,
         refreshAccessToken,
-        checkTokenValidity
+        checkTokenValidity,
+        getUser,
+        isAuthenticated
     };
 }
 

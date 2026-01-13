@@ -1,1 +1,1 @@
-export { default as component } from "../../../../src/routes/organize/monthly-reward/+page.svelte";
+export { default as component } from "../../../../src/routes/organizer/monthly-reward/+page.svelte";
