@@ -2093,7 +2093,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .event-card:hover { transform: translateY(-4px); }
   .card-image { height: 180px; background-size: cover; background-position: center; width: 100%; position: relative; background-color: #1e293b; transition: opacity 0.3s ease; }
   .card-image:not(.lazy-loaded) { opacity: 0.6; }
-  .card-image.lazy-loaded { opacity: 1; }
   .card-content { padding: 20px; flex: 1; display: flex; flex-direction: column; }
   .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 10px; }
   .card-title { font-size: 1.25rem; font-weight: 700; color: white; margin: 0; line-height: 1.4; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.8em; line-clamp: 2; }
@@ -2117,8 +2116,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .pill-icon { width: 18px; height: 18px; opacity: 0.8; flex-shrink: 0; }
 
   .card-footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 10px; }
-  .read-more-btn { background: transparent; border: 1px solid #cbd5e1; color: #cbd5e1; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; transition: 0.2s; }
-  .read-more-btn:hover { border-color: white; color: white; background: rgba(255,255,255,0.05); }
 
   .status-btn { color: white; border: none; padding: 9px 24px; border-radius: 8px; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: 0.2s; }
   .status-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
@@ -2130,7 +2127,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .completed-btn { background: #10b981; }
   .canceled-btn { background: #ef4444; }
   .waiting-btn { background: #facc15; color: #854d0e; }
-  .resubmit-btn { background: #ef4444; color: white; }
 
   .locked-card .card-image { filter: grayscale(100%); opacity: 0.8; }
   .locked-card .card-content { opacity: 0.7; }
@@ -2149,7 +2145,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .modal-close { position: absolute; top: 15px; right: 20px; background: none; border: none; color: #94a3b8; font-size: 2rem; line-height: 1; cursor: pointer; z-index: 10; }
   .modal-body { padding: 20px 30px 40px; text-align: center; }
   .modal-title { font-size: 1.5rem; color: white; margin: 10px 0 5px; }
-  .modal-subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 25px; }
 
   .stepper { display: flex; align-items: center; justify-content: space-between; background: #0f172a; padding: 20px 30px; border-bottom: 1px solid rgba(255,255,255,0.05); }
   .step-wrapper { display: flex; align-items: center; flex: 1; position: relative; }
@@ -2181,7 +2176,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
 
   .action-submit-btn { width: 100%; padding: 14px; background: var(--primary); color: #064e3b; border: none; border-radius: 10px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s; }
   .action-submit-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
-  .action-submit-btn.blue-theme { background: #3b82f6; color: white; }
   .action-submit-btn.purple-theme { background: #d8b4fe; color: #4c1d95; }
   .action-submit-btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; transform: none; }
 
