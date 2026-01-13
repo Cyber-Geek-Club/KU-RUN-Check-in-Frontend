@@ -5,8 +5,6 @@
   import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
   import { lazyLoadBg } from "$lib/utils/lazyLoad";
-  import { ROUTES } from "$lib/utils/routes";
-  import { navigateToEventList } from "$lib/utils/navigation";
 
   // --- CONFIG ---
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
