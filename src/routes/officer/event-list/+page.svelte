@@ -236,7 +236,6 @@
     }
     startSessionTimer();
     await fetchEvents();
-    resetDailyJoinStatus(); // รีเซ็ต isJoinedToday เมื่อวันเปลี่ยน
     startPolling();
 
     // Pause/resume polling on tab visibility
@@ -447,12 +446,32 @@
           const finalRecord = anyActiveRecord;
           const isJoined = !!finalRecord;
           
+          // [FIX] สำหรับ multi-day events - เช็คว่า join ไปวันนี้แล้วหรือยัง
+          let isJoinedToday = false;
+          if (e.event_type === 'multi_day' && myRecords.length > 0) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayStr = today.toISOString().split('T')[0];
+            
+            // เช็คว่ามี record ที่ถูกสร้างในวันนี้หรือไม่
+            isJoinedToday = myRecords.some((record: any) => {
+              const s = record.status ? record.status.toUpperCase() : "";
+              if (s === 'CANCELLED' || s === 'CANCEL') return false;
+              
+              const recordDate = record.created_at || record.date;
+              if (recordDate) {
+                const recordDateOnly = new Date(recordDate).toISOString().split('T')[0];
+                return recordDateOnly === todayStr;
+              }
+              return false;
+            });
+          }
+          
           if (finalRecord) {
-            console.log(`[Event ${e.id}] Active record found:`, finalRecord.id, finalRecord.status);
+            console.log(`[Event ${e.id}] Active record found:`, finalRecord.id, finalRecord.status, `isJoinedToday: ${isJoinedToday}`);
           } else {
             console.log(`[Event ${e.id}] No active record - can register`);
           }
-          const isJoinedToday = false; // ไม่ใช้แล้ว เพราะสมัครได้แค่ครั้งเดียว
 
           return {
             ...e,
@@ -483,39 +502,6 @@
     }
   }
 
-  // [NEW HELPER] เช็คว่าสามารถเปิดการสมัครวันนี้ได้หรือไม่
-  // ฟังก์ชันรีเซ็ต isJoinedToday เมื่อวันเปลี่ยน (สำหรับ multi-day events)
-  function resetDailyJoinStatus() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
-    
-    // เช็คว่าวันนี้เป็นวันใหม่หรือไม่
-    const lastResetDate = localStorage.getItem('lastResetDate');
-    
-    if (lastResetDate !== todayStr) {
-      // วันเปลี่ยนแล้ว - รีเซ็ต isJoinedToday สำหรับทุก event ที่เป็น multi-day
-      events = events.map(event => {
-        // รีเซ็ตเฉพาะ event ที่เป็น multi-day และยังอยู่ในช่วงวันที่
-        if (event.event_type === 'multi_day' && event.endDate) {
-          const startDate = new Date(event.startDate);
-          startDate.setHours(0, 0, 0, 0);
-          const endDate = new Date(event.endDate);
-          endDate.setHours(23, 59, 59, 999);
-          
-          // ถ้าวันนี้ยังอยู่ในช่วง event
-          if (today >= startDate && today.getTime() <= endDate.getTime()) {
-            return { ...event, isJoinedToday: false };
-          }
-        }
-        return event;
-      });
-      
-      // บันทึกวันที่รีเซ็ตล่าสุด
-      localStorage.setItem('lastResetDate', todayStr);
-    }
-  }
-
   function canRegisterTodayCheck(event: EventItem): boolean {
     const now = new Date();
     const today = new Date(now);
@@ -530,8 +516,19 @@
     
     const isTodayInRange = today >= startDate && today <= endDate;
     
-    // และต้องไม่ได้สมัครของวันนี้แล้ว
-    return isTodayInRange && !event.isJoinedToday && event.is_active && event.is_published && !event.is_full;
+    // เช็คว่า event active และ published และไม่เต็ม
+    if (!isTodayInRange || !event.is_active || !event.is_published || event.is_full) {
+      return false;
+    }
+    
+    // แยก logic ตาม event_type
+    if (event.event_type === 'multi_day') {
+      // Multi-day: ลงทะเบียนได้ทุกวันที่อยู่ในช่วง event แต่วันละครั้ง
+      return !event.isJoinedToday;
+    } else {
+      // Single-day: ลงทะเบียนได้ครั้งเดียวเท่านั้น
+      return !event.isJoined;
+    }
   }
   
   // [NEW HELPER] เช็คว่ากิจกรรมนี้ยังไม่เปิดให้สมัคร (วันนี้ยังไม่ถึงวันเริ่ม)
