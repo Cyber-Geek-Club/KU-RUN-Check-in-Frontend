@@ -236,6 +236,7 @@
     }
     startSessionTimer();
     await fetchEvents();
+    resetDailyJoinStatus(); // รีเซ็ต isJoinedToday เมื่อวันเปลี่ยน
     startPolling();
 
     // Pause/resume polling on tab visibility
@@ -483,6 +484,38 @@
   }
 
   // [NEW HELPER] เช็คว่าสามารถเปิดการสมัครวันนี้ได้หรือไม่
+  // ฟังก์ชันรีเซ็ต isJoinedToday เมื่อวันเปลี่ยน (สำหรับ multi-day events)
+  function resetDailyJoinStatus() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+    
+    // เช็คว่าวันนี้เป็นวันใหม่หรือไม่
+    const lastResetDate = localStorage.getItem('lastResetDate');
+    
+    if (lastResetDate !== todayStr) {
+      // วันเปลี่ยนแล้ว - รีเซ็ต isJoinedToday สำหรับทุก event ที่เป็น multi-day
+      events = events.map(event => {
+        // รีเซ็ตเฉพาะ event ที่เป็น multi-day และยังอยู่ในช่วงวันที่
+        if (event.event_type === 'multi_day' && event.endDate) {
+          const startDate = new Date(event.startDate);
+          startDate.setHours(0, 0, 0, 0);
+          const endDate = new Date(event.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          
+          // ถ้าวันนี้ยังอยู่ในช่วง event
+          if (today >= startDate && today.getTime() <= endDate.getTime()) {
+            return { ...event, isJoinedToday: false };
+          }
+        }
+        return event;
+      });
+      
+      // บันทึกวันที่รีเซ็ตล่าสุด
+      localStorage.setItem('lastResetDate', todayStr);
+    }
+  }
+
   function canRegisterTodayCheck(event: EventItem): boolean {
     const now = new Date();
     const today = new Date(now);
