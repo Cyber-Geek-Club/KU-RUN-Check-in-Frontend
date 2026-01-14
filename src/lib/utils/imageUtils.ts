@@ -13,13 +13,17 @@ export const API_BASE_URL = (typeof import.meta !== 'undefined'
  * Handles relative paths from backend and ensures proper URL format
  * 
  * @param path - Image path (e.g., "/uploads/events/abc123.jpg" or full URL)
- * @returns Full URL to the image
+ * @returns Full URL to the image (with /api prefix for uploads)
  */
 export function resolveImageUrl(path: string | null | undefined): string {
   if (!path) return '';
   
   // Already a full URL
   if (path.startsWith('http://') || path.startsWith('https://')) {
+    // Check if it's our API URL but missing /api prefix for uploads
+    if (path.includes('/uploads/') && !path.includes('/api/uploads/')) {
+      return path.replace('/uploads/', '/api/uploads/');
+    }
     return path;
   }
   
@@ -32,7 +36,12 @@ export function resolveImageUrl(path: string | null | undefined): string {
   const baseUrl = API_BASE_URL.replace(/\/$/, '');
   
   // Ensure path starts with /
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  let cleanPath = path.startsWith('/') ? path : `/${path}`;
+  
+  // Add /api prefix for uploads path (backend serves images at /api/uploads/...)
+  if (cleanPath.startsWith('/uploads/')) {
+    cleanPath = `/api${cleanPath}`;
+  }
   
   return `${baseUrl}${cleanPath}`;
 }
