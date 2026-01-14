@@ -1241,35 +1241,36 @@
                   {/if}
 
                   <div class="card-footer-actions">
-                      <button class="view-btn" on:click={() => toggleDetails(i)}>
-                        {event.isExpanded ? t[lang].btn_read_less : t[lang].btn_read_more}
-                      </button>
+                    <button class="view-btn" on:click={() => toggleDetails(i)}>
+                      {event.isExpanded ? t[lang].btn_read_less : t[lang].btn_read_more}
+                    </button>
 
+                    <div class="footer-actions">
                       {#if event.isJoined}
                         <button class="register-btn running" on:click={() => navigateToMyEvents('student')}>
                           {lang === 'th' ? '✅ สมัครแล้ว' : '✅ Registered'}
                         </button>
 
                       {:else if !event.is_published}
-                          <button class="register-btn unpublished" disabled>
-                              {#if lang === 'th'}
-                                  ไม่รับสมัคร <span style="font-size: 0.8em; opacity: 0.9;"></span>
-                              {:else}
-                                  NOT APPLY <span style="font-size: 0.8em; opacity: 0.9;"></span>
-                              {/if}
-                          </button>
+                        <button class="register-btn unpublished" disabled>
+                          {#if lang === 'th'}
+                            ไม่รับสมัคร <span style="font-size: 0.8em; opacity: 0.9;"></span>
+                          {:else}
+                            NOT APPLY <span style="font-size: 0.8em; opacity: 0.9;"></span>
+                          {/if}
+                        </button>
 
                       {:else if !event.is_active}
                         <button class="register-btn no-active" disabled>{t[lang].status_not_open}</button>
-                      
+
                       {:else if event.is_full}
                         <button class="register-btn full" disabled>{t[lang].status_full}</button>
-                      
+
                       {:else if isUpcomingTomorrow(event)}
                         <button class="register-btn coming-soon" disabled>
                           {lang === 'th' ? '⏳ รอเปิด' : '⏳ Coming Soon'}
                         </button>
-                      
+
                       {:else}
                         <button class="register-btn" disabled={isRegistering} on:click={() => handleRegister(event)}>
                           {#if event.hasCancelledRecord}
@@ -1286,6 +1287,7 @@
                         </button>
                       {/if}
                     </div>
+                  </div>
 
                 </div>
               </div>
@@ -1504,7 +1506,8 @@
   .pill-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.85; margin-top: 2px; }
   
   .card-separator { height: 1px; background-color: rgba(255, 255, 255, 0.1); width: 100%; margin-bottom: 16px; }
-  .card-footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: 10px; }
+  .card-footer-actions { display: grid; grid-template-columns: 1fr auto; align-items: center; margin-top: auto; gap: 12px; }
+  .footer-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 
   /* =========================================
      4. BUTTONS
@@ -1516,6 +1519,18 @@
   .register-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); transition: left 0.5s; }
   .register-btn:hover::before { left: 100%; }
   .register-btn:hover { filter: brightness(1.2); transform: translateY(-3px); box-shadow: 0 12px 28px -4px rgba(16, 185, 129, 0.65), 0 6px 12px rgba(0, 0, 0, 0.3); border-color: rgba(255, 255, 255, 0.3); }
+
+  .register-btn:disabled { cursor: not-allowed; opacity: 0.75; box-shadow: none; transform: none; filter: none; }
+  .register-btn:disabled::before { display: none; }
+
+  .register-btn.running { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.45), 0 4px 8px rgba(0, 0, 0, 0.18); min-width: 150px; }
+  .register-btn.running:hover { filter: brightness(1.15); box-shadow: 0 12px 28px -4px rgba(59, 130, 246, 0.6), 0 6px 12px rgba(0, 0, 0, 0.25); }
+
+  .register-btn.no-active,
+  .register-btn.full,
+  .register-btn.coming-soon { box-shadow: none; cursor: not-allowed; }
+  .register-btn.no-active { background: #334155; border-color: rgba(148, 163, 184, 0.25); color: #e2e8f0; }
+  .register-btn.full { background: #64748b; border-color: rgba(255, 255, 255, 0.15); color: #0b1220; }
   
   
   .register-btn.coming-soon { background: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: 0.8; }
@@ -1523,6 +1538,19 @@
   .register-btn.completed:hover { filter: none; transform: none; }
 
   .register-btn.unpublished { background: #ef4444 !important; color: #ffffff !important; opacity: 1; cursor: not-allowed; box-shadow: none; border: none; }
+
+  .cancel-direct-btn { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: 2px solid rgba(255, 255, 255, 0.2); color: white; padding: 14px 22px; border-radius: 12px; font-size: 0.95rem; font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px -4px rgba(239, 68, 68, 0.45), 0 4px 8px rgba(0, 0, 0, 0.2); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; }
+  .cancel-direct-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent); transition: left 0.5s; }
+  .cancel-direct-btn:hover::before { left: 100%; }
+  .cancel-direct-btn:hover { filter: brightness(1.1); transform: translateY(-3px); box-shadow: 0 12px 28px -4px rgba(239, 68, 68, 0.6), 0 6px 12px rgba(0, 0, 0, 0.3); border-color: rgba(255, 255, 255, 0.3); }
+
+  @media (max-width: 520px) {
+    .card-footer-actions { grid-template-columns: 1fr; }
+    .view-btn { width: 100%; justify-content: center; }
+    .footer-actions { width: 100%; }
+    .footer-actions > button { flex: 1 1 0; min-width: 0; }
+    .register-btn, .cancel-direct-btn { width: 100%; min-width: 0; }
+  }
 
 
   .loading-container { text-align: center; color: var(--text-muted); margin-top: 50px; }

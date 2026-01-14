@@ -791,8 +791,8 @@
                   {event.isReadMore ? "Read less" : "Read more"}
                 </button>
 
-                {#if event.isJoinedToday}
-                  <div style="display: flex; gap: 8px;">
+                <div class="footer-actions">
+                  {#if event.isJoinedToday}
                     <button
                       class="cancel-btn"
                       on:click={() => handleCancel(event)}
@@ -806,26 +806,26 @@
                     >
                       RUNNING
                     </button>
-                  </div>
-                {:else if event.event_type === 'multi_day' && event.allow_daily_checkin && typeof event.max_checkins_per_user === 'number' && event.max_checkins_per_user > 0 && event.checkin_count >= event.max_checkins_per_user}
-                  <button
-                    class="register-btn completed"
-                    disabled
-                  >
-                    COMPLETED {event.checkin_count}/{event.max_checkins_per_user}
-                  </button>
-                {:else}
-                  <button
-                    class="register-btn"
-                    on:click={() => handleRegister(event)}
-                  >
-                    {#if event.hasCancelledRecord}
-                      🔄 REGISTER AGAIN
-                    {:else}
-                      REGISTRATION
-                    {/if}
-                  </button>
-                {/if}
+                  {:else if event.event_type === 'multi_day' && event.allow_daily_checkin && typeof event.max_checkins_per_user === 'number' && event.max_checkins_per_user > 0 && event.checkin_count >= event.max_checkins_per_user}
+                    <button
+                      class="register-btn completed"
+                      disabled
+                    >
+                      COMPLETED {event.checkin_count}/{event.max_checkins_per_user}
+                    </button>
+                  {:else}
+                    <button
+                      class="register-btn"
+                      on:click={() => handleRegister(event)}
+                    >
+                      {#if event.hasCancelledRecord}
+                        🔄 REGISTER AGAIN
+                      {:else}
+                        REGISTRATION
+                      {/if}
+                    </button>
+                  {/if}
+                </div>
               </div>
             </div>
           </div>
@@ -1154,10 +1154,36 @@
   }
 
   .card-footer {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: center;
+    gap: 12px;
     margin-top: auto;
+  }
+
+  .footer-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 520px) {
+    .card-footer {
+      grid-template-columns: 1fr;
+    }
+    .read-more-btn {
+      width: 100%;
+      text-align: center;
+    }
+    .footer-actions {
+      width: 100%;
+    }
+    .footer-actions > button {
+      flex: 1 1 0;
+      min-width: 0;
+    }
   }
   .read-more-btn {
     background: linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.04));
