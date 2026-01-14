@@ -9,6 +9,8 @@
   import { ROUTES } from "$lib/utils/routes";
   import { navigateToMyEvents } from "$lib/utils/navigation";
 
+
+  
   // =========================================
   // 1. CONFIGURATION & INTERFACES
   // =========================================
