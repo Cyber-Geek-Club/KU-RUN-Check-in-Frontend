@@ -475,7 +475,10 @@
 
           // ใช้ today record หรือ latest active record (ถ้ามี)
           const finalRecord = todayRecord || anyActiveRecord;
-          const isJoined = !!finalRecord;
+          
+          // [FIX] สำหรับ multi-day + daily check-in: isJoined หมายถึงมี record ของวันนี้เท่านั้น
+          // เพื่อให้ผู้ใช้สมัครใหม่ได้ทุกวัน
+          const isJoined = isMultiDay ? !!todayRecord : !!finalRecord;
           const isJoinedToday = !!todayRecord;
 
           // [FIX] สำหรับ multi-day: ถ้ายังไม่สมัครวันนี้ และ COMPLETED ครบแล้ว → ห้ามสมัครต่อ
@@ -485,13 +488,17 @@
             ? myCompletedCheckins >= maxCheckins
             : false;
 
+          // [FIX] สำหรับ multi-day: ใช้ todayRecord สำหรับ participationId/Status
+          // เพื่อให้การยกเลิกทำงานถูกต้องกับ record ของวันนี้เท่านั้น
+          const relevantRecord = isMultiDay ? todayRecord : finalRecord;
+
           return {
             ...e,
             isJoined,
             isJoinedToday,
-            participationId: finalRecord ? Number(finalRecord.id) : null,
-            participationStatus: finalRecord ? finalRecord.status.toUpperCase() : null,
-            participationDate: finalRecord ? (finalRecord.created_at || finalRecord.date) : null,
+            participationId: relevantRecord ? Number(relevantRecord.id) : null,
+            participationStatus: relevantRecord ? relevantRecord.status.toUpperCase() : null,
+            participationDate: relevantRecord ? (relevantRecord.created_at || relevantRecord.date) : null,
             isUpcoming: e.startDate ? new Date(e.startDate) > now : false,
             canRegisterToday: e.is_active && e.is_published && !isJoinedToday && !e.is_full && !reachedLimit,
             participant_count: actualParticipantCount,
@@ -554,8 +561,12 @@
     // ป้องกันการกดซ้ำ
     if (isRegistering) return;
 
-    // [RULE] จำกัดสมัครได้ครั้งเดียวต่อกิจกรรม
-    if (eventItem.isJoined) {
+    // [FIX] สำหรับ multi-day + daily check-in: อนุญาตให้สมัครรายวันได้
+    const isMultiDaily = eventItem.event_type === 'multi_day' && eventItem.allow_daily_checkin;
+
+    // [RULE] จำกัดสมัครได้ครั้งเดียวต่อกิจกรรม (เฉพาะ single-day events)
+    // สำหรับ multi-day events ที่อนุญาต daily check-in: ข้ามเงื่อนไขนี้
+    if (eventItem.isJoined && !isMultiDaily) {
       Swal.fire({
         icon: 'info',
         title: lang === 'th' ? 'สมัครได้ครั้งเดียว' : 'One-time Registration',
