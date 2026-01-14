@@ -26,6 +26,8 @@ export function lazyLoadBg(node: HTMLElement, imageUrl: string) {
       
       img.onerror = () => {
         node.classList.add('lazy-error');
+        // Set a nice placeholder gradient when image fails
+        node.style.backgroundImage = `linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%)`;
       };
     }
   };

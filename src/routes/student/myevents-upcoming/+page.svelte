@@ -2248,7 +2248,10 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
 
     .event-card { background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95)); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(16, 185, 129, 0.12); box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.03); transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
     .event-card:hover { transform: translateY(-6px); border-color: rgba(16, 185, 129, 0.25); box-shadow: 0 22px 40px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(16, 185, 129, 0.18); }
-    .card-image { height: 180px; background-size: cover; background-position: center; width: 100%; position: relative; background-color: #1e293b; transition: opacity 0.3s ease; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+  .card-image { height: 180px; background-size: cover; background-position: center; width: 100%; position: relative; background-color: #1e293b; transition: opacity 0.3s ease; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+  .card-image::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, transparent 50%, rgba(59, 130, 246, 0.08) 100%); opacity: 0; transition: opacity 0.3s; z-index: 0; }
+  .card-image:not(.lazy-loaded)::before { opacity: 1; }
+  .card-image:not(.lazy-loaded)::after { content: '📷'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5rem; opacity: 0.25; z-index: 1; }
   .card-image:not(.lazy-loaded) { opacity: 0.6; }
   .card-content { padding: 20px; flex: 1; display: flex; flex-direction: column; }
   .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 10px; }
