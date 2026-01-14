@@ -314,7 +314,7 @@
         </div>
       {:else}
         <div class="snapshots-list">
-          {#each snapshots as snapshot}
+          {#each snapshots as snapshot (snapshot.snapshot_id)}
             <button
               class="snapshot-card"
               class:active={selectedSnapshot?.snapshot_id === snapshot.snapshot_id}
