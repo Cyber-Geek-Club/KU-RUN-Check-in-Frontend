@@ -255,6 +255,23 @@
     total_days?: number;
   }
 
+    // [DEBUG] ฟังก์ชันสำหรับ override วันที่เพื่อทดสอบ
+    // ใช้โดยเพิ่ม ?debug_date=2026-01-15 ใน URL
+    function getDebugDate(): Date {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const debugDate = params.get('debug_date');
+        if (debugDate) {
+          const testDate = new Date(debugDate);
+          if (!isNaN(testDate.getTime())) {
+            console.log(`🔧 [DEBUG MODE] Using simulated date: ${debugDate}`);
+            return testDate;
+          }
+        }
+      }
+      return new Date();
+    }
+
     // --- DATA FETCHING ---
     async function loadData() {
     loading = true;
