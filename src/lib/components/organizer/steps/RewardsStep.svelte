@@ -143,7 +143,8 @@
               </div>
               <button 
                 type="button" 
-                class="btn-remove-tier" 
+                class="btn-remove-tier"
+                aria-label="{currentLang === 'th' ? 'ลบระดับรางวัล' : 'Remove reward tier'}"
                 on:click={() => handleRemoveTier(tier.id)}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -155,8 +156,9 @@
             <div class="tier-body">
               <div class="form-row">
                 <div class="form-group">
-                  <label>{currentLang === 'th' ? 'ชื่อรางวัล' : 'Tier Name'}</label>
+                  <label for="tier-name-{tier.id}">{currentLang === 'th' ? 'ชื่อรางวัล' : 'Tier Name'}</label>
                   <input
+                    id="tier-name-{tier.id}"
                     type="text"
                     value={originalTier?.name || ''}
                     on:input={(e) => handleUpdateTier(tier.id, 'name', e.currentTarget.value)}
@@ -167,8 +169,9 @@
 
               <div class="form-row two-col">
                 <div class="form-group">
-                  <label>{currentLang === 'th' ? 'โควต้า (คน)' : 'Quota'}</label>
+                  <label for="tier-quota-{tier.id}">{currentLang === 'th' ? 'โควต้า (คน)' : 'Quota'}</label>
                   <input
+                    id="tier-quota-{tier.id}"
                     type="number"
                     min="1"
                     value={originalTier?.quota || 0}
@@ -177,8 +180,9 @@
                   />
                 </div>
                 <div class="form-group">
-                  <label>{currentLang === 'th' ? 'เงื่อนไข (รอบ)' : 'Required Rounds'}</label>
+                  <label for="tier-requirement-{tier.id}">{currentLang === 'th' ? 'เงื่อนไข (รอบ)' : 'Required Rounds'}</label>
                   <input
+                    id="tier-requirement-{tier.id}"
                     type="number"
                     min="1"
                     value={originalTier?.requirement || 1}

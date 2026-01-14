@@ -82,7 +82,6 @@ export const translations = {
     settingsDesc: "อัปเดตข้อมูลโปรไฟล์ของคุณ",
     profileInfo: "ข้อมูลโปรไฟล์",
     saving: "กำลังบันทึก...",
-    saveChanges: "บันทึกการเปลี่ยนแปลง",
     logout: "ออกจากระบบ",
     navigation: "เมนู",
 
@@ -465,7 +464,6 @@ export const translations = {
     settingsDesc: "Update your profile information",
     profileInfo: "Profile Information",
     saving: "SAVING...",
-    saveChanges: "SAVE CHANGES",
     logout: "Logout",
     navigation: "NAVIGATION",
 
