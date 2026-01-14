@@ -10,7 +10,6 @@
         student: "/student/event-list",
         officer: "/officer/event-list",
         organizer: "/organizer/create-event",
-        organize: "/organizer/create-event",
     };
 
     const GUEST_PATHS = [

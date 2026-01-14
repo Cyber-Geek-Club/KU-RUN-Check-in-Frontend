@@ -41,7 +41,7 @@
   function normalizeRole(role: any): string {
     if (!role) return "";
     const r = String(role).trim().toLowerCase();
-    if (["student", "officer", "organizer", "organizer"].includes(r)) return r;
+    if (["student", "officer", "organizer"].includes(r)) return r;
     return "";
   }
 
@@ -51,7 +51,6 @@
         return "/officer/event-list";
       case "student":
         return "/student/event-list";
-      case "organizer":
       case "organizer":
         return "/organizer/create-event";
       default:

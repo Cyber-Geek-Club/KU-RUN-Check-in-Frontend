@@ -31,6 +31,7 @@
   import { goto, invalidateAll } from "$app/navigation";
   import { lazyLoad } from '$lib/utils/lazyLoad';
   import { base } from "$app/paths";
+  import { ROUTES } from "$lib/utils/routes";
   import axios, { type AxiosError, type AxiosRequestConfig } from "axios";
 
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(

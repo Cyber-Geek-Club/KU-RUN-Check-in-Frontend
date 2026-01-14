@@ -2,7 +2,6 @@
   import { goto } from "$app/navigation";
   import { slide } from "svelte/transition";
   import { onMount } from "svelte";
-  import { page } from "$app/stores";
   import { ROUTES } from "$lib/utils/routes";
   import OrganizerLayout from "$lib/components/organizer/OrganizerLayout.svelte";
   import { lang } from '$lib/stores/organizerStore';
@@ -16,20 +15,6 @@
   let userId: string = "";
   let token: string = "";
   let role: string = "";
-
-  let backUrl: string = "/";
-
-  $: {
-    if (role === "organizer") {
-      backUrl = ROUTES.organizer.eventLog;
-    } else if (role === "student") {
-      backUrl = ROUTES.student.eventList;
-    } else if (role === "officer") {
-      backUrl = ROUTES.officer.eventList;
-    } else {
-      backUrl = "/organizer/create-event";
-    }
-  }
 
   let title: string = "";
   let firstName: string = "";
@@ -249,7 +234,7 @@
       });
 
       if (!response.ok) {
-        if (response.status === 401) return goto("/auth/login");
+        if (response.status === 401) return goto(ROUTES.auth.login);
         throw new Error("Failed to fetch user data");
       }
 
