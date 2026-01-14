@@ -106,5 +106,97 @@ export const api = {
         })
 };
 
+// ===== Participant Snapshots API =====
+
+export interface SnapshotEntry {
+    entry_id: string;
+    participation_id?: number;
+    user_id: number;
+    user_name: string;
+    user_email: string;
+    action: 'joined' | 'checked_in' | 'cancelled' | 'rejected' | 'pending';
+    created_at: string;
+    metadata?: Record<string, any>;
+}
+
+export interface Snapshot {
+    snapshot_id: string;
+    snapshot_time: string;
+    entry_count: number;
+    event_id: number;
+}
+
+export interface SnapshotsResponse {
+    snapshots: Snapshot[];
+    total: number;
+    page: number;
+    per_page: number;
+}
+
+export interface SnapshotEntriesResponse {
+    entries: SnapshotEntry[];
+    total: number;
+    page: number;
+    per_page: number;
+    snapshot_id: string;
+    snapshot_time: string;
+}
+
+/**
+ * Get list of participant snapshots for an event
+ */
+export async function getParticipantSnapshots(
+    eventId: number,
+    page: number = 1,
+    perPage: number = 10
+): Promise<SnapshotsResponse> {
+    const response = await api.get(
+        `/api/events/${eventId}/participants/history?page=${page}&per_page=${perPage}`
+    );
+    
+    if (!response.ok) {
+        throw new Error(`Failed to fetch snapshots: ${response.statusText}`);
+    }
+    
+    return await response.json();
+}
+
+/**
+ * Get entries for a specific snapshot
+ */
+export async function getSnapshotEntries(
+    eventId: number,
+    snapshotId: string,
+    page: number = 1,
+    perPage: number = 50
+): Promise<SnapshotEntriesResponse> {
+    const response = await api.get(
+        `/api/events/${eventId}/participants/history/${snapshotId}/entries?page=${page}&per_page=${perPage}`
+    );
+    
+    if (!response.ok) {
+        throw new Error(`Failed to fetch snapshot entries: ${response.statusText}`);
+    }
+    
+    return await response.json();
+}
+
+/**
+ * Create a new snapshot (on-demand)
+ */
+export async function createParticipantSnapshot(
+    eventId: number
+): Promise<{ snapshot_id: string; snapshot_time: string }> {
+    const response = await api.post(
+        `/api/events/${eventId}/participants/snapshots`
+    );
+    
+    if (!response.ok) {
+        throw new Error(`Failed to create snapshot: ${response.statusText}`);
+    }
+    
+    return await response.json();
+}
+
 // Export for use in +page.ts load functions
 export { apiRequest as fetch };

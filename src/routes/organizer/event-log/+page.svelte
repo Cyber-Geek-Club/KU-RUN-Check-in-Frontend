@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import ParticipantHistoryViewer from "$lib/components/organizer/ParticipantHistoryViewer.svelte";
 
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
     /\/$/,
@@ -48,6 +49,10 @@
   let isLoadingAll = true;
   let expandedEventId: number | null = null;
   let contentHeights: Record<number, number> = {};
+  
+  // View mode: 'logs' or 'history'
+  let viewMode: 'logs' | 'history' = 'logs';
+  let currentLang: 'th' | 'en' = 'th';
 
   let mainSearchQuery = "";
   let showDateFilter = false;
@@ -291,13 +296,29 @@
 
   function toggleExpand(id: number) {
     expandedEventId = expandedEventId === id ? null : id;
-    if (expandedEventId) fetchParticipants(id);
+    if (expandedEventId) {
+      if (viewMode === 'logs') {
+        fetchParticipants(id);
+      }
+      // For history mode, the component will handle its own data fetching
+    }
   }
 
   function handleKeydown(e: KeyboardEvent, id: number) {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       toggleExpand(id);
+    }
+  }
+  
+  function switchViewMode(mode: 'logs' | 'history') {
+    viewMode = mode;
+    // Reset expanded state when switching modes
+    if (expandedEventId) {
+      const id = expandedEventId;
+      expandedEventId = null;
+      // Re-expand after a tick to trigger proper loading
+      setTimeout(() => toggleExpand(id), 10);
     }
   }
 </script>
@@ -326,6 +347,22 @@
 
   <div class="fixed-search-area">
     <div class="content-wrapper">
+      <!-- View Mode Tabs -->
+      <div class="view-mode-tabs">
+        <button 
+          class="tab-btn {viewMode === 'logs' ? 'active' : ''}"
+          on:click={() => switchViewMode('logs')}
+        >
+          📊 Current Logs
+        </button>
+        <button 
+          class="tab-btn {viewMode === 'history' ? 'active' : ''}"
+          on:click={() => switchViewMode('history')}
+        >
+          📜 Participant History
+        </button>
+      </div>
+      
       <div class="search-filter-wrapper">
         <div
           class="main-search-input-box {isSearchFocused ||
@@ -488,7 +525,18 @@
                   class="inner-measurer"
                   bind:clientHeight={contentHeights[event.id]}
                 >
-                  {#if event.isLoading}
+                  {#if viewMode === 'history'}
+                    <!-- Participant History View -->
+                    <div class="history-container">
+                      <ParticipantHistoryViewer 
+                        eventId={event.id}
+                        eventTitle={event.title}
+                        {currentLang}
+                      />
+                    </div>
+                  {:else}
+                    <!-- Original Logs View -->
+                    {#if event.isLoading}
                     <div class="inline-loader">
                       <div class="spinner small"></div>
                       <span>Loading...</span>
@@ -554,6 +602,7 @@
                         {/if}
                       {/each}
                     </div>
+                  {/if}
                   {/if}
                 </div>
               </div>
@@ -1162,5 +1211,61 @@
     font-size: 14px;
     font-weight: 700;
     border: 1px solid #1f2937;
+  }
+
+  /* View Mode Tabs */
+  .view-mode-tabs {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding: 0.5rem;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 16px;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 12px;
+    color: #94a3b8;
+    font-size: 0.938rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .tab-btn:hover {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+  }
+
+  .tab-btn.active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  }
+
+  .history-container {
+    padding: 1rem 0;
+    min-height: 400px;
+  }
+
+  @media (max-width: 768px) {
+    .view-mode-tabs {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .tab-btn {
+      font-size: 0.875rem;
+      padding: 0.625rem 1rem;
+    }
   }
 </style>
