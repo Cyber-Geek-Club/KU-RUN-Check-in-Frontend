@@ -1077,7 +1077,7 @@
   <header class="header-bar">
     <div class="header-inner">
       <div class="left-group">
-        <div class="brand"><span class="brand-name">Officer</span></div>
+        <div class="brand"><span class="brand-name">OFFICER</span></div>
         <nav class="nav-menu desktop-only">
           {#each menuItems as item}
             <button class="menu-btn" class:active={currentView === item.id} on:click={() => selectView(item.id, item.path)}>
