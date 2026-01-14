@@ -1477,10 +1477,10 @@
   .card-content { padding: 20px; flex: 1; display: flex; flex-direction: column; }
   
   .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 10px; }
-  .card-title { font-size: 1.1rem; font-weight: 700; color: white; margin: 0; line-height: 1.4; flex: 1; word-break: break-word; }
+  .card-title { font-size: 1.3rem; font-weight: 800; color: white; margin: 0; line-height: 1.4; flex: 1; word-break: break-word; letter-spacing: 0.02em; }
   
   .badges-col { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-  .status-badge { font-size: 0.65rem; font-weight: 700; color: #10b981; border: 1px solid #10b981; padding: 2px 8px; border-radius: 12px; letter-spacing: 0.5px; }
+  .status-badge { font-size: 0.7rem; font-weight: 700; color: #10b981; border: 1.5px solid #10b981; padding: 4px 10px; border-radius: 14px; letter-spacing: 0.5px; }
   .status-badge.no-active { color: #ef4444; border-color: #ef4444; }
   .status-badge.pending { color: #f59e0b; border-color: #f59e0b; }
 
@@ -1491,15 +1491,15 @@
 
   .info-pill.progress-pill { background-color: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.22); }
   
-  .count-badge { background-color: #3b82f6; color: white; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 12px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+  .count-badge { background-color: #3b82f6; color: white; font-size: 0.8rem; font-weight: 700; padding: 5px 12px; border-radius: 14px; display: flex; align-items: center; box-shadow: 0 3px 6px rgba(0,0,0,0.25); }
   
-  .card-desc { font-size: 0.85rem; color: #94a3b8; margin: 0 0 24px 0; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
+  .card-desc { font-size: 0.9rem; color: #94a3b8; margin: 0 0 24px 0; line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word; }
   .card-desc.expanded { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; height: auto; }
   
-  .info-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-  .info-pill { background-color: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 8px 10px; display: flex; align-items: flex-start; gap: 8px; font-size: 0.75rem; color: #cbd5e1; line-height: 1.4; word-break: break-word; }
+  .info-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .info-pill { background-color: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 10px 12px; display: flex; align-items: flex-start; gap: 8px; font-size: 0.8rem; color: #cbd5e1; line-height: 1.4; word-break: break-word; font-weight: 500; }
   .highlight-pill { color: #fbbf24; border-color: rgba(251, 191, 36, 0.2); }
-  .pill-icon { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.8; margin-top: 2px; }
+  .pill-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.85; margin-top: 2px; }
   
   .card-separator { height: 1px; background-color: rgba(255, 255, 255, 0.1); width: 100%; margin-bottom: 16px; }
   .card-footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: 10px; }
@@ -1507,11 +1507,11 @@
   /* =========================================
      4. BUTTONS
      ========================================= */
-  .view-btn { background: transparent; border: 1px solid #94a3b8; color: #94a3b8; padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; transition: 0.2s; white-space: nowrap; flex-shrink: 0; }
-  .view-btn:hover { background: rgba(255, 255, 255, 0.05); color: var(--text-main); border-color: var(--text-main); }
+  .view-btn { background: transparent; border: 1.5px solid #94a3b8; color: #94a3b8; padding: 10px 16px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
+  .view-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-main); border-color: var(--text-main); transform: translateY(-1px); }
   
-  .register-btn { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; padding: 9px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); transition: 0.2s; flex-shrink: 0; }
-  .register-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .register-btn { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; padding: 14px 28px; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; text-transform: uppercase; box-shadow: 0 6px 16px -3px rgba(16, 185, 129, 0.45); transition: all 0.25s ease; flex-shrink: 0; min-width: 150px; letter-spacing: 0.5px; }
+  .register-btn:hover { filter: brightness(1.15); transform: translateY(-2px); box-shadow: 0 8px 20px -3px rgba(16, 185, 129, 0.6); }
   
   
   .register-btn.coming-soon { background: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: 0.8; }

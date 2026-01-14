@@ -1094,34 +1094,35 @@
     position: absolute;
     top: 12px;
     right: 12px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 6px 12px;
     border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 700;
     color: #374151;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
   .card-body {
-    padding: 16px;
+    padding: 20px;
     text-align: left;
   }
   .event-title {
     margin: 0 0 12px 0;
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 1.3rem;
+    font-weight: 800;
     color: #111827;
     text-transform: uppercase;
-    letter-spacing: -0.025em; /* บีบตัวอักษรนิดนึงให้ดู Modern */
+    letter-spacing: 0.02em;
     line-height: 1.3;
   }
   .event-desc {
-    font-size: 14px;
-    color: #4b5563; /* ใช้สีเทาโทนเย็น (Cool Gray) ดูแพงกว่าสีดำสนิท */
-    line-height: 1.6; /* เพิ่มช่องว่างระหว่างบรรทัดให้อ่านสบายตา */
-    margin: 0 0 20px 0; /* ดัน Footer/Read more ให้ห่างออกไป */
+    font-size: 0.9rem;
+    color: #4b5563;
+    line-height: 1.65;
+    margin: 0 0 20px 0;
     font-weight: 400;
 
     display: -webkit-box;
@@ -1155,29 +1156,38 @@
   }
   .read-more-btn {
     background: none;
-    border: none;
+    border: 1.5px solid #10b981;
     color: #10b981;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 0.85rem;
     cursor: pointer;
-    padding: 0;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
   }
   .read-more-btn:hover {
-    text-decoration: underline;
+    background: rgba(16, 185, 129, 0.1);
+    transform: translateY(-1px);
   }
   .register-btn {
     background-color: #10b981;
     color: #111827;
     border: none;
-    padding: 8px 20px;
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
     text-transform: uppercase;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.4);
+    letter-spacing: 0.5px;
+    min-width: 140px;
   }
   .register-btn:hover {
     background-color: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px -2px rgba(16, 185, 129, 0.5);
   }
   .register-btn.completed {
     background-color: rgba(16, 185, 129, 0.1);
@@ -1189,34 +1199,42 @@
     background-color: rgba(16, 185, 129, 0.1);
   }
   .running-btn {
-    background-color: #f59e0b; /* สีเหลือง Amber */
+    background-color: #f59e0b;
     color: white;
     border: none;
-    padding: 8px 20px;
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     text-transform: uppercase;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px -2px rgba(245, 158, 11, 0.4);
+    letter-spacing: 0.5px;
   }
   .running-btn:hover {
-    background-color: #d97706; /* สีเหลืองเข้ม */
+    background-color: #d97706;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px -2px rgba(245, 158, 11, 0.5);
   }
   .cancel-btn {
-    background-color: #ef4444; /* สีแดง */
+    background-color: #ef4444;
     color: white;
     border: none;
-    padding: 8px 16px; /* ลด padding ลงนิดนึงให้ดูสมดุล */
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
     text-transform: uppercase;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px -2px rgba(239, 68, 68, 0.4);
+    letter-spacing: 0.5px;
   }
   .cancel-btn:hover {
-    background-color: #dc2626; /* แดงเข้มเมื่อ Hover */
+    background-color: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px -2px rgba(239, 68, 68, 0.5);
   }
   .loading-state {
     text-align: center;
