@@ -414,69 +414,26 @@
           // ใช้จำนวนจากข้อมูลกิจกรรมที่มีอยู่ในหน้า (ไม่ดึงรวมทั้งหมด)
           const actualParticipantCount = e.participant_count;
           
-          // [NEW LOGIC] หา participation ที่เป็นของวันนี้เท่านั้น
-          let todayRecord = null;
+          // [NEW LOGIC] หา participation record ใดๆ ที่ไม่ใช่ CANCELLED
+          // สำหรับ rule "สมัครได้ครั้งเดียว"
           let anyActiveRecord = null;
           
           for (const record of myRecords) {
             const s = record.status ? record.status.toUpperCase() : "";
             
-            // ข้าม CANCELLED/CANCEL
+            // ข้าม CANCELLED/CANCEL เท่านั้น - record อื่นๆ (JOINED, PENDING, COMPLETED, etc.) ถือว่าสมัครแล้ว
             if (s === 'CANCELLED' || s === 'CANCEL') continue;
             
             // เก็บ active record (ล่าสุด ไม่ใช่ CANCELLED)
             if (!anyActiveRecord || record.id > anyActiveRecord.id) {
               anyActiveRecord = record;
             }
-            
-            // เช็คว่าเป็นของวันนี้หรือไม่
-            if (record.created_at || record.date || record.start_date) {
-              const recordDate = new Date(record.created_at || record.date || record.start_date);
-              recordDate.setHours(0, 0, 0, 0);
-              
-              if (recordDate.getTime() === now.getTime() && s !== 'CANCELLED' && s !== 'CANCEL') {
-                todayRecord = record;
-                break; // เจอของวันนี้แล้ว ออกจากลูป
-              }
-            }
           }
 
-          // [AUTO CLEANUP] ถ้าข้อมูลเก่า (ไม่ใช่วันนี้) → ลบออก/ยกเลิก (เฉพาะ single_day)
-          const isMultiDay = e.event_type === 'multi_day' && e.allow_daily_checkin;
-          
-          if (anyActiveRecord && !todayRecord && !isMultiDay) {
-            const recordDate = new Date(anyActiveRecord.created_at || anyActiveRecord.date || anyActiveRecord.start_date);
-            recordDate.setHours(0, 0, 0, 0);
-            
-            if (recordDate.getTime() !== now.getTime()) {
-              const status = anyActiveRecord.status ? anyActiveRecord.status.toUpperCase() : '';
-              
-              // [CASE 1] ถ้า status = COMPLETED → ไม่ต้อง auto-cancel, แค่ clear เพื่อให้เปิดลงวันใหม่ได้
-              if (status === 'COMPLETED') {
-                console.log(`[COMPLETED] Event ${e.id}: Previous day completed, allowing new registration today.`);
-                anyActiveRecord = null;
-              }
-              // [CASE 2] ถ้า status ≠ COMPLETED (เช่น CHECKED_IN, PENDING) → Auto-cancel (single_day only)
-              else {
-                console.log(`[AUTO CANCEL] Event ${e.id}: Previous day record (${status}), auto-canceling.`);
-                fetch(`${BASE_URL}/api/participations/${anyActiveRecord.id}/cancel`, {
-                  method: "PATCH",
-                  headers: { 
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
-                  },
-                  body: JSON.stringify({ reason: "Auto-canceled: Previous day incomplete" })
-                }).catch(err => console.error("Auto-cancel error:", err));
-                
-                anyActiveRecord = null;
-              }
-            }
-          }
-
-          // ใช้ today record หรือ latest active record (ถ้ามี)
-          const finalRecord = todayRecord || anyActiveRecord;
+          // [SIMPLIFIED] ถ้ามี record ที่ไม่ใช่ CANCELLED → ถือว่าสมัครแล้ว (ไม่ว่าจะวันไหน)
+          const finalRecord = anyActiveRecord;
           const isJoined = !!finalRecord;
-          const isJoinedToday = !!todayRecord;
+          const isJoinedToday = false; // ไม่ใช้แล้ว เพราะสมัครได้แค่ครั้งเดียว
 
           return {
             ...e,
