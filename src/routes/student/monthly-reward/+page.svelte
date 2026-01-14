@@ -2,12 +2,7 @@
     import { scale, slide } from "svelte/transition";
     import { elasticOut, quintOut } from "svelte/easing";
     import { onMount } from "svelte";
-
-    // --- Configuration ---
-    const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(
-        /\/$/,
-        "",
-    );
+    import { resolveImageUrl, API_BASE_URL } from "$lib/utils/imageUtils";
 
     // --- Interfaces ---
     interface Reward {
@@ -110,12 +105,6 @@
     function selectMonth(index: number) {
         currentMonthIndex = index;
         isDropdownOpen = false;
-    }
-
-    function resolveImageUrl(path: string | undefined): string {
-        if (!path) return "";
-        if (path.startsWith("http")) return path;
-        return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
     }
 
     onMount(() => {

@@ -7,11 +7,8 @@
   import { goto } from "$app/navigation";
   import { auth } from "$lib/utils/auth";
   import { lazyLoadBg } from "$lib/utils/lazyLoad";
+  import { resolveImageUrl, uploadImage, validateImageFile, API_BASE_URL } from "$lib/utils/imageUtils";
 
-  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
-    /\/$/,
-    ""
-  );
   let currentView: "list" | "form" = "list";
   let isEditMode = false;
   let editingId: number | null = null;
@@ -428,59 +425,29 @@
     const input = e.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
 
-    isImageUploading = true;
     const file = input.files[0];
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("subfolder", "events");
+    
+    // Validate file before upload
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      errorMessage = validation.error || "Invalid file";
+      input.value = "";
+      return;
+    }
+
+    isImageUploading = true;
 
     try {
-      const token = localStorage.getItem("access_token");
       console.log("Start Uploading...");
+      
+      const result = await uploadImage(file, 'events');
+      console.log("Upload success:", result);
 
-      const res = await fetch(`${API_BASE_URL}/api/images/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      // Resolve URL to full path
+      const finalUrl = resolveImageUrl(result.url);
+      console.log("Final URL:", finalUrl);
 
-      const responseText = await res.text();
-      console.log("Server Response (Raw):", responseText); 
-
-      if (!res.ok) throw new Error(responseText || "Upload failed");
-
-
-      let serverUrl = "";
-      try {
-        const data = JSON.parse(responseText);
-
-        serverUrl = data.url || data.path || data.secure_url || "";
-      } catch (e) {
-
-        serverUrl = responseText;
-      }
-
-      if (!serverUrl) {
-        throw new Error("Cannot find image URL in response");
-      }
-      let finalUrl = "";
-      if (serverUrl.startsWith("http")) {
-        finalUrl = serverUrl;
-      } else {
-        const cleanPath = serverUrl.startsWith("/")
-          ? serverUrl
-          : `/${serverUrl}`;
-
-        finalUrl = `${API_BASE_URL}${cleanPath}`;
-      }
-
-      console.log("Calculated URL:", finalUrl); 
-
-      // 3. Assign ค่าเข้าตัวแปรหลัก
       previewImage = finalUrl;
-      previewImage = previewImage;
     } catch (err: any) {
       console.error("Upload Error:", err);
       errorMessage = "Upload failed: " + err.message;

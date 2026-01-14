@@ -4,12 +4,10 @@
   import Swal from "sweetalert2";
   import { goto } from "$app/navigation";
   import { auth } from "$lib/utils/auth";
+  import { resolveImageUrl, API_BASE_URL as IMAGE_API_BASE } from "$lib/utils/imageUtils";
 
   // --- Configuration ---
-  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(
-    /\/$/,
-    "",
-  );
+  const API_BASE_URL = IMAGE_API_BASE;
 
   // --- Interfaces ---
   interface EventDetail {
@@ -238,12 +236,6 @@
     return now > oneDayAfter;
   }
 
-  function resolveImageUrl(path: string | undefined | null): string {
-    if (!path) return "";
-    if (path.startsWith("http")) return path;
-    return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-  }
-
   function isEventEnded(eventEndDate: Date): boolean {
     const now = new Date();
     return eventEndDate < now;
@@ -418,26 +410,10 @@
     isSubmitting = true;
 
     try {
-      const uploadFormData = new FormData();
-      uploadFormData.append("file", selectedFile);
-      uploadFormData.append("subfolder", "proofs");
-
-      const uploadRes = await fetch(`${API_BASE_URL}/api/images/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: uploadFormData,
-      });
-
-      if (!uploadRes.ok) {
-        const errData = await uploadRes.json();
-        throw new Error(errData.detail || "Image upload failed");
-      }
-
-      const uploadData = await uploadRes.json();
-      const imageUrl =
-        uploadData.url || uploadData.path || uploadData.file_path;
+      // Upload image using centralized uploadImage function
+      const { uploadImage } = await import("$lib/utils/imageUtils");
+      const uploadData = await uploadImage(selectedFile, "proofs");
+      const imageUrl = uploadData.url;
 
       if (!imageUrl) {
         throw new Error("Server ไม่ส่ง URL รูปภาพกลับมา");

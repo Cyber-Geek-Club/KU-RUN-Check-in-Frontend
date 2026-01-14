@@ -5,18 +5,13 @@
   import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
   import { lazyLoadBg } from "$lib/utils/lazyLoad";
+  import { resolveImageUrl, API_BASE_URL } from "$lib/utils/imageUtils";
   import { ROUTES } from "$lib/utils/routes";
   import { navigateToEventList } from "$lib/utils/navigation";
 
   // --- CONFIG ---
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+  const BASE_URL = API_BASE_URL;
   import holidaysJson from '$lib/data/holidays.json';
-
-    function resolveImageUrl(path: string | null | undefined): string {
-        if (!path) return "";
-        if (path.startsWith("http")) return path;
-        return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-    }
 
   // --- STATE: LAYOUT ---
   let isMobileMenuOpen = false;
@@ -1321,19 +1316,10 @@ async function submitProofAction() {
           Swal.showLoading();
           let finalImageUrl = selectedEvent.proof_image_url || "";
 
-          // 3. Upload Image (If new file selected)
+          // 3. Upload Image (If new file selected) - Using centralized uploadImage
           if (proofFile) {
-              const formData = new FormData();
-              formData.append('file', proofFile);
-              formData.append('subfolder', 'proofs');
-              
-              const upRes = await fetch(`${BASE_URL}/api/images/upload`, {
-                  method: 'POST',
-                  headers: { 'Authorization': `Bearer ${token}` },
-                  body: formData
-              });
-              if (!upRes.ok) throw new Error(`${t[lang].alert_upload_failed} (${upRes.status})`);
-              const upData = await upRes.json();
+              const { uploadImage } = await import('$lib/utils/imageUtils');
+              const upData = await uploadImage(proofFile, 'proofs');
               finalImageUrl = upData.url;
           }
 

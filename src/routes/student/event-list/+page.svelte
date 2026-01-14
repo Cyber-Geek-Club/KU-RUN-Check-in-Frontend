@@ -5,19 +5,14 @@
   import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
   import { lazyLoadBg } from "$lib/utils/lazyLoad";
+  import { resolveImageUrl, API_BASE_URL } from "$lib/utils/imageUtils";
   import { ROUTES } from "$lib/utils/routes";
   import { navigateToMyEvents } from "$lib/utils/navigation";
 
   // =========================================
   // 1. CONFIGURATION & INTERFACES
   // =========================================
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
-
-  function resolveImageUrl(path: string | null | undefined): string {
-    if (!path) return "";
-    if (path.startsWith("http")) return path;
-    return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-  }
+  const BASE_URL = API_BASE_URL;
 
   interface EventItem {
     id: number;

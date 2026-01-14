@@ -1,5 +1,5 @@
 // Lazy load utility for background images and elements
-import { onMount } from 'svelte';
+import { resolveImageUrl, PLACEHOLDER_GRADIENT } from './imageUtils';
 
 export interface LazyLoadOptions {
   rootMargin?: string;
@@ -9,26 +9,38 @@ export interface LazyLoadOptions {
 /**
  * Svelte action for lazy loading background images
  * Usage: <div use:lazyLoadBg={imageUrl} />
+ * 
+ * Automatically resolves relative paths to full URLs using the API base URL.
+ * Shows a placeholder gradient if image fails to load.
  */
 export function lazyLoadBg(node: HTMLElement, imageUrl: string) {
   let observer: IntersectionObserver;
   
   const setBackground = () => {
-    if (imageUrl) {
+    // Resolve the image URL (handles relative paths from API)
+    const resolvedUrl = resolveImageUrl(imageUrl);
+    
+    if (resolvedUrl) {
       // Preload image
       const img = new Image();
-      img.src = imageUrl;
+      img.src = resolvedUrl;
       
       img.onload = () => {
-        node.style.backgroundImage = `url('${imageUrl}')`;
+        node.style.backgroundImage = `url('${resolvedUrl}')`;
         node.classList.add('lazy-loaded');
+        node.classList.remove('lazy-error');
       };
       
       img.onerror = () => {
         node.classList.add('lazy-error');
+        node.classList.remove('lazy-loaded');
         // Set a nice placeholder gradient when image fails
-        node.style.backgroundImage = `linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%)`;
+        node.style.backgroundImage = PLACEHOLDER_GRADIENT;
       };
+    } else {
+      // No URL provided, show placeholder
+      node.classList.add('lazy-error');
+      node.style.backgroundImage = PLACEHOLDER_GRADIENT;
     }
   };
 
@@ -67,25 +79,37 @@ export function lazyLoadBg(node: HTMLElement, imageUrl: string) {
 /**
  * Svelte action for lazy loading images
  * Usage: <img use:lazyLoad={imageUrl} alt="..." />
+ * 
+ * Automatically resolves relative paths to full URLs using the API base URL.
  */
 export function lazyLoad(node: HTMLImageElement, imageUrl: string) {
   let observer: IntersectionObserver;
   const placeholder = node.getAttribute('data-placeholder') || 
-    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"%3E%3Crect fill="%231e293b" width="400" height="300"/%3E%3C/svg%3E';
+    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"%3E%3Crect fill="%231e293b" width="400" height="300"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-size="48"%3E📷%3C/text%3E%3C/svg%3E';
 
   node.src = placeholder;
 
   const loadImage = () => {
+    // Resolve the image URL (handles relative paths from API)
+    const resolvedUrl = resolveImageUrl(imageUrl);
+    
+    if (!resolvedUrl) {
+      node.classList.add('lazy-error');
+      return;
+    }
+    
     const img = new Image();
-    img.src = imageUrl;
+    img.src = resolvedUrl;
 
     img.onload = () => {
-      node.src = imageUrl;
+      node.src = resolvedUrl;
       node.classList.add('lazy-loaded');
+      node.classList.remove('lazy-error');
     };
 
     img.onerror = () => {
       node.classList.add('lazy-error');
+      node.classList.remove('lazy-loaded');
     };
   };
 
