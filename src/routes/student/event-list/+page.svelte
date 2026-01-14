@@ -475,32 +475,18 @@
 
           // ใช้ today record หรือ latest active record (ถ้ามี)
           const finalRecord = todayRecord || anyActiveRecord;
-          
-          // [FIX] สำหรับ multi-day + daily check-in: isJoined หมายถึงมี record ของวันนี้เท่านั้น
-          // เพื่อให้ผู้ใช้สมัครใหม่ได้ทุกวัน
-          const isJoined = isMultiDay ? !!todayRecord : !!finalRecord;
+          const isJoined = !!finalRecord;
           const isJoinedToday = !!todayRecord;
-
-          // [FIX] สำหรับ multi-day: ถ้ายังไม่สมัครวันนี้ และ COMPLETED ครบแล้ว → ห้ามสมัครต่อ
-          const isMultiDaily = e.event_type === 'multi_day' && e.allow_daily_checkin;
-          const maxCheckins = e.max_checkins_per_user;
-          const reachedLimit = isMultiDaily && typeof maxCheckins === 'number' && maxCheckins > 0
-            ? myCompletedCheckins >= maxCheckins
-            : false;
-
-          // [FIX] สำหรับ multi-day: ใช้ todayRecord สำหรับ participationId/Status
-          // เพื่อให้การยกเลิกทำงานถูกต้องกับ record ของวันนี้เท่านั้น
-          const relevantRecord = isMultiDay ? todayRecord : finalRecord;
 
           return {
             ...e,
             isJoined,
             isJoinedToday,
-            participationId: relevantRecord ? Number(relevantRecord.id) : null,
-            participationStatus: relevantRecord ? relevantRecord.status.toUpperCase() : null,
-            participationDate: relevantRecord ? (relevantRecord.created_at || relevantRecord.date) : null,
+            participationId: finalRecord ? Number(finalRecord.id) : null,
+            participationStatus: finalRecord ? finalRecord.status.toUpperCase() : null,
+            participationDate: finalRecord ? (finalRecord.created_at || finalRecord.date) : null,
             isUpcoming: e.startDate ? new Date(e.startDate) > now : false,
-            canRegisterToday: e.is_active && e.is_published && !isJoinedToday && !e.is_full && !reachedLimit,
+            canRegisterToday: e.is_active && e.is_published && !isJoined && !e.is_full,
             participant_count: actualParticipantCount,
             completionCount: e.completionCount,  // คงค่าเดิมไว้
             checkin_count: myCompletedCheckins,
@@ -561,12 +547,8 @@
     // ป้องกันการกดซ้ำ
     if (isRegistering) return;
 
-    // [FIX] สำหรับ multi-day + daily check-in: อนุญาตให้สมัครรายวันได้
-    const isMultiDaily = eventItem.event_type === 'multi_day' && eventItem.allow_daily_checkin;
-
-    // [RULE] จำกัดสมัครได้ครั้งเดียวต่อกิจกรรม (เฉพาะ single-day events)
-    // สำหรับ multi-day events ที่อนุญาต daily check-in: ข้ามเงื่อนไขนี้
-    if (eventItem.isJoined && !isMultiDaily) {
+    // [RULE] จำกัดสมัครได้ครั้งเดียวต่อกิจกรรม
+    if (eventItem.isJoined) {
       Swal.fire({
         icon: 'info',
         title: lang === 'th' ? 'สมัครได้ครั้งเดียว' : 'One-time Registration',
@@ -577,42 +559,6 @@
         confirmButtonColor: '#3b82f6'
       }).then(() => {
         navigateToMyEvents('student');
-      });
-      return;
-    }
-
-    // [NEW] ตรวจสอบว่าสามารถสมัครได้วันนี้หรือไม่
-    if (eventItem.isJoinedToday) {
-      Swal.fire({
-        icon: 'info',
-        title: lang === 'th' ? 'สมัครแล้ว' : 'Already Registered',
-        text: lang === 'th' 
-          ? 'คุณสมัครกิจกรรมนี้ของวันนี้แล้ว ไปที่ "My Events" เพื่อดำเนินการต่อ'
-          : 'You already registered for today. Go to "My Events" to continue',
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#3b82f6'
-      }).then(() => {
-        navigateToMyEvents('student');
-      });
-      return;
-    }
-
-    // [NEW] Multi-day: enforce max check-ins per user (if provided)
-    if (
-      eventItem.event_type === 'multi_day' &&
-      eventItem.allow_daily_checkin &&
-      typeof eventItem.max_checkins_per_user === 'number' &&
-      eventItem.max_checkins_per_user > 0 &&
-      eventItem.checkin_count >= eventItem.max_checkins_per_user
-    ) {
-      Swal.fire({
-        icon: 'info',
-        title: lang === 'th' ? 'ทำครบแล้ว' : 'Completed',
-        text:
-          lang === 'th'
-            ? `คุณทำกิจกรรมครบ ${eventItem.checkin_count}/${eventItem.max_checkins_per_user} วันแล้ว`
-            : `You have completed ${eventItem.checkin_count}/${eventItem.max_checkins_per_user} days`,
-        confirmButtonText: 'OK',
       });
       return;
     }
@@ -1264,9 +1210,9 @@
                         {event.isExpanded ? t[lang].btn_read_less : t[lang].btn_read_more}
                       </button>
 
-                      {#if event.isJoinedToday}
+                      {#if event.isJoined}
                         <button class="register-btn running" on:click={() => navigateToMyEvents('student')}>
-                          {lang === 'th' ? '🏃 Running' : '🏃 Running'}
+                          {lang === 'th' ? '✅ สมัครแล้ว' : '✅ Registered'}
                         </button>
 
                       {:else if !event.is_published}
@@ -1288,17 +1234,10 @@
                         <button class="register-btn coming-soon" disabled>
                           {lang === 'th' ? '⏳ รอเปิด' : '⏳ Coming Soon'}
                         </button>
-
-                      {:else if event.event_type === 'multi_day' && event.allow_daily_checkin && typeof event.max_checkins_per_user === 'number' && event.max_checkins_per_user > 0 && event.checkin_count >= event.max_checkins_per_user}
-                        <button class="register-btn completed" disabled>
-                          {lang === 'th'
-                            ? `${t[lang].checkin_progress}: ${event.checkin_count}/${event.max_checkins_per_user}`
-                            : `${t[lang].checkin_progress}: ${event.checkin_count}/${event.max_checkins_per_user}`}
-                        </button>
                       
                       {:else}
                         <button class="register-btn" disabled={isRegistering} on:click={() => handleRegister(event)}>
-                          {lang === 'th' ? '📝 สมัครวันนี้' : '📝 Register Today'}
+                          {lang === 'th' ? '📝 สมัคร' : '📝 Register'}
                         </button>
                       {/if}
 
