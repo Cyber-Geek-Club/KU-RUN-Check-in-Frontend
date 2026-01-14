@@ -120,14 +120,15 @@
     if (!day || !month || !year || !time) return null;
     const monthIndex = getMonthIndex(month);
     const [hours, minutes] = time.split(":").map(Number);
-    const date = new Date(
-      parseInt(year),
-      monthIndex,
-      parseInt(day),
-      hours,
-      minutes
-    );
-    return date.toISOString();
+    
+    // ใช้ format YYYY-MM-DDTHH:mm:ss โดยไม่ใช้ toISOString() เพื่อหลีกเลี่ยง timezone conversion
+    const y = parseInt(year);
+    const m = (monthIndex + 1).toString().padStart(2, '0');
+    const d = parseInt(day).toString().padStart(2, '0');
+    const h = hours.toString().padStart(2, '0');
+    const min = minutes.toString().padStart(2, '0');
+    
+    return `${y}-${m}-${d}T${h}:${min}:00`;
   }
 
   async function fetchEvents() {
