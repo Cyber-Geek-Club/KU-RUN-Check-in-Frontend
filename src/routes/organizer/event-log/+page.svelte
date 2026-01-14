@@ -538,72 +538,72 @@
                   {:else}
                     <!-- Original Logs View -->
                     {#if event.isLoading}
-                    <div class="inline-loader">
-                      <div class="spinner small"></div>
-                      <span>Loading...</span>
-                    </div>
-                  {:else if !event.statsLoaded}
-                    <div class="inline-loader"><span>Retry</span></div>
-                  {:else}
-                    <div class="search-container internal">
-                      <div class="search-icon">🔍</div>
-                      <input
-                        type="text"
-                        placeholder="Filter inside..."
-                        bind:value={event.searchQuery}
-                        on:click|stopPropagation
-                      />
-                      {#if event.searchQuery}<button
-                          class="clear-btn"
-                          aria-label="Clear Search"
-                          on:click|stopPropagation={() =>
-                            (event.searchQuery = "")}>✕</button
-                        >{/if}
-                    </div>
-                    <div class="timeline-track">
-                      {#each event.logs as log, i}
-                        {@const fList = filterUsers(
-                          log.participants,
-                          event.searchQuery
-                        )}
-                        {#if !log.participants || fList.length > 0 || (!event.searchQuery && log.detail)}
-                          <div class="timeline-item">
-                            <div class="timeline-line-col">
-                              <div class="dot {log.type}"></div>
-                              {#if i !== event.logs.length - 1}<div
-                                  class="line"
-                                ></div>{/if}
-                            </div>
-                            <div class="timeline-content">
-                              <div class="log-header">
-                                <span class="log-action">{log.action}</span>
-                                <span class="log-time"
-                                  >{log.participants
-                                    ? event.searchQuery
-                                      ? `Found ${new Set(fList.map((u) => u.id)).size}`
-                                      : `${log.timestamp} Users`
-                                    : log.timestamp}</span
-                                >
+                      <div class="inline-loader">
+                        <div class="spinner small"></div>
+                        <span>Loading...</span>
+                      </div>
+                    {:else if !event.statsLoaded}
+                      <div class="inline-loader"><span>Retry</span></div>
+                    {:else}
+                      <div class="search-container internal">
+                        <div class="search-icon">🔍</div>
+                        <input
+                          type="text"
+                          placeholder="Filter inside..."
+                          bind:value={event.searchQuery}
+                          on:click|stopPropagation
+                        />
+                        {#if event.searchQuery}<button
+                            class="clear-btn"
+                            aria-label="Clear Search"
+                            on:click|stopPropagation={() =>
+                              (event.searchQuery = "")}>✕</button
+                          >{/if}
+                      </div>
+                      <div class="timeline-track">
+                        {#each event.logs as log, i}
+                          {@const fList = filterUsers(
+                            log.participants,
+                            event.searchQuery
+                          )}
+                          {#if !log.participants || fList.length > 0 || (!event.searchQuery && log.detail)}
+                            <div class="timeline-item">
+                              <div class="timeline-line-col">
+                                <div class="dot {log.type}"></div>
+                                {#if i !== event.logs.length - 1}<div
+                                    class="line"
+                                  ></div>{/if}
                               </div>
-                              {#if log.detail && !log.participants}<p
-                                  class="log-detail-text"
-                                >
-                                  {log.detail}
-                                </p>{/if}
-                              {#if log.participants && fList.length > 0}
-                                <div class="user-list-container">
-                                  {#each fList as p}<div class="user-chip">
-                                      <div class="user-avatar">{p.avatar}</div>
-                                      <span class="user-name">{p.name}</span>
-                                    </div>{/each}
+                              <div class="timeline-content">
+                                <div class="log-header">
+                                  <span class="log-action">{log.action}</span>
+                                  <span class="log-time"
+                                    >{log.participants
+                                      ? event.searchQuery
+                                        ? `Found ${new Set(fList.map((u) => u.id)).size}`
+                                        : `${log.timestamp} Users`
+                                      : log.timestamp}</span
+                                  >
                                 </div>
-                              {/if}
+                                {#if log.detail && !log.participants}<p
+                                    class="log-detail-text"
+                                  >
+                                    {log.detail}
+                                  </p>{/if}
+                                {#if log.participants && fList.length > 0}
+                                  <div class="user-list-container">
+                                    {#each fList as p}<div class="user-chip">
+                                        <div class="user-avatar">{p.avatar}</div>
+                                        <span class="user-name">{p.name}</span>
+                                      </div>{/each}
+                                  </div>
+                                {/if}
+                              </div>
                             </div>
-                          </div>
-                        {/if}
-                      {/each}
-                    </div>
-                  {/if}
+                          {/if}
+                        {/each}
+                      </div>
+                    {/if}
                   {/if}
                 </div>
               </div>
