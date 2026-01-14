@@ -1,49 +1,43 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { slide } from "svelte/transition";
+  import { slide, fade } from "svelte/transition";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { ROUTES } from "$lib/utils/routes";
+  import Swal from "sweetalert2";
 
-  const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
+  // --- User Data ---
   let userId: string = "";
   let token: string = "";
   let role: string = "";
+  let profileImage: string = "";
+  let isEmailVerified: boolean = true;
 
-  let backUrl: string = "/";
-
-  $: {
-    if (role === "student") {
-      backUrl = ROUTES.student.eventList;
-    } else {
-      backUrl = "/organizer/create-event";
-    }
-  }
-
+  // --- Form Fields ---
   let title: string = "";
   let firstName: string = "";
   let lastName: string = "";
   let email: string = "";
-
   let nisitId: string = "";
   let faculty: string = "";
   let major: string = "";
-
   let department: string = "";
 
+  // --- UI State ---
+  let activeSection: string = "profile";
   let isTitleOpen = false;
   let isFacultyOpen = false;
   let isMajorOpen = false;
   let isDeptOpen = false;
-
   let isLoading: boolean = true;
   let isSaving: boolean = false;
+  let isUploadingImage: boolean = false;
 
+  // --- Form Validation ---
   let originalData: any = {};
   let isFormDirty: boolean = false;
-
   let message: string = "";
   let messageType: "error" | "success" = "error";
   let messageTimeout: any;
@@ -59,6 +53,14 @@
   };
   type ErrorKey = keyof typeof errorFields;
 
+  // --- Sections ---
+  const sections = [
+    { id: "profile", icon: "user", label: "Profile" },
+    { id: "academic", icon: "book", label: "Academic" },
+    { id: "security", icon: "shield", label: "Security" },
+  ];
+
+  // --- Data Lists ---
   const titleList = ["Mr.", "Ms.", "Mrs.", "Dr.", "Prof."];
   const organizerDepartments = [
     { id: "Academic Affairs", name: "Academic Affairs" },
@@ -69,11 +71,11 @@
     { id: "Human Resources", name: "Human Resources" },
   ];
   const facultyList = [
-    { id: "management", name: "Management Sciences" },
-    { id: "engineering", name: "Engineering at Sriracha" },
-    { id: "science", name: "Science at Sriracha" },
-    { id: "economics", name: "Economics at Sriracha" },
-    { id: "maritime", name: "International Maritime Studies" },
+    { id: "management", name: "Management Sciences", icon: "📊" },
+    { id: "engineering", name: "Engineering at Sriracha", icon: "⚙️" },
+    { id: "science", name: "Science at Sriracha", icon: "🔬" },
+    { id: "economics", name: "Economics at Sriracha", icon: "💹" },
+    { id: "maritime", name: "International Maritime Studies", icon: "🚢" },
   ];
 
   type Major = { id: string; name: string };
@@ -128,9 +130,21 @@
     }
   }
 
+  // --- Computed ---
+  $: backUrl = role === "student" ? ROUTES.student.eventList : "/organizer/create-event";
+  $: userInitials = firstName && lastName 
+    ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+    : "?";
+  $: fullName = firstName && lastName ? `${title} ${firstName} ${lastName}` : "Loading...";
+
+  // --- Helper Functions ---
   function getFacultyName(id: string) {
     const f = facultyList.find((x) => x.id === id);
     return f ? f.name : "Select Faculty";
+  }
+  function getFacultyIcon(id: string) {
+    const f = facultyList.find((x) => x.id === id);
+    return f ? f.icon : "🎓";
   }
   function getMajorName(id: string) {
     const m = currentMajors.find((x) => x.id === id);
