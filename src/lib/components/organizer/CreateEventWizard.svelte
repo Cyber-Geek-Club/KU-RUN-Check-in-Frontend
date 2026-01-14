@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { fade } from 'svelte/transition';
   import {
     eventFormData,
     currentStep,
@@ -14,13 +15,17 @@
   
   // Import step components (will be created separately)
   import BasicInfoStep from './steps/BasicInfoStep.svelte';
-  import ScheduleStep from './steps/ScheduleStep.svelte';
-  import RewardsStep from './steps/RewardsStep.svelte';
-  import ReviewStep from './steps/ReviewStep.svelte';
+  // TODO: Create these step components
+  // import ScheduleStep from './steps/ScheduleStep.svelte';
+  // import RewardsStep from './steps/RewardsStep.svelte';
+  // import ReviewStep from './steps/ReviewStep.svelte';
 
   export let currentLang: 'th' | 'en' = 'th';
   export let onSubmit: (data: any) => Promise<void>;
   export let onCancel: () => void;
+
+  // Placeholder components for missing steps
+  const PlaceholderStep = BasicInfoStep; // Use BasicInfoStep as placeholder
 
   const steps = [
     {
@@ -33,19 +38,19 @@
       id: 2,
       title: { th: 'กำหนดการ', en: 'Schedule' },
       icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-      component: ScheduleStep,
+      component: PlaceholderStep, // ScheduleStep,
     },
     {
       id: 3,
       title: { th: 'รางวัล', en: 'Rewards' },
       icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-      component: RewardsStep,
+      component: PlaceholderStep, // RewardsStep,
     },
     {
       id: 4,
       title: { th: 'ตรวจสอบและเผยแพร่', en: 'Review & Publish' },
       icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-      component: ReviewStep,
+      component: PlaceholderStep, // ReviewStep,
     },
   ];
 

@@ -212,7 +212,7 @@ export const calculateRankRanges = () => {
 // Validation function
 export const validateForm = (step?: number): boolean => {
   const errors: ValidationError[] = [];
-  let data: EventFormData;
+  let data!: EventFormData; // Use definite assignment assertion
   
   eventFormData.subscribe((d) => (data = d))();
 

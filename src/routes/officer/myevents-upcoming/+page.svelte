@@ -145,7 +145,7 @@
           btn_submit: "Submit Proof",
           btn_resubmit: "Resubmit Proof",
           btn_back_strava: "← Back to Strava Link",
-          btn_verify_link: "✅ Verify Link"
+          btn_verify_link: "✅ Verify Link",
           status_daily_completed: "NEXT DAY",
           btn_daily_wait: "Wait Next Day",
 
