@@ -1219,7 +1219,7 @@
                       {/if}
 
                       {#if event.isJoined && event.checkin_count === 0}
-                        <button class="cancel-direct-btn" on:click={() => handleDirectCancel(event)}>
+                        <button class="cancel-direct-btn" on:click={() => openCancelModal(event)}>
                           {lang === 'th' ? '❌ ยกเลิก' : '❌ Cancel'}
                         </button>
                       {/if}
