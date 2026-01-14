@@ -37,6 +37,7 @@
     isUpcoming: boolean;  // [NEW] เช็คว่าเป็นวันในอนาคตหรือไม่
     canRegisterToday: boolean;  // [NEW] เช็คว่าสามารถสมัครได้วันนี้หรือไม่
     completionCount: number;  // [NEW] จำนวน COMPLETED ของกิจกรรมนี้
+    hasCancelledRecord: boolean;  // [NEW] มี record ที่ CANCELLED หรือไม่
     // [NEW] Single Day / Multi Day fields
     event_type: 'single_day' | 'multi_day';
     allow_daily_checkin: boolean;
@@ -422,12 +423,14 @@
           // [NEW LOGIC] หา participation record ใดๆ ที่ไม่ใช่ CANCELLED
           // สำหรับ rule "สมัครได้ครั้งเดียว"
           let anyActiveRecord = null;
+          let hasCancelledRecord = false;
           
           for (const record of myRecords) {
             const s = record.status ? record.status.toUpperCase() : "";
             
-            // ข้าม CANCELLED/CANCEL เท่านั้น - record อื่นๆ (JOINED, PENDING, COMPLETED, etc.) ถือว่าสมัครแล้ว
+            // เช็คว่ามี CANCELLED record หรือไม่
             if (s === 'CANCELLED' || s === 'CANCEL') {
+              hasCancelledRecord = true;
               console.log(`[Event ${e.id}] Skipping CANCELLED record:`, record.id);
               continue;
             }
@@ -461,6 +464,7 @@
             participant_count: actualParticipantCount,
             completionCount: e.completionCount,  // คงค่าเดิมไว้
             checkin_count: myCompletedCheckins,
+            hasCancelledRecord: !isJoined && hasCancelledRecord,  // มี CANCELLED และยังไม่ได้สมัครใหม่
           };
         });
       }
@@ -645,101 +649,56 @@
       }
 
       if (joinRes.ok) {
-          // สำเร็จ - Update state correctly
+          // ✅ สำเร็จ - Backend reactivates cancelled records automatically
           const responseData = await joinRes.json();
+          const wasReactivated = responseData.id && eventItem.participationId === responseData.id;
+          
+          console.log('[JOIN SUCCESS]', {
+              participationId: responseData.id,
+              wasReactivated,
+              joinCode: responseData.join_code
+          });
+          
           eventItem.isJoined = true;
-          eventItem.isJoinedToday = true;  // [FIX] Set today's registration status
+          eventItem.isJoinedToday = true;
           eventItem.participationId = responseData.id || null;
           eventItem.participationStatus = 'JOINED';
           events = [...events];
           
           Swal.fire({
               icon: 'success',
-              title: t[lang].alert_success,
-              timer: 1500,
-              showConfirmButton: false
+              title: wasReactivated 
+                  ? (lang === 'th' ? 'สมัครใหม่สำเร็จ!' : 'Re-registered!')
+                  : t[lang].alert_success,
+              text: `${lang === 'th' ? 'รหัสเข้าร่วม' : 'Join Code'}: ${responseData.join_code}`,
+              timer: 2000,
+              showConfirmButton: true
           });
           await updateUserStatus();  // Refresh full state from server
       } else {
-          // Error
+          // ❌ Error handling
           const contentType = joinRes.headers.get("content-type");
           if (contentType && contentType.includes("application/json")) {
               const errorData = await joinRes.json();
               const errorMsg = errorData.detail || "Error";
               
-              // [FIX] ถ้า error เกี่ยวกับ "ยกเลิก" หรือ "cancelled" → auto retry
-              if (errorMsg.includes('ยกเลิก') || errorMsg.includes('cancelled') || errorMsg.includes('CANCELLED')) {
-                  console.log('[JOIN ERROR] Cancelled-related error, retrying...');
-                  
-                  // แสดง loading
-                  Swal.fire({
-                      title: lang === 'th' ? 'กำลังดำเนินการ...' : 'Processing...',
-                      text: lang === 'th' ? 'กรุณารอสักครู่' : 'Please wait',
-                      allowOutsideClick: false,
-                      didOpen: () => {
-                          Swal.showLoading();
-                      }
-                  });
-                  
-                  // รอ Backend update
-                  await new Promise(resolve => setTimeout(resolve, 2000));
-                  
-                  // Refresh ข้อมูล
+              // Handle specific error cases
+              if (errorMsg.includes('คุณได้สมัครกิจกรรมนี้แล้ว')) {
+                  // Already joined - refresh to show correct state
                   await updateUserStatus();
-                  await fetchEvents();
-                  
-                  // Retry การสมัคร
-                  console.log('[RETRY] Attempting to join again...');
-                  const retryRes = await fetch(endpoint, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                      body: JSON.stringify({ event_id: eventItem.id }),
+                  Swal.fire({
+                      icon: 'info',
+                      title: lang === 'th' ? 'แจ้งเตือน' : 'Notice',
+                      text: errorMsg,
+                      confirmButtonText: 'OK'
                   });
-                  
-                  if (retryRes.ok) {
-                      // Retry สำเร็จ
-                      const responseData = await retryRes.json();
-                      eventItem.isJoined = true;
-                      eventItem.isJoinedToday = true;
-                      eventItem.participationId = responseData.id || null;
-                      eventItem.participationStatus = 'JOINED';
-                      events = [...events];
-                      
-                      Swal.fire({
-                          icon: 'success',
-                          title: t[lang].alert_success,
-                          text: lang === 'th' ? 'ลงทะเบียนสำเร็จ' : 'Registration successful',
-                          timer: 2000,
-                          showConfirmButton: false
-                      });
-                      await updateUserStatus();
-                  } else {
-                      // Retry ก็ยังไม่ได้ - เช็คว่ามี record ใหม่หรือไม่
-                      await updateUserStatus();
-                      const updatedEvent = events.find(e => e.id === eventItem.id);
-                      if (updatedEvent && updatedEvent.isJoined) {
-                          // สมัครสำเร็จแล้วจริงๆ
-                          Swal.fire({
-                              icon: 'success',
-                              title: t[lang].alert_success,
-                              text: lang === 'th' ? 'ลงทะเบียนสำเร็จ' : 'Registration successful',
-                              timer: 2000,
-                              showConfirmButton: false
-                          });
-                      } else {
-                          // ยังไม่สำเร็จ
-                          Swal.fire({
-                              icon: 'error',
-                              title: lang === 'th' ? 'ไม่สามารถลงทะเบียนได้' : 'Registration Failed',
-                              text: lang === 'th' 
-                                  ? 'กรุณารอสักครู่แล้วลองใหม่อีกครั้ง' 
-                                  : 'Please wait a moment and try again',
-                              confirmButtonText: 'OK'
-                          });
-                      }
-                  }
               } else {
-                  Swal.fire("Failed", errorMsg, "error");
+                  Swal.fire({
+                      icon: 'error',
+                      title: lang === 'th' ? 'เกิดข้อผิดพลาด' : 'Error',
+                      text: errorMsg,
+                      confirmButtonText: 'OK'
+                  });
               }
           } else {
               const errorText = await joinRes.text();
@@ -1313,7 +1272,11 @@
                       
                       {:else}
                         <button class="register-btn" disabled={isRegistering} on:click={() => handleRegister(event)}>
-                          {lang === 'th' ? '📝 สมัคร' : '📝 Register'}
+                          {#if event.hasCancelledRecord}
+                            {lang === 'th' ? '🔄 สมัครใหม่อีกครั้ง' : '🔄 Register Again'}
+                          {:else}
+                            {lang === 'th' ? '📝 สมัคร' : '📝 Register'}
+                          {/if}
                         </button>
                       {/if}
 
