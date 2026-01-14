@@ -109,35 +109,46 @@ export const api = {
 // ===== Participant Snapshots API =====
 
 export interface SnapshotEntry {
+    id?: number;
     entry_id: string;
+    snapshot_id?: number;
     participation_id?: number;
     user_id: number;
     user_name: string;
     user_email: string;
-    action: 'joined' | 'checked_in' | 'cancelled' | 'rejected' | 'pending';
-    created_at: string;
+    action: 'joined' | 'checked_in' | 'cancelled' | 'rejected' | 'pending' | 'completed';
+    status?: 'joined' | 'checked_in' | 'cancelled' | 'rejected' | 'pending' | 'completed';
+    created_at?: string;
+    joined_at?: string;
+    checked_in_at?: string;
+    completed_at?: string;
     metadata?: Record<string, any>;
 }
 
 export interface Snapshot {
+    id?: number;
     snapshot_id: string;
     snapshot_time: string;
     entry_count: number;
-    event_id: number;
+    event_id?: number;
+    description?: string;
 }
 
 export interface SnapshotsResponse {
     snapshots: Snapshot[];
     total: number;
     page: number;
-    per_page: number;
+    page_size: number;
+    total_pages: number;
 }
 
 export interface SnapshotEntriesResponse {
     entries: SnapshotEntry[];
-    total: number;
+    total?: number;
+    total_entries: number;
     page: number;
-    per_page: number;
+    page_size: number;
+    total_pages: number;
     snapshot_id: string;
     snapshot_time: string;
 }
