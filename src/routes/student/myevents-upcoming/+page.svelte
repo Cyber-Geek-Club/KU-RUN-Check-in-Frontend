@@ -8,6 +8,7 @@
   import { resolveImageUrl, API_BASE_URL } from "$lib/utils/imageUtils";
   import { ROUTES } from "$lib/utils/routes";
   import { navigateToEventList } from "$lib/utils/navigation";
+  import { apiRequest } from "$lib/utils/apiClient";
 
   // --- CONFIG ---
   const BASE_URL = API_BASE_URL;
@@ -1300,12 +1301,9 @@ async function handleCheckInConfirm() {
       });
       
       try {
-          // Use local SvelteKit API endpoint for Strava parsing
-          const res = await fetch('/api/strava/parse', { 
+          // Use Backend API endpoint for Strava parsing
+          const res = await apiRequest('/api/strava/parse', { 
               method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json'
-              },
               body: JSON.stringify({ url: trimmedLink })
           });
           
