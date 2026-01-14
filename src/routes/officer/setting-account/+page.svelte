@@ -12,15 +12,17 @@
   let token: string = "";
   let role: string = "";
 
-  let backUrl: string = "/";
+  let backUrl: string = "/officer/event-list";
 
   $: {
     if (role === "officer") {
       backUrl = ROUTES.officer.eventList;
-    } else if (role === "officer") {
-      backUrl = ROUTES.officer.eventList;
+    } else if (role === "student") {
+      backUrl = ROUTES.student.eventList;
+    } else if (role === "organizer") {
+      backUrl = ROUTES.organizer.eventLog;
     } else {
-      backUrl = "/organizer/create-event";
+      backUrl = "/officer/event-list";
     }
   }
 
