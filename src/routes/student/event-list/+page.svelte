@@ -667,21 +667,44 @@
               const errorData = await joinRes.json();
               const errorMsg = errorData.detail || "Error";
               
-              // [FIX] ถ้า error เกี่ยวกับ "ยกเลิก" หรือ "cancelled" → force reload
+              // [FIX] ถ้า error เกี่ยวกับ "ยกเลิก" หรือ "cancelled" → auto retry
               if (errorMsg.includes('ยกเลิก') || errorMsg.includes('cancelled') || errorMsg.includes('CANCELLED')) {
-                  console.log('[JOIN ERROR] Cancelled-related error, forcing refresh...');
+                  console.log('[JOIN ERROR] Cancelled-related error, retrying...');
                   
-                  // รอ Backend update ก่อน
-                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  // แสดง loading
+                  Swal.fire({
+                      title: lang === 'th' ? 'กำลังดำเนินการ...' : 'Processing...',
+                      text: lang === 'th' ? 'กรุณารอสักครู่' : 'Please wait',
+                      allowOutsideClick: false,
+                      didOpen: () => {
+                          Swal.showLoading();
+                      }
+                  });
+                  
+                  // รอ Backend update
+                  await new Promise(resolve => setTimeout(resolve, 2000));
                   
                   // Refresh ข้อมูล
                   await updateUserStatus();
                   await fetchEvents();
                   
-                  // เช็คว่าสมัครสำเร็จหรือไม่
-                  const updatedEvent = events.find(e => e.id === eventItem.id);
-                  if (updatedEvent && updatedEvent.isJoined) {
-                      // สมัครสำเร็จแล้วจริงๆ
+                  // Retry การสมัคร
+                  console.log('[RETRY] Attempting to join again...');
+                  const retryRes = await fetch(endpoint, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ event_id: eventItem.id }),
+                  });
+                  
+                  if (retryRes.ok) {
+                      // Retry สำเร็จ
+                      const responseData = await retryRes.json();
+                      eventItem.isJoined = true;
+                      eventItem.isJoinedToday = true;
+                      eventItem.participationId = responseData.id || null;
+                      eventItem.participationStatus = 'JOINED';
+                      events = [...events];
+                      
                       Swal.fire({
                           icon: 'success',
                           title: t[lang].alert_success,
@@ -689,14 +712,31 @@
                           timer: 2000,
                           showConfirmButton: false
                       });
+                      await updateUserStatus();
                   } else {
-                      // ยังไม่สำเร็จ แสดง error
-                      Swal.fire({
-                          icon: 'info',
-                          title: lang === 'th' ? 'กรุณาลองใหม่อีกครั้ง' : 'Please try again',
-                          text: errorMsg,
-                          confirmButtonText: 'OK'
-                      });
+                      // Retry ก็ยังไม่ได้ - เช็คว่ามี record ใหม่หรือไม่
+                      await updateUserStatus();
+                      const updatedEvent = events.find(e => e.id === eventItem.id);
+                      if (updatedEvent && updatedEvent.isJoined) {
+                          // สมัครสำเร็จแล้วจริงๆ
+                          Swal.fire({
+                              icon: 'success',
+                              title: t[lang].alert_success,
+                              text: lang === 'th' ? 'ลงทะเบียนสำเร็จ' : 'Registration successful',
+                              timer: 2000,
+                              showConfirmButton: false
+                          });
+                      } else {
+                          // ยังไม่สำเร็จ
+                          Swal.fire({
+                              icon: 'error',
+                              title: lang === 'th' ? 'ไม่สามารถลงทะเบียนได้' : 'Registration Failed',
+                              text: lang === 'th' 
+                                  ? 'กรุณารอสักครู่แล้วลองใหม่อีกครั้ง' 
+                                  : 'Please wait a moment and try again',
+                              confirmButtonText: 'OK'
+                          });
+                      }
                   }
               } else {
                   Swal.fire("Failed", errorMsg, "error");
