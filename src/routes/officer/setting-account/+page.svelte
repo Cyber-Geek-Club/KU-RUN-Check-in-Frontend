@@ -17,8 +17,8 @@
   $: {
     if (role === "officer") {
       backUrl = ROUTES.officer.eventList;
-    } else if (role === "student") {
-      backUrl = ROUTES.student.eventList;
+    } else if (role === "officer") {
+      backUrl = ROUTES.officer.eventList;
     } else {
       backUrl = "/organizer/create-event";
     }
@@ -257,7 +257,7 @@
       lastName = data.last_name || data.lastName || "";
       email = data.email || "";
 
-      if (role === "student") {
+      if (role === "officer") {
     nisitId = data.nisit_id || data.nisitId || "";
     
     // แก้: แปลงเป็นตัวพิมพ์เล็ก เพื่อให้ match กับ id ใน facultyList
@@ -284,7 +284,7 @@
         department,
       };
 
-      if (role === "student") {
+      if (role === "officer") {
         setTimeout(() => {
           originalData.major = data.major || "";
         }, 50);
@@ -304,7 +304,7 @@
       lastName !== originalData.lastName;
 
     let roleChanged = false;
-    if (role === "student") {
+    if (role === "officer") {
       roleChanged =
         faculty !== originalData.faculty || major !== originalData.major;
     } else {
@@ -336,7 +336,7 @@
       isValid = false;
     }
 
-    if (role === "student") {
+    if (role === "officer") {
       if (!faculty) {
         errorFields.faculty = true;
         isValid = false;
@@ -527,7 +527,7 @@ console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
               </div>
             </div>
 
-            {#if role === "student"}
+            {#if role === "officer"}
               <div class="form-group" transition:slide|local>
                 <label class="label" for="nisitId">Nisit ID</label>
                 <div class="input-field disabled">

@@ -27,7 +27,7 @@ export {};
 
 declare module "$app/types" {
 	export interface AppTypes {
-		RouteId(): "/" | "/api" | "/auth" | "/auth/forgot-password" | "/auth/login" | "/auth/register" | "/auth/reset-password" | "/auth/verify-email" | "/officer" | "/officer/event-list" | "/officer/monthly-reward copy" | "/officer/monthly-reward" | "/officer/myevents-upcoming" | "/officer/setting-account" | "/organizer" | "/organizer/create-event" | "/organizer/event-log" | "/organizer/event-verify" | "/organizer/monthly-reward" | "/organizer/setting-account" | "/organizer/unlock-user" | "/organizer/upload-proof" | "/student" | "/student/event-list" | "/student/monthly-reward" | "/student/myevents-upcoming" | "/student/setting-account";
+		RouteId(): "/" | "/api" | "/auth" | "/auth/forgot-password" | "/auth/login" | "/auth/register" | "/auth/reset-password" | "/auth/verify-email" | "/officer" | "/officer/event-list" | "/officer/monthly-reward" | "/officer/myevents-upcoming" | "/officer/setting-account" | "/organizer" | "/organizer/create-event" | "/organizer/event-log" | "/organizer/event-verify" | "/organizer/monthly-reward" | "/organizer/setting-account" | "/organizer/unlock-user" | "/organizer/upload-proof" | "/student" | "/student/event-list" | "/student/monthly-reward" | "/student/myevents-upcoming" | "/student/setting-account";
 		RouteParams(): {
 			
 		};
@@ -42,7 +42,6 @@ declare module "$app/types" {
 			"/auth/verify-email": Record<string, never>;
 			"/officer": Record<string, never>;
 			"/officer/event-list": Record<string, never>;
-			"/officer/monthly-reward copy": Record<string, never>;
 			"/officer/monthly-reward": Record<string, never>;
 			"/officer/myevents-upcoming": Record<string, never>;
 			"/officer/setting-account": Record<string, never>;
@@ -60,7 +59,7 @@ declare module "$app/types" {
 			"/student/myevents-upcoming": Record<string, never>;
 			"/student/setting-account": Record<string, never>
 		};
-		Pathname(): "/" | "/api" | "/api/" | "/auth" | "/auth/" | "/auth/forgot-password" | "/auth/forgot-password/" | "/auth/login" | "/auth/login/" | "/auth/register" | "/auth/register/" | "/auth/reset-password" | "/auth/reset-password/" | "/auth/verify-email" | "/auth/verify-email/" | "/officer" | "/officer/" | "/officer/event-list" | "/officer/event-list/" | "/officer/monthly-reward copy" | "/officer/monthly-reward copy/" | "/officer/monthly-reward" | "/officer/monthly-reward/" | "/officer/myevents-upcoming" | "/officer/myevents-upcoming/" | "/officer/setting-account" | "/officer/setting-account/" | "/organizer" | "/organizer/" | "/organizer/create-event" | "/organizer/create-event/" | "/organizer/event-log" | "/organizer/event-log/" | "/organizer/event-verify" | "/organizer/event-verify/" | "/organizer/monthly-reward" | "/organizer/monthly-reward/" | "/organizer/setting-account" | "/organizer/setting-account/" | "/organizer/unlock-user" | "/organizer/unlock-user/" | "/organizer/upload-proof" | "/organizer/upload-proof/" | "/student" | "/student/" | "/student/event-list" | "/student/event-list/" | "/student/monthly-reward" | "/student/monthly-reward/" | "/student/myevents-upcoming" | "/student/myevents-upcoming/" | "/student/setting-account" | "/student/setting-account/";
+		Pathname(): "/" | "/api" | "/api/" | "/auth" | "/auth/" | "/auth/forgot-password" | "/auth/forgot-password/" | "/auth/login" | "/auth/login/" | "/auth/register" | "/auth/register/" | "/auth/reset-password" | "/auth/reset-password/" | "/auth/verify-email" | "/auth/verify-email/" | "/officer" | "/officer/" | "/officer/event-list" | "/officer/event-list/" | "/officer/monthly-reward" | "/officer/monthly-reward/" | "/officer/myevents-upcoming" | "/officer/myevents-upcoming/" | "/officer/setting-account" | "/officer/setting-account/" | "/organizer" | "/organizer/" | "/organizer/create-event" | "/organizer/create-event/" | "/organizer/event-log" | "/organizer/event-log/" | "/organizer/event-verify" | "/organizer/event-verify/" | "/organizer/monthly-reward" | "/organizer/monthly-reward/" | "/organizer/setting-account" | "/organizer/setting-account/" | "/organizer/unlock-user" | "/organizer/unlock-user/" | "/organizer/upload-proof" | "/organizer/upload-proof/" | "/student" | "/student/" | "/student/event-list" | "/student/event-list/" | "/student/monthly-reward" | "/student/monthly-reward/" | "/student/myevents-upcoming" | "/student/myevents-upcoming/" | "/student/setting-account" | "/student/setting-account/";
 		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
 		Asset(): "/logo-ku.png" | string & {};
 	}

@@ -108,9 +108,9 @@
   ];
 
   const menuItems = [
-    { id: "event-list", label: "Event list", path: ROUTES.student.eventList, svg: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
-    { id: "my-event", label: "My event", path: ROUTES.student.myEvents, svg: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
-    { id: "account-setting", label: "Account setting", path: ROUTES.student.settings, svg: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+    { id: "event-list", label: "Event list", path: ROUTES.officer.eventList, svg: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
+    { id: "my-event", label: "My event", path: ROUTES.officer.myEvents, svg: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
+    { id: "account-setting", label: "Account setting", path: ROUTES.officer.settings, svg: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
   ];
 
   // =========================================
@@ -554,7 +554,7 @@
         confirmButtonText: 'OK',
         confirmButtonColor: '#3b82f6'
       }).then(() => {
-        navigateToMyEvents('student');
+        navigateToMyEvents('officer');
       });
       return;
     }
@@ -1077,7 +1077,7 @@
   <header class="header-bar">
     <div class="header-inner">
       <div class="left-group">
-        <div class="brand"><span class="brand-name">STUDENT</span></div>
+        <div class="brand"><span class="brand-name">Officer</span></div>
         <nav class="nav-menu desktop-only">
           {#each menuItems as item}
             <button class="menu-btn" class:active={currentView === item.id} on:click={() => selectView(item.id, item.path)}>
@@ -1248,7 +1248,7 @@
 
                     <div class="footer-actions">
                       {#if event.isJoined}
-                        <button class="register-btn running" on:click={() => navigateToMyEvents('student')}>
+                        <button class="register-btn running" on:click={() => navigateToMyEvents('officer')}>
                           {lang === 'th' ? '✅ สมัครแล้ว' : '✅ Registered'}
                         </button>
 

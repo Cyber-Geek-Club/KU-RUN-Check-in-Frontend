@@ -132,6 +132,7 @@ declare module '$env/static/private' {
 	export const ELECTRON_RUN_AS_NODE: string;
 	export const VSCODE_IPC_HOOK_CLI: string;
 	export const APPLICATION_INSIGHTS_NO_STATSBEAT: string;
+	export const VSCODE_L10N_BUNDLE_LOCATION: string;
 	export const ELECTRON_NO_ASAR: string;
 	export const NODE_ENV: string;
 }
@@ -269,6 +270,7 @@ declare module '$env/dynamic/private' {
 		ELECTRON_RUN_AS_NODE: string;
 		VSCODE_IPC_HOOK_CLI: string;
 		APPLICATION_INSIGHTS_NO_STATSBEAT: string;
+		VSCODE_L10N_BUNDLE_LOCATION: string;
 		ELECTRON_NO_ASAR: string;
 		NODE_ENV: string;
 		[key: `PUBLIC_${string}`]: undefined;
