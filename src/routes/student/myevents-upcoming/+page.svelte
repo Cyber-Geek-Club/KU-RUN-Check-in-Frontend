@@ -1300,14 +1300,11 @@ async function handleCheckInConfirm() {
       });
       
       try {
-          const token = getToken();
-          
-          // Try backend API first
-          const res = await fetch(`${BASE_URL}/api/strava/parse`, { 
+          // Use local SvelteKit API endpoint for Strava parsing
+          const res = await fetch('/api/strava/parse', { 
               method: 'POST',
               headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': token ? `Bearer ${token}` : ''
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({ url: trimmedLink })
           });
