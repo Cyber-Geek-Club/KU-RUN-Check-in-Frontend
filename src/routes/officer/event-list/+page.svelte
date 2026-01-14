@@ -450,8 +450,8 @@
           let isJoinedToday = false;
           if (e.event_type === 'multi_day' && myRecords.length > 0) {
             // ใช้ server time จาก record ล่าสุด (ที่ active) เพื่อหาวันปัจจุบันของ server
-            // หรือถ้าไม่มี ให้ fallback เป็น client time
-            let serverNow = new Date();
+            // หรือถ้าไม่มี ให้ fallback เป็น client time (หรือ debug date)
+            let serverNow = getDebugDate();
             if (finalRecord && finalRecord.created_at) {
               // ใช้เวลาจาก record ล่าสุด + offset เล็กน้อย เป็นตัวประมาณ server time
               const recordTime = new Date(finalRecord.created_at);
@@ -521,8 +521,25 @@
     }
   }
 
+  // [DEBUG] ฟังก์ชันสำหรับ override วันที่เพื่อทดสอบ
+  // ใช้โดยเพิ่ม ?debug_date=2026-01-15 ใน URL
+  function getDebugDate(): Date {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const debugDate = params.get('debug_date');
+      if (debugDate) {
+        const testDate = new Date(debugDate);
+        if (!isNaN(testDate.getTime())) {
+          console.log(`🔧 [DEBUG MODE] Using simulated date: ${debugDate}`);
+          return testDate;
+        }
+      }
+    }
+    return new Date();
+  }
+
   function canRegisterTodayCheck(event: EventItem): boolean {
-    const now = new Date();
+    const now = getDebugDate();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
     
