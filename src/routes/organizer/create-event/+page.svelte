@@ -83,7 +83,7 @@
       if (error.response?.status === 401) {
         console.error("Token expired or invalid, redirecting to login");
         localStorage.removeItem("access_token");
-        goto(`/ku-run/auth/login`);
+        goto(`/auth/login`);
         return Promise.reject(error);
       }
 
@@ -1429,7 +1429,7 @@
           userDepartment,
         };
       } catch (err: any) {
-        if (err.response?.status === 401) return goto(`/ku-run/auth/login`);
+        if (err.response?.status === 401) return goto(`/auth/login`);
         throw new Error("Failed to fetch user data");
       }
     } catch (error) {
@@ -3975,8 +3975,8 @@
           : sendAllMessageTemplate;
 
         try {
-          // ✅ เพิ่ม /ku-run prefix
-          const res = await fetch(`${API_BASE_URL}/ku-run/api/notifications/`, {
+          // ✅ API endpoint
+          const res = await fetch(`${API_BASE_URL}/api/notifications/`, {
             method: "POST",
             headers,
             body: JSON.stringify({
@@ -4171,7 +4171,7 @@
   async function fetchEvents(forceRefresh: boolean = false) {
   const token = localStorage.getItem("access_token");
   if (!token) {
-    window.location.href = `/ku-run/auth/login`;
+    window.location.href = `/auth/login`;
     return;
   }
 
@@ -5580,8 +5580,8 @@
     }
 
     try {
-      // ✅ เพิ่ม /ku-run prefix
-      const res = await fetch(`${API_BASE_URL}/ku-run/api/events/`, {
+      // ✅ API endpoint
+      const res = await fetch(`${API_BASE_URL}/api/events/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -5593,7 +5593,7 @@
         console.error("Token expired or invalid");
         localStorage.removeItem("access_token");
         // ✅ แก้ redirect URL
-        window.location.href = "/ku-run/auth/login";
+        window.location.href = "/auth/login";
         return;
       }
 
@@ -6850,7 +6850,7 @@
       allowOutsideClick: false,
     });
 
-    window.location.href = "/ku-run/auth/login";
+    window.location.href = "/auth/login";
   }
 
   function handleLogout() {
@@ -6884,7 +6884,7 @@
         sessionStorage.removeItem("authorized_ticket");
 
         // ✅ ใช้ window.location แทน goto เพื่อ full page reload
-        window.location.href = "/ku-run/auth/login";
+        window.location.href = "/auth/login";
       }
     });
   }
@@ -7870,7 +7870,7 @@
     const token = localStorage.getItem("access_token");
     if (!token) {
         Swal.fire("Error", "Session expired. Please login.", "error")
-            .then(() => window.location.href = "/ku-run/auth/login");
+            .then(() => window.location.href = "/auth/login");
         return;
     }
 
@@ -7891,7 +7891,7 @@
                 icon: "warning"
             });
             localStorage.removeItem("access_token");
-            window.location.href = "/ku-run/auth/login";
+            window.location.href = "/auth/login";
             return;
         }
     } catch (e) {
@@ -8353,7 +8353,7 @@
 
         if (status === 401) {
             localStorage.removeItem("access_token");
-            window.location.href = "/ku-run/auth/login";
+            window.location.href = "/auth/login";
         } else if (status === 403) {
             Swal. fire({
                 title: "Permission Denied",

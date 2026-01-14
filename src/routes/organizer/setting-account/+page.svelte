@@ -244,7 +244,7 @@
       });
 
       if (!response.ok) {
-        if (response.status === 401) return goto("/login");
+        if (response.status === 401) return goto("/auth/login");
         throw new Error("Failed to fetch user data");
       }
 
