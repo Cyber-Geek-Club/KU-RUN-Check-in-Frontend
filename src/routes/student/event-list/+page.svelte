@@ -63,20 +63,20 @@
   // =========================================
   
   // Layout State
-  let isMobileMenuOpen = false;
-  let currentView = "event-list";
-  let isLoading = true;
+  let isMobileMenuOpen = $state(false);
+  let currentView = $state("event-list");
+  let isLoading = $state(true);
 
   // Language State
-  let lang: 'th' | 'en' = 'th';
+  let lang: 'th' | 'en' = $state('th');
 
   // Search & Data State
-  let searchQuery = "";
-  let events: EventItem[] = [];
+  let searchQuery = $state("");
+  let events: EventItem[] = $state([]);
 
   // Session & Timer State
-  let timeLeftStr = "--:--:--";
-  let timeLeftSeconds = 0;
+  let timeLeftStr = $state("--:--:--");
+  let timeLeftSeconds = $state(0);
   let timerInterval: ReturnType<typeof setInterval> | null = null;
   // Adaptive polling via setTimeout loop (better control vs setInterval)
   let pollTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -89,18 +89,18 @@
 
 
   // Modal State
-  let showUploadModal = false;
-  let showCancelModal = false;
-  let selectedEvent: EventItem | null = null;
-  let eventToCancel: EventItem | null = null;
+  let showUploadModal = $state(false);
+  let showCancelModal = $state(false);
+  let selectedEvent: EventItem | null = $state(null);
+  let eventToCancel: EventItem | null = $state(null);
   
   // Upload State
-  let proofImage: string | null = null;
+  let proofImage: string | null = $state(null);
   let proofFile: File | null = null;
 
   // Cancel Reason State
-  let selectedCancelReason = "";
-  let otherCancelReason = "";
+  let selectedCancelReason = $state("");
+  let otherCancelReason = $state("");
   const cancelReasons = [
     "ติดธุระด่วน / Urgent matter",
     "ปัญหาสุขภาพ / Health issue",
@@ -512,47 +512,20 @@
   }
 
   // [DEBUG] ฟังก์ชันสำหรับ override วันที่เพื่อทดสอบ
-  // ใช้โดยเพิ่ม ?debug_date=2026-01-15 ใน URL หรือใช้ Debug Panel
+  // ใช้โดยเพิ่ม ?debug_date=2026-01-14 ใน URL
   function getDebugDate(): Date {
-    // Priority 1: UI Debug Panel
-    if (debugMode && debugDateStr) {
-      const testDate = new Date(debugDateStr);
-      if (!isNaN(testDate.getTime())) {
-        console.log(`🔧 [DEBUG PANEL] Using simulated date: ${debugDateStr}`);
-        return testDate;
-      }
-    }
-    
-    // Priority 2: URL Parameter
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const debugDate = params.get('debug_date');
       if (debugDate) {
         const testDate = new Date(debugDate);
         if (!isNaN(testDate.getTime())) {
-          console.log(`🔧 [DEBUG URL] Using simulated date: ${debugDate}`);
+          console.log(`🔧 [DEBUG MODE] Using simulated date: ${debugDate}`);
           return testDate;
         }
       }
     }
     return new Date();
-  }
-  
-  function toggleDebugMode() {
-    debugMode = !debugMode;
-    if (!debugMode) {
-      debugDateStr = "";
-    } else {
-      // Set default to today
-      const today = new Date();
-      debugDateStr = today.toISOString().split('T')[0];
-    }
-  }
-  
-  function applyDebugDate() {
-    console.log(`🔧 Applying debug date: ${debugDateStr}`);
-    // Trigger re-fetch
-    fetchEvents();
   }
 
   function canRegisterTodayCheck(event: EventItem): boolean {
@@ -628,7 +601,7 @@
   // =========================================
 
   // --- Register Action ---
-  let isRegistering = false;
+  let isRegistering = $state(false);
   async function handleRegister(eventItem: EventItem) {
     // ป้องกันการกดซ้ำ
     if (isRegistering) return;
@@ -1124,16 +1097,17 @@
   }
 
   // Debounce search to reduce frequent recomputation
-  let debouncedQuery = "";
+  let debouncedQuery = $state("");
   let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-  $: {
+  
+  $effect(() => {
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
       debouncedQuery = searchQuery.toLowerCase().trim();
     }, 250);
-  }
+  });
 
-  $: filteredEvents = events.filter(event => {
+  let filteredEvents = $derived(events.filter(event => {
     // [NEW] เงื่อนไขเวลา: ต้องยังไม่เลยช่วงเวลา (Not Expired)
     // ดึงไปแล้วในฟังก์ชัน fetchEvents เลย ดังนั้นควรจะไม่มีเหตุการณ์ที่เลยวันแล้ว
     // แต่เราเช็คตรงนี้เพิ่มเติมเพื่อความปลอดภัย
@@ -1159,7 +1133,7 @@
       event.location.toLowerCase().includes(query) ||
       event.description.toLowerCase().includes(query)
     );
-  });
+  }));
 </script>
 
 <div class="app-container">
@@ -1468,28 +1442,6 @@
 
 </div>
 
-<!-- DEBUG PANEL -->
-{#if debugMode}
-  <div class="debug-panel" transition:slide>
-    <div class="debug-header">
-      <span>🔧 Debug Mode</span>
-      <button class="debug-close" on:click={toggleDebugMode}>&times;</button>
-    </div>
-    <div class="debug-body">
-      <label>
-        <span>Test Date:</span>
-        <input type="date" bind:value={debugDateStr} />
-      </label>
-      <button class="debug-apply" on:click={applyDebugDate}>Apply</button>
-    </div>
-  </div>
-{/if}
-
-<!-- DEBUG TOGGLE BUTTON -->
-<button class="debug-toggle" on:click={toggleDebugMode} title="Toggle Debug Mode">
-  🔧
-</button>
-
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
   /* =========================================
@@ -1720,112 +1672,4 @@
   .lang-toggle-pill { display: flex; background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); }
   .lang-toggle-pill button { background: transparent; border: none; color: #64748b; font-size: 0.8rem; font-weight: 700; padding: 6px 12px; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; }
   .lang-toggle-pill button.active { background: #10b981; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-
-  /* DEBUG PANEL */
-  .debug-toggle {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, #f59e0b, #ef4444);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    font-size: 1.5rem;
-    cursor: pointer;
-    z-index: 9998;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
-  }
-  .debug-toggle:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
-  }
-
-  .debug-panel {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    width: 280px;
-    background: #1e293b;
-    border: 2px solid #f59e0b;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    z-index: 9999;
-    overflow: hidden;
-  }
-
-  .debug-header {
-    background: linear-gradient(135deg, #f59e0b, #ef4444);
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: white;
-    font-weight: 700;
-    font-size: 0.95rem;
-  }
-
-  .debug-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.5rem;
-    cursor: pointer;
-    line-height: 1;
-  }
-
-  .debug-body {
-    padding: 16px;
-  }
-
-  .debug-body label {
-    display: block;
-    margin-bottom: 12px;
-  }
-
-  .debug-body label span {
-    display: block;
-    color: #cbd5e1;
-    font-size: 0.85rem;
-    margin-bottom: 6px;
-    font-weight: 600;
-  }
-
-  .debug-body input[type="date"] {
-    width: 100%;
-    background: #0f172a;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    box-sizing: border-box;
-  }
-
-  .debug-body input[type="date"]:focus {
-    outline: none;
-    border-color: #f59e0b;
-  }
-
-  .debug-apply {
-    width: 100%;
-    background: #10b981;
-    color: white;
-    border: none;
-    padding: 10px;
-    border-radius: 8px;
-    font-weight: 700;
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .debug-apply:hover {
-    background: #059669;
-    transform: translateY(-1px);
-  }
 </style>
