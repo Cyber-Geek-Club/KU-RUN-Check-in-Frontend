@@ -1,53 +1,43 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { slide } from "svelte/transition";
+  import { slide, fade } from "svelte/transition";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { ROUTES } from "$lib/utils/routes";
+  import Swal from "sweetalert2";
 
-  const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || "";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
+  // --- User Data ---
   let userId: string = "";
   let token: string = "";
   let role: string = "";
+  let profileImage: string = "";
+  let isEmailVerified: boolean = true;
 
-  let backUrl: string = "/officer/event-list";
-
-  $: {
-    if (role === "officer") {
-      backUrl = ROUTES.officer.eventList;
-    } else if (role === "student") {
-      backUrl = ROUTES.student.eventList;
-    } else if (role === "organizer") {
-      backUrl = ROUTES.organizer.eventLog;
-    } else {
-      backUrl = "/officer/event-list";
-    }
-  }
-
+  // --- Form Fields ---
   let title: string = "";
   let firstName: string = "";
   let lastName: string = "";
   let email: string = "";
-
   let nisitId: string = "";
   let faculty: string = "";
   let major: string = "";
-
   let department: string = "";
 
+  // --- UI State ---
+  let activeSection: string = "profile";
   let isTitleOpen = false;
   let isFacultyOpen = false;
   let isMajorOpen = false;
   let isDeptOpen = false;
-
   let isLoading: boolean = true;
   let isSaving: boolean = false;
+  let isUploadingImage: boolean = false;
 
+  // --- Form Validation ---
   let originalData: any = {};
   let isFormDirty: boolean = false;
-
   let message: string = "";
   let messageType: "error" | "success" = "error";
   let messageTimeout: any;
@@ -63,6 +53,14 @@
   };
   type ErrorKey = keyof typeof errorFields;
 
+  // --- Sections ---
+  const sections = [
+    { id: "profile", icon: "user", label: "Profile" },
+    { id: "academic", icon: "book", label: "Department" },
+    { id: "security", icon: "shield", label: "Security" },
+  ];
+
+  // --- Data Lists ---
   const titleList = ["Mr.", "Ms.", "Mrs.", "Dr.", "Prof."];
   const organizerDepartments = [
     { id: "Academic Affairs", name: "Academic Affairs" },
@@ -73,11 +71,11 @@
     { id: "Human Resources", name: "Human Resources" },
   ];
   const facultyList = [
-    { id: "management", name: "Management Sciences" },
-    { id: "engineering", name: "Engineering at Sriracha" },
-    { id: "science", name: "Science at Sriracha" },
-    { id: "economics", name: "Economics at Sriracha" },
-    { id: "maritime", name: "International Maritime Studies" },
+    { id: "management", name: "Management Sciences", icon: "📊" },
+    { id: "engineering", name: "Engineering at Sriracha", icon: "⚙️" },
+    { id: "science", name: "Science at Sriracha", icon: "🔬" },
+    { id: "economics", name: "Economics at Sriracha", icon: "💹" },
+    { id: "maritime", name: "International Maritime Studies", icon: "🚢" },
   ];
 
   type Major = { id: string; name: string };
@@ -132,9 +130,25 @@
     }
   }
 
+  // --- Computed (OFFICER VERSION) ---
+  $: backUrl = role === "officer" 
+    ? ROUTES.officer.eventList 
+    : role === "student" 
+      ? ROUTES.student.eventList 
+      : "/officer/event-list";
+  $: userInitials = firstName && lastName 
+    ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+    : "?";
+  $: fullName = firstName && lastName ? `${title} ${firstName} ${lastName}` : "Loading...";
+
+  // --- Helper Functions ---
   function getFacultyName(id: string) {
     const f = facultyList.find((x) => x.id === id);
     return f ? f.name : "Select Faculty";
+  }
+  function getFacultyIcon(id: string) {
+    const f = facultyList.find((x) => x.id === id);
+    return f ? f.icon : "🎓";
   }
   function getMajorName(id: string) {
     const m = currentMajors.find((x) => x.id === id);
@@ -218,6 +232,50 @@
     }, 3000);
   }
 
+  // --- Profile Image Upload ---
+  async function handleImageUpload(e: Event) {
+    const input = e.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const file = input.files[0];
+    if (!file.type.startsWith("image/")) {
+      showMessage("Please select an image file", "error");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showMessage("Image must be less than 5MB", "error");
+      return;
+    }
+
+    isUploadingImage = true;
+    
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${API_BASE_URL}/api/users/${userId}/avatar`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        profileImage = data.avatar_url || URL.createObjectURL(file);
+        showMessage("Profile photo updated!", "success");
+      } else {
+        profileImage = URL.createObjectURL(file);
+        showMessage("Photo preview updated", "success");
+      }
+    } catch (error) {
+      profileImage = URL.createObjectURL(file);
+      showMessage("Photo preview updated", "success");
+    } finally {
+      isUploadingImage = false;
+    }
+  }
+
   onMount(async () => {
     isLoading = true;
     try {
@@ -244,11 +302,11 @@
       });
 
       if (!response.ok) {
-        if (response.status === 401) return goto("/login");
+        if (response.status === 401) return goto("/auth/login");
         throw new Error("Failed to fetch user data");
       }
 
-      const data = await response.json();W
+      const data = await response.json();
       console.log("Fetched:", data);
 
       if (data.role) role = data.role.toLowerCase();
@@ -258,22 +316,17 @@
       firstName = data.first_name || data.firstName || "";
       lastName = data.last_name || data.lastName || "";
       email = data.email || "";
+      profileImage = data.avatar_url || data.profile_image || "";
+      isEmailVerified = data.email_verified !== false;
 
-      if (role === "officer") {
-    nisitId = data.nisit_id || data.nisitId || "";
-    
-    // แก้: แปลงเป็นตัวพิมพ์เล็ก เพื่อให้ match กับ id ใน facultyList
-    faculty = (data.faculty || "").toLowerCase();
-    
-    // รอสักนิดเพื่อให้ faculty อัปเดต list ของ major
-    setTimeout(() => {
-        // แก้: แปลงเป็นตัวพิมพ์เล็ก
-        major = (data.major || "").toLowerCase();
-        
-        // อัปเดต originalData ตรงนี้อีกครั้งเพื่อให้ปุ่ม Save ทำงานถูก
-        originalData = { ...originalData, faculty, major };
-    }, 100);
-} else {
+      if (role === "student") {
+        nisitId = data.nisit_id || data.nisitId || "";
+        faculty = (data.faculty || "").toLowerCase();
+        setTimeout(() => {
+            major = (data.major || "").toLowerCase();
+            originalData = { ...originalData, faculty, major };
+        }, 100);
+      } else {
         department = data.department || "";
       }
 
@@ -286,7 +339,7 @@
         department,
       };
 
-      if (role === "officer") {
+      if (role === "student") {
         setTimeout(() => {
           originalData.major = data.major || "";
         }, 50);
@@ -306,7 +359,7 @@
       lastName !== originalData.lastName;
 
     let roleChanged = false;
-    if (role === "officer") {
+    if (role === "student") {
       roleChanged =
         faculty !== originalData.faculty || major !== originalData.major;
     } else {
@@ -338,7 +391,7 @@
       isValid = false;
     }
 
-    if (role === "officer") {
+    if (role === "student") {
       if (!faculty) {
         errorFields.faculty = true;
         isValid = false;
@@ -368,13 +421,12 @@
         first_name: firstName,
         last_name: lastName,
         major: major || originalData.major,
-    faculty: faculty || originalData.faculty,
-    department: department || originalData.department,
+        faculty: faculty || originalData.faculty,
+        department: department || originalData.department,
       };
 
-
       console.log("Sending Payload:", JSON.stringify(updateData, null, 2));
-console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
+      console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
       console.log("Updating Profile with:", updateData);
       const putRes = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
         method: "PUT",
@@ -391,342 +443,334 @@ console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
       }
 
       showMessage("Settings updated successfully!", "success");
-      setTimeout(() => window.location.reload(), 1500);
+      
+      await Swal.fire({
+        icon: "success",
+        title: "Saved!",
+        text: "Your settings have been updated.",
+        timer: 1500,
+        showConfirmButton: false,
+        background: "#1f2937",
+        color: "#f3f4f6",
+      });
+
+      setTimeout(() => window.location.reload(), 500);
     } catch (error: any) {
-      console.error(error);
-      showMessage(error.message, "error");
-    } finally {
-      isSaving = false;
-    }
-  }
-</script>
-
-<svelte:window on:click={closeAllDropdowns} />
-
-<div class="app-screen">
-  <div class="glass-header">
+      console.ercontainer">
+  <!-- Header -->
+  <header class="header">
     <a href={backUrl} class="back-btn" aria-label="Back">
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
       </svg>
     </a>
-  </div>
+    <h1 class="header-title">Settings</h1>
+    <div style="width: 40px;"></div>
+  </header>
 
-  <div class="scroll-container">
-    <div class="content-wrapper">
-      <div class="form-card">
-        <div class="title-section">
-          <h1 class="main-title">ACCOUNT SETTINGS</h1>
-          <p class="sub-title">Update your profile information.</p>
-        </div>
-
-        {#if isLoading}
-          <div style="text-align: center; color: #9ca3af; padding: 40px;">
-            <p>Loading...</p>
-          </div>
-        {:else}
-          <div class="form-section" transition:slide>
-            <div class="row-group">
-              <div class="form-group" style="flex: 0 0 90px;">
-                <label class="label" for="title-trigger">Title</label>
-                <div class="custom-select-container">
-                  <button
-                    type="button"
-                    id="title-trigger"
-                    class="select-trigger {errorFields.title
-                      ? 'error-border'
-                      : ''}"
-                    class:active={isTitleOpen}
-                    on:click={(e) => toggleDropdown("title", e)}
-                  >
-                    <span>{title || "Title"}</span>
-                    <div class="arrow-icon" class:rotate={isTitleOpen}>
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
-                      >
-                    </div>
-                  </button>
-                  {#if isTitleOpen}
-                    <div
-                      class="options-list"
-                      transition:slide={{ duration: 150 }}
-                      style="z-index: 101;"
-                    >
-                      {#each titleList as t}
-                        <button
-                          type="button"
-                          class="option-item"
-                          on:click={() => selectTitle(t)}>{t}</button
-                        >
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-              </div>
-
-              <div class="form-group" style="flex: 1;">
-                <label class="label" for="firstname">First Name</label>
-                <div
-                  class="input-field"
-                  class:error-border={errorFields.firstName}
-                >
-                  <input
-                    id="firstname"
-                    type="text"
-                    bind:value={firstName}
-                    on:input={clearMessage}
-                    placeholder="First Name"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="label" for="lastname">Last Name</label>
-              <div
-                class="input-field"
-                class:error-border={errorFields.lastName}
-              >
-                <input
-                  id="lastname"
-                  type="text"
-                  bind:value={lastName}
-                  on:input={clearMessage}
-                  placeholder="Last Name"
-                />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="label" for="email">Email</label>
-              <div class="input-field disabled">
-                <input id="email" type="email" value={email} disabled />
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#6b7280"
-                  stroke-width="2"
-                  ><rect x="3" y="11" width="18" height="11" rx="2" ry="2"
-                  ></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg
-                >
-              </div>
-            </div>
-
-            {#if role === "officer"}
-              <div class="form-group" transition:slide|local>
-                <label class="label" for="nisitId">Nisit ID</label>
-                <div class="input-field disabled">
-                  <input id="nisitId" type="text" value={nisitId} disabled />
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#6b7280"
-                    stroke-width="2"
-                    ><rect x="3" y="11" width="18" height="11" rx="2" ry="2"
-                    ></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg
-                  >
-                </div>
-              </div>
-
-              <div class="form-group" transition:slide|local>
-                <label class="label" for="faculty-trigger">Faculty</label>
-                <div class="custom-select-container">
-                  <button
-                    type="button"
-                    id="faculty-trigger"
-                    class="select-trigger {errorFields.faculty
-                      ? 'error-border'
-                      : ''}"
-                    class:active={isFacultyOpen}
-                    on:click={(e) => toggleDropdown("faculty", e)}
-                  >
-                    <span>{getFacultyName(faculty)}</span>
-                    <div class="arrow-icon" class:rotate={isFacultyOpen}>
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
-                      >
-                    </div>
-                  </button>
-                  {#if isFacultyOpen}
-                    <div
-                      class="options-list"
-                      transition:slide={{ duration: 150 }}
-                    >
-                      {#each facultyList as f}
-                        <button
-                          type="button"
-                          class="option-item"
-                          on:click={() => selectFaculty(f.id)}
-                        >
-                          {f.name}
-                        </button>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-              </div>
-
-              <div class="form-group" transition:slide|local>
-                <label class="label" for="major-trigger">Major</label>
-                <div class="custom-select-container" class:disabled={!faculty}>
-                  <button
-                    type="button"
-                    id="major-trigger"
-                    class="select-trigger {errorFields.major
-                      ? 'error-border'
-                      : ''}"
-                    class:active={isMajorOpen}
-                    disabled={!faculty}
-                    class:placeholder={!major}
-                    on:click={(e) => {
-                      if (faculty) toggleDropdown("major", e);
-                    }}
-                  >
-                    <span>{getMajorName(major)}</span>
-                    <div class="arrow-icon" class:rotate={isMajorOpen}>
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
-                      >
-                    </div>
-                  </button>
-                  {#if isMajorOpen}
-                    <div
-                      class="options-list"
-                      transition:slide={{ duration: 150 }}
-                    >
-                      {#each currentMajors as m}
-                        <button
-                          type="button"
-                          class="option-item"
-                          on:click={() => selectMajor(m.id)}
-                        >
-                          {m.name}
-                        </button>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-              </div>
+  <main class="main-content">
+    {#if isLoading}
+      <div class="loading-state" transition:fade>
+        <div class="loading-spinner"></div>
+        <p>Loading your profile...</p>
+      </div>
+    {:else}
+      <!-- Profile Card -->
+      <section class="profile-card" transition:slide>
+        <div class="profile-header">
+          <div class="avatar-wrapper">
+            {#if profileImage}
+              <img src={profileImage} alt="Profile" class="avatar-image" />
             {:else}
-              <div class="form-group" transition:slide|local>
-                <label class="label" for="dept-trigger">Department</label>
-                <div class="custom-select-container">
-                  <button
-                    type="button"
-                    id="dept-trigger"
-                    class="select-trigger {errorFields.department
-                      ? 'error-border'
-                      : ''}"
-                    class:active={isDeptOpen}
-                    on:click={(e) => toggleDropdown("dept", e)}
-                  >
-                    <span>{getDeptName(department)}</span>
-                    <div class="arrow-icon" class:rotate={isDeptOpen}>
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
-                      >
-                    </div>
-                  </button>
-                  {#if isDeptOpen}
-                    <div
-                      class="options-list"
-                      transition:slide={{ duration: 150 }}
-                    >
-                      {#each organizerDepartments as dept}
-                        <button
-                          type="button"
-                          class="option-item"
-                          on:click={() => selectDepartment(dept.id)}
-                        >
-                          {dept.name}
-                        </button>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
+              <div class="avatar-placeholder">
+                <span>{userInitials}</span>
               </div>
             {/if}
+            
+            <label class="avatar-upload-btn" class:uploading={isUploadingImage}>
+              <input type="file" accept="image/*" on:change={handleImageUpload} hidden />
+              {#if isUploadingImage}
+                <div class="mini-spinner"></div>
+              {:else}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              {/if}
+            </label>
+          </div>
+          
+          <div class="profile-info">
+            <h2 class="profile-name">{fullName}</h2>
+            <p class="profile-email">
+              {email}
+              {#if isEmailVerified}
+                <span class="verified-badge" title="Email verified">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                  </svg>
+                </span>
+              {/if}
+            </p>
+            <span class="profile-badge role-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              OFFICER
+            </span>
+          </div>
+        </div>
+      </section>
 
-            <div class="form-group">
-              <div class="password-label-row">
-                <span class="label">Password</span>
-                <a
-                  href="/auth/forgot-password?return_to={$page.url.pathname}"
-                  class="text-btn">CHANGE</a
-                >
-              </div>
+      <!-- Section Tabs -->
+      <nav class="section-tabs">
+        {#each sections as sec}
+          <button 
+            class="tab-btn" 
+            class:active={activeSection === sec.id}
+            on:click={() => activeSection = sec.id}
+          >
+            {#if sec.icon === "user"}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            {:else if sec.icon === "book"}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 21h18"/>
+                <path d="M9 8h1"/>
+                <path d="M9 12h1"/>
+                <path d="M9 16h1"/>
+                <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
+              </svg>
+            {:else if sec.icon === "shield"}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            {/if}
+            <span>{sec.label}</span>
+          </button>
+        {/each}
+      </nav>
 
-              <div class="input-field disabled" transition:slide|local>
-                <input type="password" value="••••••••" disabled />
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#6b7280"
-                  stroke-width="2"
-                  ><rect x="3" y="11" width="18" height="11" rx="2" ry="2"
-                  ></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg
-                >
+      <!-- Profile Section -->
+      {#if activeSection === "profile"}
+        <section class="settings-section" transition:slide>
+          <h3 class="section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Personal Information
+          </h3>
+
+          <div class="form-row">
+            <!-- Title -->
+            <div class="form-group small">
+              <span class="form-label">Title</span>
+              <div class="custom-select">
+                <button type="button" class="select-btn"
+                  class:active={isTitleOpen} class:error={errorFields.title}
+                  on:click={(e) => toggleDropdown("title", e)}>
+                  <span class:placeholder={!title}>{title || "Select"}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class:rotate={isTitleOpen}>
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </button>
+                {#if isTitleOpen}
+                  <div class="select-dropdown" transition:slide={{ duration: 150 }}>
+                    {#each titleList as t}
+                      <button type="button" class="select-option" on:click={() => selectTitle(t)}>{t}</button>
+                    {/each}
+                  </div>
+                {/if}
               </div>
             </div>
 
-            {#if message}
-              <div
-                class="message-container {messageType}"
-                transition:slide={{ duration: 200 }}
-              >
-                {#if messageType === "error"}
-                  <svg
-                    style="flex-shrink: 0;"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                {:else}
+            <!-- First Name -->
+            <div class="form-group flex-1">
+              <label class="form-label" for="firstName">First Name</label>
+              <div class="input-wrapper" class:error={errorFields.firstName}>
+                <input id="firstName" type="text" bind:value={firstName} on:input={clearMessage} placeholder="Enter first name" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Last Name -->
+          <div class="form-group">
+            <label class="form-label" for="lastName">Last Name</label>
+            <div class="input-wrapper" class:error={errorFields.lastName}>
+              <input id="lastName" type="text" bind:value={lastName} on:input={clearMessage} placeholder="Enter last name" />
+            </div>
+          </div>
+
+          <!-- Email (Disabled) -->
+          <div class="form-group">
+            <span class="form-label">Email Address</span>
+            <div class="input-wrapper disabled">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              <input type="email" value={email} disabled />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <span class="input-hint">Email cannot be changed</span>
+          </div>
+        </section>
+      {/if}
+
+      <!-- Department Section (Officer) -->
+      {#if activeSection === "academic"}
+        <section class="settings-section" transition:slide>
+          <h3 class="section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 21h18"/>
+              <path d="M9 8h1"/>
+              <path d="M9 12h1"/>
+              <path d="M9 16h1"/>
+              <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
+            </svg>
+            Department Information
+          </h3>
+
+          <!-- Department -->
+          <div class="form-group">
+            <span class="form-label">Department</span>
+            <div class="custom-select">
+              <button type="button" class="select-btn"
+                class:active={isDeptOpen} class:error={errorFields.department}
+                on:click={(e) => toggleDropdown("dept", e)}>
+                <span class:placeholder={!department}>{getDeptName(department)}</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class:rotate={isDeptOpen}>
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+              {#if isDeptOpen}
+                <div class="select-dropdown" transition:slide={{ duration: 150 }}>
+                  {#each organizerDepartments as dept}
+                    <button type="button" class="select-option" on:click={() => selectDepartment(dept.id)}>{dept.name}</button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          </div>
+        </section>
+      {/if}
+
+      <!-- Security Section -->
+      {#if activeSection === "security"}
+        <section class="settings-section" transition:slide>
+          <h3 class="section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Security Settings
+          </h3>
+
+          <!-- Password -->
+          <div class="form-group">
+            <div class="form-label-row">
+              <span class="form-label">Password</span>
+              <a href="/auth/forgot-password?return_to={$page.url.pathname}" class="link-btn">Change Password</a>
+            </div>
+            <div class="input-wrapper disabled">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <input type="password" value="••••••••••" disabled />
+            </div>
+          </div>
+
+          <!-- Account Status Info -->
+          <div class="info-card">
+            <div class="info-row">
+              <span class="info-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Account Status
+              </span>
+              <span class="status-badge active">Active</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                Email Verification
+              </span>
+              <span class="status-badge" class:verified={isEmailVerified} class:pending={!isEmailVerified}>
+                {isEmailVerified ? 'Verified' : 'Pending'}
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Role
+              </span>
+              <span class="status-badge role">Officer</span>
+            </div>
+          </div>
+
+          <!-- Logout Button -->
+          <button class="logout-btn" on:click={handleLogout}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Logout
+          </button>
+        </section>
+      {/if}
+
+      <!-- Message Toast -->
+      {#if message}
+        <div class="toast {messageType}" transition:slide={{ duration: 200 }}>
+          {#if messageType === "error"}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          {:else}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          {/if}
+          <span>{message}</span>
+        </div>
+      {/if}
+
+      <!-- Save Button (Sticky) -->
+      <div class="save-bar" class:visible={isFormDirty}>
+        <button class="save-btn" on:click={handleSaveChanges} disabled={isSaving}>
+          {#if isSaving}
+            <div class="btn-spinner"></div>
+            Saving...
+          {:else}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Save Changes
+          {/if}
+        </button>
+      </div>
+    {/if}
+  </main         {:else}
                   <svg
                     style="flex-shrink: 0;"
                     width="20"
