@@ -27,13 +27,12 @@ export {};
 
 declare module "$app/types" {
 	export interface AppTypes {
-		RouteId(): "/" | "/api" | "/auth" | "/auth/forgot-password" | "/auth/login" | "/auth/register" | "/auth/reset-password" | "/auth/verify-email" | "/officer" | "/officer/event-list" | "/officer/monthly-reward" | "/officer/myevents-upcoming" | "/officer/setting-account" | "/organizer" | "/organizer/create-event" | "/organizer/event-log" | "/organizer/event-verify" | "/organizer/monthly-reward" | "/organizer/setting-account" | "/organizer/unlock-user" | "/organizer/upload-proof" | "/student" | "/student/event-list" | "/student/monthly-reward" | "/student/myevents-upcoming" | "/student/setting-account";
+		RouteId(): "/" | "/auth" | "/auth/forgot-password" | "/auth/login" | "/auth/register" | "/auth/reset-password" | "/auth/verify-email" | "/officer" | "/officer/event-list" | "/officer/monthly-reward" | "/officer/myevents-upcoming" | "/officer/setting-account" | "/organizer" | "/organizer/create-event" | "/organizer/event-log" | "/organizer/event-verify" | "/organizer/monthly-reward" | "/organizer/setting-account" | "/organizer/unlock-user" | "/organizer/upload-proof" | "/student" | "/student/event-list" | "/student/monthly-reward" | "/student/myevents-upcoming" | "/student/setting-account";
 		RouteParams(): {
 			
 		};
 		LayoutParams(): {
 			"/": Record<string, never>;
-			"/api": Record<string, never>;
 			"/auth": Record<string, never>;
 			"/auth/forgot-password": Record<string, never>;
 			"/auth/login": Record<string, never>;
@@ -59,7 +58,7 @@ declare module "$app/types" {
 			"/student/myevents-upcoming": Record<string, never>;
 			"/student/setting-account": Record<string, never>
 		};
-		Pathname(): "/" | "/api" | "/api/" | "/auth" | "/auth/" | "/auth/forgot-password" | "/auth/forgot-password/" | "/auth/login" | "/auth/login/" | "/auth/register" | "/auth/register/" | "/auth/reset-password" | "/auth/reset-password/" | "/auth/verify-email" | "/auth/verify-email/" | "/officer" | "/officer/" | "/officer/event-list" | "/officer/event-list/" | "/officer/monthly-reward" | "/officer/monthly-reward/" | "/officer/myevents-upcoming" | "/officer/myevents-upcoming/" | "/officer/setting-account" | "/officer/setting-account/" | "/organizer" | "/organizer/" | "/organizer/create-event" | "/organizer/create-event/" | "/organizer/event-log" | "/organizer/event-log/" | "/organizer/event-verify" | "/organizer/event-verify/" | "/organizer/monthly-reward" | "/organizer/monthly-reward/" | "/organizer/setting-account" | "/organizer/setting-account/" | "/organizer/unlock-user" | "/organizer/unlock-user/" | "/organizer/upload-proof" | "/organizer/upload-proof/" | "/student" | "/student/" | "/student/event-list" | "/student/event-list/" | "/student/monthly-reward" | "/student/monthly-reward/" | "/student/myevents-upcoming" | "/student/myevents-upcoming/" | "/student/setting-account" | "/student/setting-account/";
+		Pathname(): "/" | "/auth" | "/auth/" | "/auth/forgot-password" | "/auth/forgot-password/" | "/auth/login" | "/auth/login/" | "/auth/register" | "/auth/register/" | "/auth/reset-password" | "/auth/reset-password/" | "/auth/verify-email" | "/auth/verify-email/" | "/officer" | "/officer/" | "/officer/event-list" | "/officer/event-list/" | "/officer/monthly-reward" | "/officer/monthly-reward/" | "/officer/myevents-upcoming" | "/officer/myevents-upcoming/" | "/officer/setting-account" | "/officer/setting-account/" | "/organizer" | "/organizer/" | "/organizer/create-event" | "/organizer/create-event/" | "/organizer/event-log" | "/organizer/event-log/" | "/organizer/event-verify" | "/organizer/event-verify/" | "/organizer/monthly-reward" | "/organizer/monthly-reward/" | "/organizer/setting-account" | "/organizer/setting-account/" | "/organizer/unlock-user" | "/organizer/unlock-user/" | "/organizer/upload-proof" | "/organizer/upload-proof/" | "/student" | "/student/" | "/student/event-list" | "/student/event-list/" | "/student/monthly-reward" | "/student/monthly-reward/" | "/student/myevents-upcoming" | "/student/myevents-upcoming/" | "/student/setting-account" | "/student/setting-account/";
 		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
 		Asset(): "/logo-ku.png" | string & {};
 	}
