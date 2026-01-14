@@ -12,6 +12,12 @@
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
   import holidaysJson from '$lib/data/holidays.json';
 
+    function resolveImageUrl(path: string | null | undefined): string {
+        if (!path) return "";
+        if (path.startsWith("http")) return path;
+        return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+    }
+
   // --- STATE: LAYOUT ---
   let isMobileMenuOpen = false;
   let currentView = "my-event";
@@ -595,7 +601,7 @@
               location: ev.location || "-",
               distance_km: ev.distance_km || 0,
               actual_distance_km: actualDist,
-              banner_image_url: ev.banner_image_url || "https://via.placeholder.com/400",
+              banner_image_url: resolveImageUrl(ev.banner_image_url) || "https://via.placeholder.com/400",
               participant_count: ev.participant_count || 0,
               max_participants: ev.max_participants || 0,
               

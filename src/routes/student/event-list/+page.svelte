@@ -13,6 +13,12 @@
   // =========================================
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
+  function resolveImageUrl(path: string | null | undefined): string {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+  }
+
   interface EventItem {
     id: number;
     title: string;
@@ -327,7 +333,7 @@
             description: item.description,
             location: item.location,
             distance_km: item.distance_km,
-            banner_image_url: item.banner_image_url || "", // แก้ให้รองรับรูปว่าง
+            banner_image_url: resolveImageUrl(item.banner_image_url) || "", // แก้ให้รองรับรูปว่าง + รองรับ path แบบ relative
             participant_count: item.participant_count,
             max_participants: item.max_participants,
             is_active: item.is_active !== undefined ? item.is_active : true,
