@@ -952,16 +952,24 @@
 
   function formatTime(start: string, end: string, currentLang: string) {
     if (!start) return "-";
-    const s = new Date(start);
-    const e = end ? new Date(end) : null;
-    const options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false , timeZone: 'Asia/Bangkok' };
-    const timeStart = s.toLocaleTimeString('en-GB', options);
-    const timeEnd = e ? e.toLocaleTimeString('en-GB', options) : "";
+    
+    // [FIX] ไม่แปลง timezone เพราะ Backend ส่งมาเป็น UTC แต่ค่าจริงคือ local time แล้ว
+    // แค่ดึงเวลาจาก string โดยตรง
+    const extractTime = (dateStr: string) => {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      const hours = String(date.getUTCHours()).padStart(2, '0');
+      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    };
+    
+    const timeStart = extractTime(start);
+    const timeEnd = end ? extractTime(end) : "";
 
     if (currentLang === 'th') {
-      return e ? `${timeStart} - ${timeEnd} น. (GMT+7)` : `${timeStart} น. (GMT+7)`;
+      return end ? `${timeStart} - ${timeEnd} น.` : `${timeStart} น.`;
     } else {
-      return e ? `${timeStart} - ${timeEnd} GMT+7` : `${timeStart} GMT+7`;
+      return end ? `${timeStart} - ${timeEnd}` : `${timeStart}`;
     }
   }
 
