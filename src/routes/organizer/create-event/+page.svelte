@@ -4364,7 +4364,7 @@
   // ฟังก์ชันดึงวันหยุดจากไฟล์ JSON มาเก็บไว้
   async function fetchHolidaysFromFile() {
     try {
-      const res = await fetch("/ku-run/internal/holidays");
+      const res = await fetch("/src/lib/data/holidays.json");
 
       // ถ้าไม่เจอไฟล์ (404) ให้ใช้ array ว่าง
       if (res.status === 404) {
@@ -5143,7 +5143,7 @@
 
   async function loadHolidays() {
     try {
-      const res = await fetch("/ku-run/internal/holidays");
+      const res = await fetch("/src/lib/data/holidays.json");
       allSavedHolidays = await res.json();
     } catch (e) {
       console.error("Load holidays failed", e);
@@ -5605,7 +5605,7 @@
       const data: any = await res.json();
 
       // ขึ้นอยู่กับว่า holidays API อยู่ที่ไหน
-      const resHolidays = await fetch("/ku-run/internal/holidays");
+      const resHolidays = await fetch("/src/lib/data/holidays.json");
       if (resHolidays.ok) {
         allHolidaysData = await resHolidays.json();
       }
@@ -6239,10 +6239,10 @@
         }
 
         // -----------------------------------------------------------
-        // 🚀 STEP 2: ลบข้อมูล Holiday/Reward จากไฟล์ JSON
+        // 🚀 STEP 2: ลบข้อมูล Holiday/Reward จากไฟล์ JSON (ไม่ทำงานกับไฟล์ static)
         // -----------------------------------------------------------
         try {
-          const deleteHolidayRes = await fetch("/ku-run/internal/holidays", {
+          const deleteHolidayRes = await fetch("/src/lib/data/holidays.json", {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ eventId: id }),
