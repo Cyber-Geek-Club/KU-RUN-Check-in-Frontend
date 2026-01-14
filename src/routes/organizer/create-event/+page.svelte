@@ -7178,7 +7178,7 @@
     eYear: "",
     startTime: "",
     endTime: "",
-    totalSlots: null,
+    totalSlots: 10000,  // Default high value, hidden from UI
     distanceKm: null,
     holidays: [],
     excludeWeekends: false,
@@ -7634,7 +7634,7 @@
         eYear: new Date().getFullYear().toString(),
         startTime: "00:00",
         endTime: "23:59",
-        totalSlots: null,
+        totalSlots: 10000,  // Default high value
         distanceKm: 0,
         rewards: [{ name: "", requirement: null, tier: 1 }],
         totalRewards: null,
