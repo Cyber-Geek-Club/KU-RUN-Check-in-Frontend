@@ -42,6 +42,11 @@
 
   let isRefreshing = false;
 
+  // --- Auto-refresh polling ---
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
+  let pollDelay = 5000; // 5 seconds for realtime updates
+  let isPollingActive = false;
+
   // --- State ---
   let participations: Participation[] = [];
   let isLoading = true;
@@ -557,6 +562,77 @@
     }
   });
 
+  // --- AUTO-REFRESH POLLING FUNCTIONS ---
+  function startPolling() {
+    if (pollInterval) return;
+    isPollingActive = true;
+    console.log("🔄 Starting auto-refresh polling (every 5s)");
+    
+    pollInterval = setInterval(async () => {
+      if (!isPollingActive) return;
+      try {
+        await silentRefresh();
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }, pollDelay);
+  }
+
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+    isPollingActive = false;
+    console.log("⏹️ Stopped auto-refresh polling");
+  }
+
+  // Silent refresh without showing loading state
+  async function silentRefresh() {
+    if (!token || !currentUserId) return;
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/participations/user/${currentUserId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!res.ok) return;
+      
+      const rawData: RawParticipation[] = await res.json();
+      
+      // Check if any status changed
+      let hasChanges = false;
+      for (const newP of rawData) {
+        const oldP = participations.find(p => p.id === newP.id);
+        if (!oldP || oldP.status !== newP.status) {
+          hasChanges = true;
+          console.log(`📢 Status changed: ${oldP?.status || 'NEW'} → ${newP.status}`);
+          break;
+        }
+      }
+      
+      if (rawData.length !== participations.length) {
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
+        console.log("✅ Detected changes, reloading data...");
+        await loadData();
+      }
+    } catch (err) {
+      // Silently ignore errors in background refresh
+    }
+  }
+
+  function handleVisibilityChange() {
+    if (document.hidden) {
+      stopPolling();
+    } else {
+      startPolling();
+    }
+  }
+
   onMount(async () => {
     try {
       const storedToken = localStorage.getItem("access_token");
@@ -571,11 +647,27 @@
       token = storedToken;
       currentUserId = userInfo.id;
       await loadData();
+      
+      // Start realtime polling
+      startPolling();
+      
+      // Pause/resume when tab visibility changes
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('offline', stopPolling);
+      window.addEventListener('online', startPolling);
     } catch (err) {
       console.error("Auth Error:", err);
       errorMessage = "ข้อมูลผู้ใช้ผิดพลาด";
       isLoading = false;
     }
+  });
+  
+  import { onDestroy } from "svelte";
+  onDestroy(() => {
+    stopPolling();
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('offline', stopPolling);
+    window.removeEventListener('online', startPolling);
   });
 </script>
 

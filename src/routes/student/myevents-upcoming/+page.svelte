@@ -22,6 +22,11 @@
   let timeLeftSeconds = 0;
   let timerInterval: ReturnType<typeof setInterval> | null = null;
 
+  // --- STATE: AUTO-REFRESH POLLING ---
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
+  let pollDelay = 5000; // 5 seconds for realtime updates
+  let isPollingActive = false;
+
   // --- STATE: SEARCH ---
   let searchQuery = "";
 
@@ -1389,15 +1394,111 @@ async function submitProofAction() {
       }
   }
 
+  // --- AUTO-REFRESH POLLING FUNCTIONS ---
+  function startPolling() {
+    if (pollInterval) return; // Already polling
+    isPollingActive = true;
+    console.log("🔄 Starting auto-refresh polling (every 5s)");
+    
+    pollInterval = setInterval(async () => {
+      if (!isPollingActive) return;
+      try {
+        await silentRefresh();
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }, pollDelay);
+  }
+
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+    isPollingActive = false;
+    console.log("⏹️ Stopped auto-refresh polling");
+  }
+
+  // Silent refresh without showing loading state
+  async function silentRefresh() {
+    const token = getToken();
+    const userId = getUserIdFromToken();
+    if (!token || !userId) return;
+
+    try {
+      const resPart = await fetch(`${BASE_URL}/api/participations/user/${userId}`, {
+        method: 'GET',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!resPart.ok) return;
+      
+      const newParticipations = await resPart.json();
+      
+      // Check if any status changed
+      let hasChanges = false;
+      for (const newP of newParticipations) {
+        const oldP = rawParticipations.find((p: any) => p.id === newP.id);
+        if (!oldP || oldP.status !== newP.status) {
+          hasChanges = true;
+          console.log(`📢 Status changed: ${oldP?.status || 'NEW'} → ${newP.status}`);
+          break;
+        }
+      }
+      
+      // Also check if participation count changed
+      if (newParticipations.length !== rawParticipations.length) {
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
+        console.log("✅ Detected changes, updating UI...");
+        rawParticipations = newParticipations;
+        processData();
+      }
+    } catch (err) {
+      // Silently ignore errors in background refresh
+    }
+  }
+
+  // Visibility change handler for pausing/resuming polling
+  function handleVisibilityChange() {
+    if (document.hidden) {
+      stopPolling();
+    } else {
+      startPolling();
+    }
+  }
+
   onMount(async () => {
     const savedLang = localStorage.getItem('app_lang');
     if (savedLang === 'th' || savedLang === 'en') {
         lang = savedLang;
     }
     startSessionTimer();
-    loadData(); 
+    await loadData();
+    
+    // Start realtime polling
+    startPolling();
+    
+    // Pause/resume when tab visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Pause when offline, resume when online
+    window.addEventListener('offline', stopPolling);
+    window.addEventListener('online', startPolling);
   });
-  onDestroy(() => { if (timerInterval) clearInterval(timerInterval); });
+  
+  onDestroy(() => { 
+    if (timerInterval) clearInterval(timerInterval);
+    stopPolling();
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('offline', stopPolling);
+    window.removeEventListener('online', startPolling);
+  });
 
   // [เพิ่มใหม่] ฟังก์ชันย่อรูปภาพ (Client-side Compression)
 async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promise<File> {
