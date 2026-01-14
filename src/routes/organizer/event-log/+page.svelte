@@ -191,7 +191,18 @@
 
   async function fetchParticipants(eventId: number) {
     const idx = events.findIndex((e) => e.id === eventId);
-    if (idx === -1 || events[idx].statsLoaded) return;
+    if (idx === -1) {
+      console.warn(`⚠️ Event ${eventId} not found in events array`);
+      return;
+    }
+    
+    // Skip if already loaded
+    if (events[idx].statsLoaded) {
+      console.log(`✅ Event ${eventId} data already loaded, skipping fetch`);
+      return;
+    }
+    
+    console.log(`🔄 Loading participants for event ${eventId}...`);
     events[idx].isLoading = true;
     events = events;
 
@@ -204,28 +215,70 @@
         `${API_BASE_URL}/api/participations/event/${eventId}`,
         { headers }
       );
+      
       if (res.ok) {
         const raw = await res.json();
         const list: Participation[] = Array.isArray(raw) ? raw : raw.data || [];
+        
+        console.log(`📊 Found ${list.length} participation records`);
+        
+        if (list.length === 0) {
+          events[idx].logs = [
+            { 
+              action: "No Participants Yet", 
+              timestamp: "0", 
+              type: "info",
+              detail: "No one has joined this event yet" 
+            }
+          ];
+          events[idx].statsLoaded = true;
+          return;
+        }
+        
         const uids = [...new Set(list.map((p) => p.user_id))];
+        console.log(`👥 Loading ${uids.length} unique user profiles...`);
+        
         const users = await Promise.all(
           uids.map((u) => fetchUserDetails(u, token))
         );
+        
         const uMap: Record<number, User> = {};
         users.forEach((u) => {
           if (u) uMap[u.id] = u;
         });
+        
+        console.log(`✅ Loaded ${Object.keys(uMap).length} user profiles`);
+        
         events[idx].logs = convertParticipantsToLogs(list, uMap);
         events[idx].statsLoaded = true;
+        
+        console.log(`✅ Successfully processed event ${eventId} data`);
       } else {
-        events[idx].logs = [{ action: "Error", timestamp: "-", type: "error" }];
+        console.error(`❌ Failed to fetch participations: ${res.status} ${res.statusText}`);
+        events[idx].logs = [
+          { 
+            action: "Error Loading Data", 
+            timestamp: "-", 
+            type: "error",
+            detail: `Failed to load: ${res.statusText}` 
+          }
+        ];
       }
-    } catch {
-      events[idx].logs = [{ action: "Error", timestamp: "-", type: "error" }];
+    } catch (error) {
+      console.error(`❌ Exception while fetching participants:`, error);
+      events[idx].logs = [
+        { 
+          action: "Error Loading Data", 
+          timestamp: "-", 
+          type: "error",
+          detail: error instanceof Error ? error.message : "Unknown error" 
+        }
+      ];
     } finally {
       if (events[idx]) {
         events[idx].isLoading = false;
         events = events;
+        console.log(`🏁 Finished loading event ${eventId}`);
       }
     }
   }
@@ -238,6 +291,8 @@
     const uniqueMap = new Map<number, LogParticipant>();
     const groups: Record<string, Map<number, LogParticipant>> = {};
     
+    console.log(`🔄 Converting ${list.length} participations to logs...`);
+    
     list.forEach((p, i) => {
       const u = userMap[p.user_id];
       const obj: LogParticipant = {
@@ -247,14 +302,26 @@
         profileUrl: u?.profile_url,
         originalIndex: i,
       };
-      if (!uniqueMap.has(p.user_id)) uniqueMap.set(p.user_id, obj);
+      
+      // Track unique users
+      if (!uniqueMap.has(p.user_id)) {
+        uniqueMap.set(p.user_id, obj);
+      }
+      
+      // Group by status with deduplication
       const s = p.status || "unknown";
       if (!groups[s]) groups[s] = new Map();
-      // Only add if not already in this status group (deduplicate)
+      
+      // Only add if not already in this status group (deduplicate by user_id)
       if (!groups[s].has(p.user_id)) {
         groups[s].set(p.user_id, obj);
+      } else {
+        console.log(`⚠️ Duplicate user ${p.user_id} in status "${s}" - skipping`);
       }
     });
+    
+    console.log(`📊 Unique participants: ${uniqueMap.size}`);
+    console.log(`📊 Status groups:`, Object.keys(groups).map(s => `${s}: ${groups[s].size}`).join(', '));
     logs.push({
       action: "Total Participants",
       timestamp: `${uniqueMap.size}`,
@@ -302,12 +369,19 @@
   }
 
   function toggleExpand(id: number) {
-    expandedEventId = expandedEventId === id ? null : id;
+    const isExpanding = expandedEventId !== id;
+    expandedEventId = isExpanding ? id : null;
+    
+    console.log(`📂 ${isExpanding ? 'Expanding' : 'Collapsing'} event ${id}`);
+    
     if (expandedEventId) {
       if (viewMode === 'logs') {
+        console.log(`📋 Loading logs for event ${id}...`);
         fetchParticipants(id);
+      } else {
+        console.log(`📸 Loading history for event ${id}...`);
+        // For history mode, the component will handle its own data fetching
       }
-      // For history mode, the component will handle its own data fetching
     }
   }
 
@@ -549,7 +623,20 @@
                         <span>Loading...</span>
                       </div>
                     {:else if !event.statsLoaded}
-                      <div class="inline-loader"><span>Retry</span></div>
+                      <div class="inline-loader error-state">
+                        <span>⚠️ Failed to load data</span>
+                        <button 
+                          class="retry-btn"
+                          on:click|stopPropagation={() => fetchParticipants(event.id)}
+                        >
+                          🔄 Retry
+                        </button>
+                      </div>
+                    {:else if event.logs.length === 0}
+                      <div class="empty-logs">
+                        <p>📋 No activity logs yet</p>
+                        <p class="hint">Participants will appear here once they join the event</p>
+                      </div>
                     {:else}
                       <div class="search-container internal">
                         <div class="search-icon">🔍</div>
@@ -1149,6 +1236,62 @@
     align-items: center;
     gap: 8px;
   }
+  
+  .inline-loader.error-state {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px dashed rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 10px;
+  }
+  
+  .retry-btn {
+    margin-top: 10px;
+    padding: 8px 16px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 8px;
+    color: #10b981;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  
+  .retry-btn:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+    transform: translateY(-1px);
+  }
+  
+  .empty-logs {
+    text-align: center;
+    color: #6b7280;
+    padding: 30px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    margin: 10px;
+  }
+  
+  .empty-logs p {
+    margin: 0;
+    font-size: 14px;
+  }
+  
+  .empty-logs p:first-child {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #9ca3af;
+  }
+  
+  .empty-logs .hint {
+    font-size: 12px;
+    color: #64748b;
+    font-style: italic;
+  }
+  
   .spinner {
     width: 24px;
     height: 24px;
