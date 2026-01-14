@@ -29,6 +29,7 @@
   import jsQR from "jsqr";
   import { page } from "$app/stores";
   import { goto, invalidateAll } from "$app/navigation";
+  import { lazyLoad } from '$lib/utils/lazyLoad';
   import { base } from "$app/paths";
   import axios, { type AxiosError, type AxiosRequestConfig } from "axios";
 
@@ -11029,7 +11030,7 @@
                 <div class="glass-card">
                   <div class="card-img-wrapper">
                     <img
-                      src={event.image ||
+                      use:lazyLoad={event.image ||
                         "https://placehold.co/400x200/1e293b/64748b?text=No+Image"}
                       alt={event.title}
                       class="card-img"
@@ -11477,7 +11478,7 @@
                     <div class="glass-card">
                       <div class="card-img-wrapper">
                         <img
-                          src={event.image ||
+                          use:lazyLoad={event.image ||
                             "https://placehold.co/400x200/1e293b/64748b?text=No+Image"}
                           alt={event.title}
                           class="card-img"
@@ -13162,7 +13163,7 @@
                     <div class="glass-card">
                       <div class="card-img-wrapper">
                         <img
-                          src={event.image ||
+                          use:lazyLoad={event.image ||
                             "https://placehold.co/400x200/1e293b/64748b?text=No+Image"}
                           alt={event.title}
                           class="card-img"
@@ -15499,7 +15500,7 @@
                     <div class="glass-card">
                       <div class="card-img-wrapper">
                         <img
-                          src={event.image ||
+                          use:lazyLoad={event.image ||
                             "https://placehold.co/400x200/1e293b/64748b?text=No+Image"}
                           alt={event.title}
                           class="card-img"
@@ -16275,7 +16276,7 @@
                           }}
                         >
                           {#if sub.proofImage}
-                            <img src={sub.proofImage} alt="Proof" />
+                            <img use:lazyLoad={sub.proofImage} alt="Proof" />
                             <div class="image-overlay">
                               <svg
                                 width="24"

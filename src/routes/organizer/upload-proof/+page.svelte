@@ -3,6 +3,7 @@
   import { slide } from "svelte/transition";
   import { quintOut } from "svelte/easing";
   import Swal from "sweetalert2";
+  import { lazyLoad } from '$lib/utils/lazyLoad';
 
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
     /\/$/,
@@ -690,7 +691,7 @@
               <div class="card-content-row">
                 <div class="event-thumb">
                   {#if event.image}
-                    <img src={event.image} alt="event" />
+                    <img use:lazyLoad={event.image} alt="event" />
                   {:else}
                     <div class="thumb-placeholder">{event.title.charAt(0)}</div>
                   {/if}
@@ -753,7 +754,7 @@
                           <div class="runner-header">
                             <div class="avatar-circle">
                               {#if sub.runnerImage}
-                                <img src={sub.runnerImage} alt="user" />
+                                <img use:lazyLoad={sub.runnerImage} alt="user" />
                               {:else}
                                 <div class="avatar-placeholder">
                                   {sub.runnerName.charAt(0)}
@@ -777,7 +778,7 @@
                               onImageClick(sub.proofImage, sub.runnerName)}
                           >
                             {#if sub.proofImage}
-                              <img src={sub.proofImage} alt="Proof" />
+                              <img use:lazyLoad={sub.proofImage} alt="Proof" />
                               <div class="zoom-hint">🔍 Tap to zoom</div>
                             {:else}
                               <div class="no-img">No Image</div>

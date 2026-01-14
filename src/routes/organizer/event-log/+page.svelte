@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import ParticipantHistoryViewer from "$lib/components/organizer/ParticipantHistoryViewer.svelte";
+  import { lazyLoad } from '$lib/utils/lazyLoad';
 
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
     /\/$/,
@@ -491,7 +492,7 @@
               on:keydown={(e) => handleKeydown(e, event.id)}
             >
               <div class="img-box">
-                <img src={event.image} alt={event.title} />
+                <img use:lazyLoad={event.image} alt={event.title} />
               </div>
               <div class="info-box">
                 <div class="row-top">
