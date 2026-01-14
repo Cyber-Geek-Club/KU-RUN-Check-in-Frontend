@@ -38,6 +38,7 @@
     isJoinedToday: boolean;
     participationId: number | null;
     participationStatus: string | null;
+    hasCancelledRecord: boolean;
 
     // [NEW] Single Day / Multi Day fields
     event_type: 'single_day' | 'multi_day';
@@ -121,7 +122,7 @@
 
       const myParticipationMap = new Map<
         number,
-        { id: number; status: string; joinedToday: boolean; completedCount: number }
+        { id: number; status: string; joinedToday: boolean; completedCount: number; hasCancelled: boolean }
       >();
 
       if (myParticipationsRes.ok) {
@@ -140,8 +141,9 @@
 
         myData.forEach((item: any) => {
           const status = item.status ? item.status.toUpperCase() : "";
+          const eventId = Number(item.event_id);
+          
           if (status !== "CANCELLED" && status !== "CANCEL") {
-            const eventId = Number(item.event_id);
             const existing = myParticipationMap.get(eventId);
 
             const recordDay = normalizeDate(item);
@@ -154,9 +156,24 @@
               status: existing ? (Number(item.id) > existing.id ? status : existing.status) : status,
               joinedToday: (existing?.joinedToday ?? false) || isToday,
               completedCount: (existing?.completedCount ?? 0) + completedInc,
+              hasCancelled: existing?.hasCancelled ?? false,
             };
 
             myParticipationMap.set(eventId, next);
+          } else {
+            // Track cancelled records
+            const existing = myParticipationMap.get(eventId);
+            if (!existing) {
+              myParticipationMap.set(eventId, {
+                id: 0,
+                status: '',
+                joinedToday: false,
+                completedCount: 0,
+                hasCancelled: true,
+              });
+            } else {
+              existing.hasCancelled = true;
+            }
           }
         });
       }
@@ -178,9 +195,10 @@
             realTimeCount !== null ? realTimeCount : e.participant_count || 0;
 
           const myPartData = myParticipationMap.get(e.id);
-          const amIJoined = !!myPartData;
+          const amIJoined = !!myPartData && myPartData.id > 0;
           const amIJoinedToday = !!myPartData?.joinedToday;
-          const myStatus = myPartData ? myPartData.status : null;
+          const myStatus = myPartData && myPartData.id > 0 ? myPartData.status : null;
+          const hasCancelled = myPartData ? (myPartData as any).hasCancelled ?? false : false;
 
           const displayTime =
             e.time || e.event_time
@@ -214,8 +232,9 @@
             isReadMore: false,
             isJoined: amIJoined,
             isJoinedToday: amIJoinedToday,
-            participationId: myPartData ? myPartData.id : null,
+            participationId: myPartData && myPartData.id > 0 ? myPartData.id : null,
             participationStatus: myStatus, // ✅ Set status
+            hasCancelledRecord: !amIJoined && hasCancelled,
 
             event_type: (e.event_type === 'multi_day' ? 'multi_day' : 'single_day'),
             allow_daily_checkin: Boolean(e.allow_daily_checkin),
@@ -470,6 +489,15 @@
         const responseData = await res.json();
 
         if (res.ok) {
+          // ✅ Detect reactivation
+          const wasReactivated = responseData.id && eventItem.participationId === responseData.id;
+          
+          console.log('[JOIN SUCCESS]', {
+            participationId: responseData.id,
+            wasReactivated,
+            joinCode: responseData.join_code
+          });
+          
           // [FIX] Properly update all registration state
           eventItem.isJoined = true;
           if (responseData.id) {
@@ -487,11 +515,11 @@
           events = [...events]; // Trigger reactivity
 
           await Swal.fire({
-            title: "Success!",
-            text: "ลงทะเบียนเรียบร้อยแล้ว",
+            title: wasReactivated ? "Re-registered!" : "Success!",
+            html: `ลงทะเบียนเรียบร้อยแล้ว<br><b>Join Code: ${responseData.join_code}</b>`,
             icon: "success",
-            timer: 2000,
-            showConfirmButton: false,
+            timer: 3000,
+            showConfirmButton: true,
           });
           
           // [FIX] Reload data to ensure consistency
@@ -502,16 +530,15 @@
             responseData.detail ||
             responseData.message ||
             "เกิดข้อผิดพลาดในการลงทะเบียน";
-          if (errorMsg.includes("joined") || res.status === 409) {
-            eventItem.isJoined = true;
-            events = [...events];
-            await Swal.fire(
-              "Already Registered",
-              "คุณได้ลงทะเบียนกิจกรรมนี้ไปแล้ว",
-              "warning",
-            );
-            // [FIX] Redirect to my events if already registered
-            await navigateToMyEvents('officer');
+          if (errorMsg.includes("joined") || errorMsg.includes("สมัครกิจกรรมนี้แล้ว") || res.status === 409) {
+            // Refresh data to show correct state
+            await loadData();
+            await Swal.fire({
+              icon: "info",
+              title: "Already Registered",
+              text: errorMsg,
+              confirmButtonText: "OK"
+            });
           } else if (errorMsg.includes("full")) {
             Swal.fire("Event Full", "กิจกรรมนี้ผู้เข้าร่วมเต็มแล้ว", "error");
           } else {
@@ -792,7 +819,11 @@
                     class="register-btn"
                     on:click={() => handleRegister(event)}
                   >
-                    REGISTRATION
+                    {#if event.hasCancelledRecord}
+                      🔄 REGISTER AGAIN
+                    {:else}
+                      REGISTRATION
+                    {/if}
                   </button>
                 {/if}
               </div>

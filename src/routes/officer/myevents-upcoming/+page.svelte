@@ -682,9 +682,10 @@
             {@const isFuture = isFutureEvent(p.event.rawDate)}
             {@const isActive = isEventActive(p.event.rawDate)}
             {@const step = getStepNumber(p.status)}
+            {@const shouldLock = isFuture && p.status !== 'joined'}
 
             <div
-              class="event-card {activeTab === 'upcoming' && !isFuture ? 'clickable' : ''} {expandedEventId === p.id ? 'expanded' : ''} {isFuture ? 'locked' : ''}"
+              class="event-card {activeTab === 'upcoming' && !shouldLock ? 'clickable' : ''} {expandedEventId === p.id ? 'expanded' : ''} {shouldLock ? 'locked' : ''}"
               role="button"
               tabindex="0"
               on:click={() => toggleExpand(p)}
@@ -696,7 +697,7 @@
                   alt={p.event.title}
                   class="card-img"
                 />
-                {#if activeTab === "upcoming" && isFuture}
+                {#if activeTab === "upcoming" && shouldLock}
                   <div class="lock-overlay">
                     <div class="lock-icon-circle">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
