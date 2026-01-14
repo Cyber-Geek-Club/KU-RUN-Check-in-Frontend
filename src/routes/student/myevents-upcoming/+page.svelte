@@ -523,7 +523,8 @@
               isLocked = true;
               lockMessage = lang === 'th' ? "จบกิจกรรม" : "Activity Ended";
           } 
-          else if (isProjectNotStarted) {
+          else if (isProjectNotStarted && uiStatus !== 'JOINED') {
+              // [FIX] ถ้ากิจกรรมยังไม่เริ่ม แต่ user สมัครไว้แล้ว (JOINED) ก็ไม่ต้องล็อค
               isLocked = true;
               const openDate = getDisplayDate(startIso, undefined, lang);
               lockMessage = lang === 'th' ? `เปิด ${openDate}` : `Open ${openDate}`;
