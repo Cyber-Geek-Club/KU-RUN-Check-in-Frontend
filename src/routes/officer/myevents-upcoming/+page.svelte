@@ -846,60 +846,7 @@
 
     // ... (the rest of the student page code continues unchanged, with all '/student/' occurrences replaced with '/officer/' and 'STUDENT' brand replaced with 'OFFICER')
   </script>
-              eventDetail = {
-                id: p.event_id,
-                title: `Unknown Event #${p.event_id}`,
-                date: "N/A",
-                rawDate: now,
-                rawEndDate: endOfDay,
-                time: "",
-                image: "",
-                location: "-",
-              };
-            }
 
-            const resolvedProofUrl = resolveImageUrl(p.proof_image_url);
-
-            return {
-              id: p.id,
-              event: eventDetail,
-              status: p.status,
-              join_code: p.join_code,
-              rejection_reason: p.rejection_reason,
-              proof_image_url: resolvedProofUrl,
-            } as Participation;
-          } catch (err) {
-            console.error(`Error loading event ${p.event_id}`, err);
-            return {
-              id: p.id,
-              event: {
-                id: p.event_id,
-                title: "Error loading event",
-                date: "N/A",
-                rawDate: new Date(),
-                rawEndDate: new Date(),
-                time: "",
-                image: "",
-                location: "",
-              },
-              status: p.status,
-              join_code: p.join_code,
-            } as Participation;
-          }
-        }),
-      );
-
-      participations = enrichedData;
-    } catch (error: any) {
-      if (error.message !== "Session Expired") {
-        console.error(error);
-        errorMessage = "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้";
-      }
-    } finally {
-      isLoading = false;
-      isRefreshing = false;
-    }
-  }
 
   function isPast24Hours(eventEndDate: Date): boolean {
     const now = new Date();
