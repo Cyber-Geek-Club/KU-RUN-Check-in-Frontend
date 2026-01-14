@@ -449,20 +449,8 @@
           // [FIX] สำหรับ multi-day events - เช็คว่า join ไปวันนี้แล้วหรือยัง
           let isJoinedToday = false;
           if (e.event_type === 'multi_day' && myRecords.length > 0) {
-            // ใช้ server time จาก record ล่าสุด (ที่ active) เพื่อหาวันปัจจุบันของ server
-            // หรือถ้าไม่มี ให้ fallback เป็น client time (หรือ debug date)
-            let serverNow = getDebugDate();
-            if (finalRecord && finalRecord.created_at) {
-              // ใช้เวลาจาก record ล่าสุด + offset เล็กน้อย เป็นตัวประมาณ server time
-              const recordTime = new Date(finalRecord.created_at);
-              const timeDiff = Date.now() - recordTime.getTime();
-              // ถ้า record อายุไม่เกิน 1 ชั่วโมง ให้ใช้ current time ตรงๆ
-              // มิฉะนั้น ให้ fallback เป็น client time
-              if (timeDiff < 3600000) {
-                serverNow = new Date();
-              }
-            }
-            
+            // ใช้ getDebugDate() เพื่อรองรับทั้ง debug mode และ production
+            const serverNow = getDebugDate();
             serverNow.setHours(0, 0, 0, 0);
             const todayStr = serverNow.toISOString().split('T')[0];
             
