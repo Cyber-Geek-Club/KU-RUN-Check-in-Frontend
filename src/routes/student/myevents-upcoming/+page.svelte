@@ -1236,15 +1236,59 @@ async function handleCheckInConfirm() {
     }
 }
 
+  /**
+   * Validate and check Strava link
+   * Supports multiple Strava URL formats:
+   * - https://www.strava.com/activities/12345
+   * - https://strava.app.link/xxxxx
+   * - https://strava.com/activities/12345
+   */
+  function isValidStravaLink(url: string): boolean {
+    if (!url || url.trim() === '') return false;
+    
+    const stravaPatterns = [
+      /^https?:\/\/(www\.)?strava\.com\/activities\/\d+/i,
+      /^https?:\/\/strava\.app\.link\//i,
+      /^https?:\/\/(www\.)?strava\.com\/athletes\/\d+\/activities\//i,
+    ];
+    
+    return stravaPatterns.some(pattern => pattern.test(url.trim()));
+  }
+
+  /**
+   * Extract activity ID from Strava URL
+   */
+  function extractStravaActivityId(url: string): string | null {
+    // Match /activities/12345
+    const activityMatch = url.match(/\/activities\/(\d+)/);
+    if (activityMatch) return activityMatch[1];
+    
+    // For short links, we need to resolve them server-side
+    if (url.includes('strava.app.link')) {
+      return null; // Need server to resolve
+    }
+    
+    return null;
+  }
+
   async function checkStravaLink() {
       if (!sendingLink || sendingLink.trim() === "") {
         Swal.fire(t[lang].alert_warning, t[lang].alert_link_required, "warning");
         return;
       }
       
-      const isStrava = /strava\.app\.link|strava\.com/.test(sendingLink);
-      if (!isStrava) {
-          Swal.fire(t[lang].alert_error, t[lang].alert_link_invalid, "error");
+      const trimmedLink = sendingLink.trim();
+      
+      // Validate Strava URL format
+      if (!isValidStravaLink(trimmedLink)) {
+          Swal.fire({
+            icon: 'error',
+            title: t[lang].alert_error,
+            html: `${t[lang].alert_link_invalid}<br><br>
+              <small style="color:#666;">รูปแบบที่รองรับ:<br>
+              • https://www.strava.com/activities/12345<br>
+              • https://strava.app.link/xxxxx</small>`,
+          });
           return;
       }
 
@@ -1254,30 +1298,102 @@ async function handleCheckInConfirm() {
           allowOutsideClick: false,
           didOpen: () => Swal.showLoading()
       });
+      
       try {
-          const res = await fetch('/service/strava-check', { 
+          const token = getToken();
+          
+          // Try backend API first
+          const res = await fetch(`${BASE_URL}/api/strava/parse`, { 
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: sendingLink })
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+              },
+              body: JSON.stringify({ url: trimmedLink })
           });
-          const result = await res.json();
+          
           Swal.close();
 
-          if (res.ok && result.success) {
-              distanceInput = result.data.distance_km;
-              Swal.fire({
-                  icon: 'success',
-                  title: 'OK',
-                  text: `Distance: ${distanceInput} km`,
-                  timer: 1500, showConfirmButton: false
-              });
+          if (res.ok) {
+              const result = await res.json();
+              
+              if (result.success && result.distance_km) {
+                  distanceInput = Number(result.distance_km) || 0;
+                  Swal.fire({
+                      icon: 'success',
+                      title: lang === 'th' ? 'ดึงข้อมูลสำเร็จ!' : 'Data Retrieved!',
+                      html: `<div style="text-align:left;">
+                        <p><b>${lang === 'th' ? 'ระยะทาง' : 'Distance'}:</b> ${distanceInput.toFixed(2)} km</p>
+                        ${result.moving_time ? `<p><b>${lang === 'th' ? 'เวลา' : 'Time'}:</b> ${result.moving_time}</p>` : ''}
+                        ${result.activity_name ? `<p><b>${lang === 'th' ? 'กิจกรรม' : 'Activity'}:</b> ${result.activity_name}</p>` : ''}
+                      </div>`,
+                      timer: 3000,
+                      showConfirmButton: true,
+                      confirmButtonText: 'OK'
+                  });
+              } else if (result.distance_km === 0 || result.distance_km) {
+                  // API returned but distance is 0
+                  distanceInput = Number(result.distance_km) || 0;
+                  Swal.fire({
+                      icon: 'info',
+                      title: lang === 'th' ? 'พบข้อมูล' : 'Data Found',
+                      text: `${lang === 'th' ? 'ระยะทาง' : 'Distance'}: ${distanceInput} km`,
+                      timer: 2000,
+                      showConfirmButton: false
+                  });
+              } else {
+                  // API didn't return distance - ask user to input manually
+                  await promptManualDistance();
+              }
+          } else if (res.status === 404 || res.status === 400) {
+              // API endpoint doesn't exist or bad request - allow manual input
+              await promptManualDistance();
           } else {
-              Swal.fire(t[lang].alert_not_found, result.message || t[lang].alert_not_found, "warning");
+              throw new Error(`Server error: ${res.status}`);
           }
-      } catch (error) {
-          console.error(error);
+      } catch (error: any) {
+          console.error("Strava check error:", error);
           Swal.close();
-          Swal.fire(t[lang].alert_error, t[lang].alert_connection_error, "error");
+          
+          // If API fails, allow manual input
+          await promptManualDistance();
+      }
+  }
+
+  async function promptManualDistance() {
+      const result = await Swal.fire({
+          icon: 'info',
+          title: lang === 'th' ? 'กรอกระยะทาง' : 'Enter Distance',
+          html: `<p style="margin-bottom:10px;">${lang === 'th' 
+            ? 'ไม่สามารถดึงข้อมูลจาก Strava อัตโนมัติได้<br>กรุณากรอกระยะทางด้วยตนเอง' 
+            : 'Could not fetch Strava data automatically.<br>Please enter distance manually.'}</p>`,
+          input: 'number',
+          inputLabel: lang === 'th' ? 'ระยะทาง (กิโลเมตร)' : 'Distance (km)',
+          inputPlaceholder: '0.00',
+          inputAttributes: {
+              min: '0',
+              step: '0.01'
+          },
+          showCancelButton: true,
+          confirmButtonText: lang === 'th' ? 'ยืนยัน' : 'Confirm',
+          cancelButtonText: lang === 'th' ? 'ยกเลิก' : 'Cancel',
+          inputValidator: (value) => {
+              if (!value || Number(value) <= 0) {
+                  return lang === 'th' ? 'กรุณากรอกระยะทางที่มากกว่า 0' : 'Please enter distance greater than 0';
+              }
+              return null;
+          }
+      });
+
+      if (result.isConfirmed && result.value) {
+          distanceInput = Number(result.value);
+          Swal.fire({
+              icon: 'success',
+              title: 'OK',
+              text: `${lang === 'th' ? 'ระยะทาง' : 'Distance'}: ${distanceInput} km`,
+              timer: 1500,
+              showConfirmButton: false
+          });
       }
   }
 
@@ -2007,14 +2123,21 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
 
                     <div class="input-group">
                         <label for="link">Strava Activity Link</label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" id="link" bind:value={sendingLink} placeholder="https://strava.app.link/..." style="flex: 1;" />
-                            <button type="button" class="status-btn" style="background: #3b82f6; color: white; padding: 0 15px;" on:click={checkStravaLink}>
-                                Check Link
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="link" bind:value={sendingLink} placeholder="https://strava.app.link/... หรือ strava.com/activities/..." style="flex: 1;" />
+                            <button type="button" class="verify-strava-btn" on:click={checkStravaLink}>
+                                🔍 {t[lang].btn_verify_link}
                             </button>
                         </div>
                         {#if distanceInput > 0}
-                            <small style="color: #10b981;">Found distance: {distanceInput} km</small>
+                            <div class="distance-result" style="margin-top: 8px; padding: 8px 12px; background: rgba(16, 185, 129, 0.1); border-radius: 6px; display: flex; align-items: center; gap: 8px;">
+                                <span style="color: #10b981; font-size: 1.2rem;">✓</span>
+                                <span style="color: #10b981; font-weight: 600;">{lang === 'th' ? 'ระยะทาง' : 'Distance'}: {distanceInput.toFixed(2)} km</span>
+                            </div>
+                        {:else}
+                            <small style="color: #94a3b8; margin-top: 4px; display: block;">
+                                {lang === 'th' ? '* กดปุ่มตรวจสอบเพื่อดึงระยะทาง หรือกรอกเอง' : '* Click verify to fetch distance, or enter manually'}
+                            </small>
                         {/if}
                     </div>
 
@@ -2677,6 +2800,27 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .cancel-btn:hover {
       background: rgba(239, 68, 68, 0.1);
       transform: translateY(-1px);
+  }
+
+  /* Strava verify button */
+  .verify-strava-btn {
+      background: linear-gradient(135deg, #fc4c02 0%, #e34402 100%);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+  }
+  .verify-strava-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(252, 76, 2, 0.4);
+  }
+  .verify-strava-btn:active {
+      transform: translateY(0);
   }
 
   .cancel-modal {
