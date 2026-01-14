@@ -451,9 +451,24 @@
           // [FIX] สำหรับ multi-day events - เช็คว่า join ไปวันนี้แล้วหรือยัง
           let isJoinedToday = false;
           if (e.event_type === 'multi_day' && myRecords.length > 0) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const todayStr = today.toISOString().split('T')[0];
+            // ใช้ server time จาก record ล่าสุด (ที่ active) เพื่อหาวันปัจจุบันของ server
+            // หรือถ้าไม่มี ให้ fallback เป็น client time
+            let serverNow = new Date();
+            if (finalRecord && finalRecord.created_at) {
+              // ใช้เวลาจาก record ล่าสุด + offset เล็กน้อย เป็นตัวประมาณ server time
+              const recordTime = new Date(finalRecord.created_at);
+              const timeDiff = Date.now() - recordTime.getTime();
+              // ถ้า record อายุไม่เกิน 1 ชั่วโมง ให้ใช้ current time ตรงๆ
+              // มิฉะนั้น ให้ fallback เป็น client time
+              if (timeDiff < 3600000) {
+                serverNow = new Date();
+              }
+            }
+            
+            serverNow.setHours(0, 0, 0, 0);
+            const todayStr = serverNow.toISOString().split('T')[0];
+            
+            console.log(`[Event ${e.id}] Checking isJoinedToday - Today (server): ${todayStr}`);
             
             // เช็คว่ามี record ที่ถูกสร้างในวันนี้หรือไม่
             isJoinedToday = myRecords.some((record: any) => {
@@ -463,6 +478,7 @@
               const recordDate = record.created_at || record.date;
               if (recordDate) {
                 const recordDateOnly = new Date(recordDate).toISOString().split('T')[0];
+                console.log(`  - Record ${record.id}: date=${recordDateOnly}, status=${s}, match=${recordDateOnly === todayStr}`);
                 return recordDateOnly === todayStr;
               }
               return false;
@@ -471,6 +487,9 @@
           
           if (finalRecord) {
             console.log(`[Event ${e.id}] Active record found:`, finalRecord.id, finalRecord.status, `isJoinedToday: ${isJoinedToday}`);
+            if (finalRecord.created_at) {
+              console.log(`  - Record date: ${new Date(finalRecord.created_at).toISOString()}`);
+            }
           } else {
             console.log(`[Event ${e.id}] No active record - can register`);
           }
@@ -525,7 +544,14 @@
     
     // แยก logic ตาม event_type
     if (event.event_type === 'multi_day') {
-      // Multi-day: ลงทะเบียนได้ทุกวันที่อยู่ในช่วง event แต่วันละครั้ง
+      // Multi-day: เช็คจากจำนวน checkins แทนการเช็ควันที่
+      if (event.max_checkins_per_user && event.max_checkins_per_user > 0) {
+        // ถ้ามี max กำหนด เช็คจากจำนวนครั้งที่เช็คอินไปแล้ว
+        const canJoinMore = (event.checkin_count || 0) < event.max_checkins_per_user;
+        console.log(`[Event ${event.id}] Multi-day check: ${event.checkin_count}/${event.max_checkins_per_user} -> canJoin: ${canJoinMore}`);
+        return canJoinMore && !event.isJoinedToday; // และต้องไม่ได้ join วันนี้ไปแล้ว
+      }
+      // Fallback: เช็ควันที่
       return !event.isJoinedToday;
     } else {
       // Single-day: ลงทะเบียนได้ครั้งเดียวเท่านั้น
