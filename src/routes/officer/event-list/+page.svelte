@@ -551,7 +551,7 @@
         text: lang === 'th'
           ? 'คุณได้สมัครกิจกรรมนี้ไปแล้ว ไม่สามารถสมัครซ้ำได้'
           : 'You have already registered for this event and cannot register again.',
-        confirmButtonText: 'OK',F
+        confirmButtonText: 'OK',
         confirmButtonColor: '#3b82f6'
       }).then(() => {
         navigateToMyEvents('officer');
