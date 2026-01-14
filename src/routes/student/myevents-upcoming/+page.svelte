@@ -425,7 +425,7 @@
   function processData() {
       const upcoming: EventItem[] = [];
       const history: EventItem[] = [];
-      const now = new Date();
+      const now = getDebugDate();
 
       // 1. นับจำนวนครั้งที่ทำสำเร็จ
       const completionCounts: Record<number, number> = {};
@@ -463,7 +463,7 @@
           const recordDateStr = p.created_at || p.date || p.start_date;
           if (recordDateStr) {
               const recordDate = new Date(recordDateStr);
-              const today = new Date();
+              const today = getDebugDate();
               recordDate.setHours(0, 0, 0, 0);
               today.setHours(0, 0, 0, 0);
               
@@ -543,8 +543,8 @@
                const [sh, sm] = startTimeStr.split(':').map(Number);
                const [eh, em] = endTimeStr.split(':').map(Number);
                
-               const todayStart = new Date(); todayStart.setHours(sh, sm, 0, 0);
-               const todayEnd = new Date(); todayEnd.setHours(eh, em, 59, 999);
+               const todayStart = getDebugDate(); todayStart.setHours(sh, sm, 0, 0);
+               const todayEnd = getDebugDate(); todayEnd.setHours(eh, em, 59, 999);
                
                if (now < todayStart) isBeforeTime = true;
                if (now > todayEnd) isTimeOver = true;
@@ -1181,7 +1181,7 @@ async function handleCheckInConfirm() {
         const recordDateStr = statusData.created_at || statusData.date || statusData.start_date;
         if (recordDateStr) {
             const rDate = new Date(recordDateStr);
-            const today = new Date();
+            const today = getDebugDate();
             rDate.setHours(0,0,0,0);
             today.setHours(0,0,0,0);
 
