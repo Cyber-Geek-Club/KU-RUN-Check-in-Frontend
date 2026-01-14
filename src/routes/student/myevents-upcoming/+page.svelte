@@ -469,8 +469,13 @@
           
           const extractTimeRaw = (isoStr: string) => {
               if (!isoStr) return "";
-              if (isoStr.includes('T')) return isoStr.split('T')[1].substring(0, 5);
-              return isoStr.substring(0, 5);
+              // [FIX] แปลง UTC เป็น Bangkok time ก่อนดึงเวลา
+              const date = new Date(isoStr);
+              const bangkokHours = date.getHours(); // getHours() จะใช้ local timezone อัตโนมัติ
+              const bangkokMinutes = date.getMinutes();
+              const hours = String(bangkokHours).padStart(2, '0');
+              const minutes = String(bangkokMinutes).padStart(2, '0');
+              return `${hours}:${minutes}`;
           };
 
           const startTimeStr = extractTimeRaw(startIso); 
