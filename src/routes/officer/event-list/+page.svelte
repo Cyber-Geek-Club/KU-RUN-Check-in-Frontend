@@ -1094,8 +1094,8 @@
     position: absolute;
     top: 12px;
     right: 12px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 6px 12px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95));
+    padding: 7px 14px;
     border-radius: 20px;
     font-size: 0.8rem;
     font-weight: 700;
@@ -1103,7 +1103,8 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.2);
   }
   .card-body {
     padding: 20px;
@@ -1111,12 +1112,16 @@
   }
   .event-title {
     margin: 0 0 12px 0;
-    font-size: 1.3rem;
+    font-size: 1.35rem;
     font-weight: 800;
-    color: #111827;
+    background: linear-gradient(135deg, #111827, #374151);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     text-transform: uppercase;
     letter-spacing: 0.02em;
     line-height: 1.3;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
   .event-desc {
     font-size: 0.9rem;
@@ -1155,39 +1160,58 @@
     margin-top: auto;
   }
   .read-more-btn {
-    background: none;
-    border: 1.5px solid #10b981;
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.04));
+    border: 2px solid rgba(16, 185, 129, 0.3);
     color: #10b981;
     font-weight: 600;
     font-size: 0.85rem;
     cursor: pointer;
     padding: 8px 16px;
     border-radius: 8px;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   }
   .read-more-btn:hover {
-    background: rgba(16, 185, 129, 0.1);
-    transform: translateY(-1px);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.08));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.5);
   }
   .register-btn {
-    background-color: #10b981;
-    color: #111827;
-    border: none;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     padding: 12px 24px;
     border-radius: 10px;
     font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
     text-transform: uppercase;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.4);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 20px -4px rgba(16, 185, 129, 0.45), 0 4px 8px rgba(0, 0, 0, 0.1);
     letter-spacing: 0.5px;
     min-width: 140px;
+    position: relative;
+    overflow: hidden;
+  }
+  .register-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+  }
+  .register-btn:hover::before {
+    left: 100%;
   }
   .register-btn:hover {
-    background-color: #059669;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px -2px rgba(16, 185, 129, 0.5);
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px -4px rgba(16, 185, 129, 0.6), 0 6px 12px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
   }
   .register-btn.completed {
     background-color: rgba(16, 185, 129, 0.1);
@@ -1199,42 +1223,74 @@
     background-color: rgba(16, 185, 129, 0.1);
   }
   .running-btn {
-    background-color: #f59e0b;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
     color: white;
-    border: none;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     padding: 12px 24px;
     border-radius: 10px;
     font-size: 0.9rem;
     font-weight: 700;
     cursor: pointer;
     text-transform: uppercase;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 12px -2px rgba(245, 158, 11, 0.4);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 20px -4px rgba(245, 158, 11, 0.45), 0 4px 8px rgba(0, 0, 0, 0.1);
     letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+  }
+  .running-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+  }
+  .running-btn:hover::before {
+    left: 100%;
   }
   .running-btn:hover {
-    background-color: #d97706;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px -2px rgba(245, 158, 11, 0.5);
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px -4px rgba(245, 158, 11, 0.6), 0 6px 12px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
   }
   .cancel-btn {
-    background-color: #ef4444;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
-    border: none;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     padding: 12px 20px;
     border-radius: 10px;
     font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
     text-transform: uppercase;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 12px -2px rgba(239, 68, 68, 0.4);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 20px -4px rgba(239, 68, 68, 0.45), 0 4px 8px rgba(0, 0, 0, 0.1);
     letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cancel-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s;
+  }
+  .cancel-btn:hover::before {
+    left: 100%;
   }
   .cancel-btn:hover {
-    background-color: #dc2626;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px -2px rgba(239, 68, 68, 0.5);
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px -4px rgba(239, 68, 68, 0.6), 0 6px 12px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
   }
   .loading-state {
     text-align: center;
