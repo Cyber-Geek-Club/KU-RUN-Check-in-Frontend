@@ -643,12 +643,21 @@
     // ตั้งสถานะกำลังสมัครทันทีเพื่อกันการเปิดหลายครั้ง
     isRegistering = true;
 
+    // [NEW] ตรวจสอบประเภท Event และใช้ API ที่เหมาะสม
+    const isMultiDay = eventItem.event_type === 'multi_day';
+    
     // แสดง Modal ยืนยัน
     const result = await Swal.fire({
-      title: lang === 'th' ? 'ยืนยันการสมัครวันนี้?' : 'Confirm Daily Registration?',
-      text: lang === 'th' 
-        ? `ต้องการเข้าร่วม "${eventItem.title}" วันนี้ใช่หรือไม่\n(ต้องทำให้จบในวันนี้)`
-        : `Join "${eventItem.title}" today?\n(Must complete today)`,
+      title: isMultiDay 
+        ? (lang === 'th' ? 'ยืนยันการลงทะเบียน?' : 'Confirm Registration?')
+        : (lang === 'th' ? 'ยืนยันการสมัครวันนี้?' : 'Confirm Daily Registration?'),
+      text: isMultiDay
+        ? (lang === 'th' 
+            ? `ต้องการลงทะเบียนกิจกรรม "${eventItem.title}" ใช่หรือไม่?\n(ระบบจะสร้างรหัสให้อัตโนมัติทุกวัน)`
+            : `Register for "${eventItem.title}"?\n(System will auto-generate daily codes)`)
+        : (lang === 'th' 
+            ? `ต้องการเข้าร่วม "${eventItem.title}" วันนี้ใช่หรือไม่\n(ต้องทำให้จบในวันนี้)`
+            : `Join "${eventItem.title}" today?\n(Must complete today)`),
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: t[lang].btn_register,
@@ -666,8 +675,14 @@
           return;
         }
 
-        // [SIMPLIFIED] ใช้ join API เพียงเส้นเดียว ตามแบบ daily-only workflow
-        await performJoin(`${BASE_URL}/api/participations/join`, eventItem, token);
+        // [NEW] เลือก API ตามประเภท Event
+        if (isMultiDay) {
+          // Multi-day: ใช้ Pre-register API
+          await performPreRegister(eventItem, token);
+        } else {
+          // Single-day: ใช้ Join API เดิม
+          await performJoin(`${BASE_URL}/api/participations/join`, eventItem, token);
+        }
 
       } catch (err: any) { 
         console.error("Register Error:", err);
@@ -681,7 +696,57 @@
     }
   }
 
-  // แยก Logic การยิง API ออกมาเป็นฟังก์ชันย่อย เพื่อลดโค้ดซ้ำ
+  // [NEW] ฟังก์ชันสำหรับ Pre-register (Multi-day events)
+  async function performPreRegister(eventItem: EventItem, token: string) {
+    const preRegRes = await fetch(`${BASE_URL}/api/participations/pre-register/${eventItem.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    });
+
+    if (preRegRes.status === 401) {
+      handleSessionExpired();
+      return;
+    }
+
+    if (preRegRes.ok) {
+      const data = await preRegRes.json();
+      console.log('[PRE-REGISTER SUCCESS]', data);
+
+      eventItem.isJoined = true;
+      eventItem.isJoinedToday = true;
+      eventItem.participationStatus = 'JOINED';
+      events = [...events];
+
+      Swal.fire({
+        icon: 'success',
+        title: lang === 'th' ? 'ลงทะเบียนสำเร็จ!' : 'Registration Successful!',
+        html: `
+          <p>${lang === 'th' ? 'รหัสวันนี้' : 'Today\'s Code'}: <strong style="font-size:1.5em;color:#10b981">${data.first_code}</strong></p>
+          <p style="color:#666;font-size:0.9em">${lang === 'th' ? 'ระบบจะสร้างรหัสใหม่ให้อัตโนมัติทุกวัน' : 'New codes will be generated daily'}</p>
+          <p style="color:#666;font-size:0.85em">${lang === 'th' ? 'กิจกรรมจบวันที่' : 'Event ends'}: ${data.event_end_date}</p>
+        `,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#10b981'
+      });
+
+      await updateUserStatus();
+    } else {
+      const contentType = preRegRes.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const errorData = await preRegRes.json();
+        Swal.fire({
+          icon: 'error',
+          title: lang === 'th' ? 'เกิดข้อผิดพลาด' : 'Error',
+          text: errorData.detail || "Error",
+          confirmButtonText: 'OK'
+        });
+      } else {
+        Swal.fire("Error", "Server Error", "error");
+      }
+    }
+  }
+
+  // แยก Logic การยิง API ออกมาเป็นฟังก์ชันย่อย เพื่อลดโค้ดซ้ำ (Single-day)
   async function performJoin(endpoint: string, eventItem: EventItem, token: string) {
       const joinRes = await fetch(endpoint, {
           method: "POST",
