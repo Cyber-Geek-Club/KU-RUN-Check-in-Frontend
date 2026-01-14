@@ -109,12 +109,10 @@
     }
   });
 
-  function handleLogout() {
+  async function handleLogout() {
     auth.logout();
-
     isMenuOpen = false;
-
-    goto("/auth/login", { replaceState: true });
+    await goto("/auth/login", { replaceState: true });
   }
 
   function toggleReadMore(index: number) {
