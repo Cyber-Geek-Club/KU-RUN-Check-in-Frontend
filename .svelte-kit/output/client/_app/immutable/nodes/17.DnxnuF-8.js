@@ -1,0 +1,30 @@
+import"../chunks/DsnmJJEf.js";import"../chunks/BcIedFuQ.js";import{aa as V,af as b,a as d,ad as A,aj as c,ah as t,g as p,m as J,ai as s,ab as U,ac as Y,ag as z,s as H}from"../chunks/hnvWcoZH.js";import{s as T,e as S}from"../chunks/BUWzuOGr.js";import{i as L}from"../chunks/DMWe2FX4.js";import{e as G}from"../chunks/BgpZowOK.js";import{s as K}from"../chunks/DR3WUKjK.js";import{i as Q}from"../chunks/DXkH34Fe.js";import{S as m}from"../chunks/BQxta0Da.js";var W=b('<div class="empty-state svelte-kxbgtl"><p>No pending submissions.</p></div>'),X=b('<div class="verify-card svelte-kxbgtl"><div class="card-header"><h2 class="card-heading svelte-kxbgtl">Verify Submission</h2></div> <div class="info-section svelte-kxbgtl"><div class="info-row"><span class="info-label svelte-kxbgtl">Runner:</span> <span class="info-value"> </span></div> <div class="info-row"><span class="info-label svelte-kxbgtl">Time:</span> <span class="info-value"> </span></div></div> <div class="image-container svelte-kxbgtl"><img alt="Proof" class="proof-img svelte-kxbgtl"/></div> <div class="action-buttons svelte-kxbgtl"><button class="btn btn-reject svelte-kxbgtl">REJECT</button> <button class="btn btn-confirm svelte-kxbgtl">CONFIRM</button></div></div>'),Z=b('<div class="app-screen svelte-kxbgtl"><div class="glass-header svelte-kxbgtl"><a href="/organizer/create-event" class="back-btn svelte-kxbgtl" aria-label="Back"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></a> <div class="header-inner svelte-kxbgtl"><h1 class="page-title svelte-kxbgtl">VERIFY PROOF</h1></div></div> <div class="scroll-container svelte-kxbgtl"><div class="content-wrapper svelte-kxbgtl"><!></div></div></div>');function le(j,I){V(I,!1);let u=J([{id:1,runnerName:"Test One",submitTime:"09:20",proofImage:"https://images.unsplash.com/photo-1557166983-5939644443a0?auto=format&fit=crop&w=800&q=80"},{id:2,runnerName:"Sarah Runner",submitTime:"10:45",proofImage:"https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80"},{id:3,runnerName:"John Doe",submitTime:"11:30",proofImage:"https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80"},{id:4,runnerName:"Michael Smith",submitTime:"12:15",proofImage:"https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=800&q=80"},{id:5,runnerName:"Anna Bell",submitTime:"13:00",proofImage:"https://images.unsplash.com/photo-1485217988980-11786ced9454?auto=format&fit=crop&w=800&q=80"}]);function g(e){H(u,p(u).filter(o=>o.id!==e))}function R(e){m.fire({title:"Approve Submission?",text:`Confirm verification for ${e.runnerName}?`,icon:"question",showCancelButton:!0,confirmButtonColor:"#10B981",iconColor:"#10B981",cancelButtonColor:"#6B7280",confirmButtonText:"Yes, Approve",width:"320px",customClass:{popup:"my-swal-popup"}}).then(o=>{o.isConfirmed&&(m.fire({title:"Verified!",text:"Submission approved successfully.",icon:"success",iconColor:"#10B981",showConfirmButton:!1,timer:1500,width:"320px",customClass:{popup:"my-swal-popup"}}),g(e.id))})}async function q(e){const o=`
+            <div class="swal-reject-container">
+                <label class="radio-item">
+                    <input type="radio" name="reject_reason" value="Unclear / Blurry Image" checked>
+                    <span>Unclear / Blurry Image</span>
+                </label>
+                <label class="radio-item">
+                    <input type="radio" name="reject_reason" value="Date / Time Mismatch">
+                    <span>Date / Time Mismatch</span>
+                </label>
+                <label class="radio-item">
+                    <input type="radio" name="reject_reason" value="Incorrect Distance / Duration">
+                    <span>Incorrect Distance / Duration</span>
+                </label>
+                <label class="radio-item">
+                    <input type="radio" name="reject_reason" value="Duplicate Submission">
+                    <span>Duplicate Submission</span>
+                </label>
+                <label class="radio-item">
+                    <input type="radio" name="reject_reason" value="other">
+                    <span>Other</span>
+                </label>
+                
+                <textarea 
+                    id="swal-other-reason" 
+                    class="swal-custom-textarea" 
+                    placeholder="Please specify the reason..." 
+                ></textarea>
+            </div>
+        `,{value:v}=await m.fire({title:"Reject Submission",html:o,icon:"warning",iconColor:"#EF4444",showCancelButton:!0,confirmButtonColor:"#EF4444",cancelButtonColor:"#6B7280",confirmButtonText:"Reject",width:"380px",customClass:{popup:"my-swal-popup"},didOpen:()=>{const r=m.getPopup(),i=r.querySelectorAll('input[name="reject_reason"]'),a=r.querySelector("#swal-other-reason");a.style.display="none",i.forEach(n=>{n.addEventListener("change",l=>{l.target.value==="other"?(a.style.display="block",setTimeout(()=>a.focus(),50)):(a.style.display="none",a.value="")})})},preConfirm:()=>{const r=m.getPopup(),i=r.querySelector('input[name="reject_reason"]:checked'),a=r.querySelector("#swal-other-reason");if(!i)return m.showValidationMessage("Please select a reason"),!1;let n=i.value;if(n==="other"){const l=a.value.trim();if(!l)return m.showValidationMessage("Please type a reason"),!1;n=l}return n}});v&&(m.fire({title:"Rejected",text:`Reason: ${v}`,icon:"error",iconColor:"#EF4444",width:"320px",showConfirmButton:!1,timer:1500,customClass:{popup:"my-swal-popup"}}),g(e.id))}Q();var f=Z(),x=c(t(f),2),w=t(x),D=t(w);{var N=e=>{var o=W();d(e,o)},E=e=>{var o=U(),v=Y(o);G(v,1,()=>p(u),r=>r.id,(r,i)=>{var a=X(),n=c(t(a),2),l=t(n),_=c(t(l),2),M=t(_,!0);s(_),s(l);var k=c(l,2),y=c(t(k),2),P=t(y,!0);s(y),s(k),s(n);var h=c(n,2),F=t(h);s(h);var C=c(h,2),B=t(C),O=c(B,2);s(C),s(a),z(()=>{T(M,p(i).runnerName),T(P,p(i).submitTime),K(F,"src",p(i).proofImage)}),S("click",B,()=>q(p(i))),S("click",O,()=>R(p(i))),d(r,a)}),d(e,o)};L(D,e=>{p(u).length===0?e(N):e(E,!1)})}s(w),s(x),s(f),d(j,f),A()}export{le as component};
