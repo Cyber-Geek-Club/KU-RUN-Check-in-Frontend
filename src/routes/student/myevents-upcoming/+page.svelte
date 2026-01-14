@@ -488,8 +488,15 @@
           const startTimeStr = extractTimeRaw(startIso); 
           const endTimeStr = extractTimeRaw(endIso);
           
-          const parseDateOnly = (isoStr: string) => {
+          // Parse date ให้ถูกต้องโดยพิจารณา timezone
+          const parseDateOnly = (isoStr: string): Date | null => {
               if (!isoStr) return null;
+              // ถ้าเป็น ISO format ที่มี Z (UTC) ให้แปลงเป็น local time ก่อน
+              if (isoStr.includes('Z') || isoStr.includes('+')) {
+                  const d = new Date(isoStr);
+                  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+              }
+              // ถ้าเป็น format ไม่มี timezone (YYYY-MM-DDTHH:mm:ss หรือ YYYY-MM-DD)
               const part = isoStr.includes('T') ? isoStr.split('T')[0] : isoStr;
               const [y, m, d] = part.split('-').map(Number);
               return new Date(y, m - 1, d);
@@ -912,14 +919,22 @@ async function handleCheckInConfirm() {
   // --- HELPER FUNCTIONS ---
   function calculateTotalValidDays(startStr: string, endStr: string, eventId: number): number {
       if (!startStr || !endStr) return 0;
-      const parseLocal = (s: string) => {
-          if (s.includes('T')) s = s.split('T')[0];
-          const [y, m, d] = s.split('-').map(Number);
+      
+      // Parse date ให้ถูกต้องโดยพิจารณา timezone
+      const parseToLocalDate = (s: string): Date => {
+          // ถ้าเป็น ISO format ที่มี Z (UTC) ให้แปลงเป็น local time ก่อน
+          if (s.includes('Z') || s.includes('+')) {
+              const d = new Date(s);
+              return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          }
+          // ถ้าเป็น format ไม่มี timezone (YYYY-MM-DDTHH:mm:ss หรือ YYYY-MM-DD)
+          const datePart = s.includes('T') ? s.split('T')[0] : s;
+          const [y, m, d] = datePart.split('-').map(Number);
           return new Date(y, m - 1, d);
       };
 
-      const start = parseLocal(startStr);
-      const end = parseLocal(endStr);
+      const start = parseToLocalDate(startStr);
+      const end = parseToLocalDate(endStr);
       
       if (end < start) return 0;
 
@@ -972,19 +987,27 @@ async function handleCheckInConfirm() {
       if (!start) return "-";
       const locale = l === 'th' ? 'th-TH' : 'en-GB';
       const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
-      const parseLocal = (s: string) => {
+      
+      // Parse date ให้ถูกต้องโดยพิจารณา timezone
+      const parseToLocalDate = (s: string): Date | null => {
           if (!s) return null;
-          const part = s.split('T')[0];
-          const [y, m, d] = part.split('-').map(Number);
+          // ถ้าเป็น ISO format ที่มี Z (UTC) ให้แปลงเป็น local time ก่อน
+          if (s.includes('Z') || s.includes('+')) {
+              const d = new Date(s);
+              return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          }
+          // ถ้าเป็น format ไม่มี timezone (YYYY-MM-DDTHH:mm:ss หรือ YYYY-MM-DD)
+          const datePart = s.includes('T') ? s.split('T')[0] : s;
+          const [y, m, d] = datePart.split('-').map(Number);
           return new Date(y, m - 1, d);
       };
 
-      const sDate = parseLocal(start);
+      const sDate = parseToLocalDate(start);
       if (!sDate) return "-";
       const sText = sDate.toLocaleDateString(locale, opts);
       
       if (end) {
-          const eDate = parseLocal(end);
+          const eDate = parseToLocalDate(end);
           if (eDate && sDate.getTime() !== eDate.getTime()) {
               const eText = eDate.toLocaleDateString(locale, opts);
               return `${sText} - ${eText}`; 
