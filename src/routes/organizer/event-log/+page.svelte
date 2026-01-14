@@ -236,7 +236,8 @@
   ): LogEntry[] {
     const logs: LogEntry[] = [];
     const uniqueMap = new Map<number, LogParticipant>();
-    const groups: Record<string, LogParticipant[]> = {};
+    const groups: Record<string, Map<number, LogParticipant>> = {};
+    
     list.forEach((p, i) => {
       const u = userMap[p.user_id];
       const obj: LogParticipant = {
@@ -244,11 +245,15 @@
         name: u ? `${u.first_name} ${u.last_name}` : `ID: ${p.user_id}`,
         avatar: u?.first_name[0].toUpperCase() || "?",
         profileUrl: u?.profile_url,
+        originalIndex: i,
       };
       if (!uniqueMap.has(p.user_id)) uniqueMap.set(p.user_id, obj);
       const s = p.status || "unknown";
-      if (!groups[s]) groups[s] = [];
-      groups[s].push(obj);
+      if (!groups[s]) groups[s] = new Map();
+      // Only add if not already in this status group (deduplicate)
+      if (!groups[s].has(p.user_id)) {
+        groups[s].set(p.user_id, obj);
+      }
     });
     logs.push({
       action: "Total Participants",
@@ -266,11 +271,12 @@
           : s === "pending"
             ? "warning"
             : "error";
+        const groupArray = Array.from(groups[s].values());
         logs.push({
           action: `Status: ${capitalize(s)}`,
-          timestamp: `${new Set(groups[s].map((p) => p.id)).size}`,
+          timestamp: `${groupArray.length}`,
           type: t as any,
-          participants: groups[s],
+          participants: groupArray,
         });
       });
     return logs;
@@ -592,7 +598,7 @@
                                   </p>{/if}
                                 {#if log.participants && fList.length > 0}
                                   <div class="user-list-container">
-                                    {#each fList as p}<div class="user-chip">
+                                    {#each fList as p, idx (`${p.id}-${idx}`)}<div class="user-chip">
                                         <div class="user-avatar">{p.avatar}</div>
                                         <span class="user-name">{p.name}</span>
                                       </div>{/each}
