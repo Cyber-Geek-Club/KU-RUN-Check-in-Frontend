@@ -953,23 +953,25 @@
   function formatTime(start: string, end: string, currentLang: string) {
     if (!start) return "-";
     
-    // [FIX] ไม่แปลง timezone เพราะ Backend ส่งมาเป็น UTC แต่ค่าจริงคือ local time แล้ว
-    // แค่ดึงเวลาจาก string โดยตรง
-    const extractTime = (dateStr: string) => {
-      if (!dateStr) return "";
-      const date = new Date(dateStr);
-      const hours = String(date.getUTCHours()).padStart(2, '0');
-      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-      return `${hours}:${minutes}`;
+    // [FIX] แปลง UTC time จาก server เป็น Bangkok time (+7 hours)
+    const s = new Date(start);
+    const e = end ? new Date(end) : null;
+    
+    // ใช้ toLocaleTimeString กับ timezone Bangkok
+    const options: Intl.DateTimeFormatOptions = { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: false,
+      timeZone: 'Asia/Bangkok'
     };
     
-    const timeStart = extractTime(start);
-    const timeEnd = end ? extractTime(end) : "";
+    const timeStart = s.toLocaleTimeString('en-GB', options);
+    const timeEnd = e ? e.toLocaleTimeString('en-GB', options) : "";
 
     if (currentLang === 'th') {
-      return end ? `${timeStart} - ${timeEnd} น.` : `${timeStart} น.`;
+      return e ? `${timeStart} - ${timeEnd} น.` : `${timeStart} น.`;
     } else {
-      return end ? `${timeStart} - ${timeEnd}` : `${timeStart}`;
+      return e ? `${timeStart} - ${timeEnd}` : `${timeStart}`;
     }
   }
 
