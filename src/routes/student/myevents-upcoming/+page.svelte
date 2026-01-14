@@ -218,6 +218,19 @@
   let currentParticipationId: number | null = null;
   let distanceInput = 0;
 
+  // --- CANCEL MODAL STATE ---
+  let showCancelModal = false;
+  let eventToCancel: EventItem | null = null;
+  let selectedCancelReason = "";
+  let otherCancelReason = "";
+  const cancelReasons = [
+    "ติดธุระด่วน / Urgent matter",
+    "ปัญหาสุขภาพ / Health issue",
+    "สภาพอากาศ / Weather condition",
+    "การเดินทาง / Transportation",
+    "อื่นๆ / Other"
+  ];
+
   // --- MENU ITEMS ---
   const menuItems = [
     { id: "event-list", label: "Event list", path: "/student/event-list", svg: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9 2 2 4-4" },
@@ -1001,6 +1014,80 @@ async function handleCheckInConfirm() {
       return nextDate;
   }
 
+  // --- CANCEL FUNCTIONS ---
+  function openCancelModal(event: EventItem) {
+    eventToCancel = event;
+    selectedCancelReason = "";
+    otherCancelReason = "";
+    showCancelModal = true;
+  }
+
+  function closeCancelModal() {
+    showCancelModal = false;
+    eventToCancel = null;
+  }
+
+  async function confirmCancellation() {
+    if (!eventToCancel) return;
+
+    let finalReason = selectedCancelReason;
+    
+    // เช็คกรณีเลือก "อื่นๆ" แต่ไม่พิมพ์อะไรมา
+    if (selectedCancelReason.includes("Other") || selectedCancelReason.includes("อื่นๆ")) {
+      if (!otherCancelReason.trim()) {
+        Swal.fire({ 
+          icon: 'warning', 
+          title: lang === 'th' ? 'ยังไม่ได้ระบุสาเหตุการยกเลิกกิจกรรม' : 'Reason not specified', 
+          text: lang === 'th' ? 'กรุณาระบุรายละเอียดเพิ่มเติม' : 'Please provide more details',
+          confirmButtonColor: '#f59e0b' 
+        });
+        return;
+      }
+      finalReason = otherCancelReason;
+    }
+
+    try {
+      const token = getToken();
+      if (!token) { 
+        Swal.fire(t[lang].alert_error, t[lang].alert_session_expired, "error");
+        return; 
+      }
+
+      const participationId = eventToCancel.participation_id;
+      if (!participationId) {
+        Swal.fire(t[lang].alert_error, "Invalid participation", "error");
+        return;
+      }
+
+      const res = await fetch(`${BASE_URL}/api/participations/${participationId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cancellation_reason: finalReason })
+      });
+
+      if (res.ok) {
+        // Update local state
+        upcomingEvents = upcomingEvents.filter(e => e.participation_id !== participationId);
+        
+        Swal.fire({ 
+          icon: 'success', 
+          title: lang === 'th' ? 'ยกเลิกเรียบร้อยแล้ว' : 'Cancelled successfully', 
+          timer: 1500, 
+          showConfirmButton: false 
+        });
+        closeCancelModal();
+        
+        // Reload data
+        await loadData();
+      } else {
+        const err = await res.json();
+        Swal.fire(t[lang].alert_error, err.detail || "Error", "error");
+      }
+    } catch (err) { 
+      Swal.fire(t[lang].alert_error, t[lang].alert_connection_error, "error"); 
+    }
+  }
+
   async function openActionModal(event: EventItem) {
     // [NEW VALIDATION] ถ้าไม่มี join_code หมายถึงไม่ได้สมัครสำหรับวันนี้
     if (!event.join_code) {
@@ -1599,6 +1686,9 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                                 <button class="status-btn register-btn" on:click={() => openActionModal(event)}>
                                     {t[lang].btn_checkin}
                                 </button>
+                                <button class="cancel-btn" on:click={() => openCancelModal(event)}>
+                                    {lang === 'th' ? '❌ ยกเลิก' : '❌ Cancel'}
+                                </button>
                             {/if}
                         </div>
                     </div>
@@ -1972,6 +2062,52 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
     </div>
   {/if}
 </div>
+
+<!-- CANCEL MODAL -->
+{#if showCancelModal && eventToCancel}
+  <div class="modal-overlay" transition:fade={{ duration: 200 }}>
+    <div class="modal-content cancel-modal" transition:scale={{ duration: 250, start: 0.9 }}>
+      <button class="modal-close-btn" on:click={closeCancelModal}>&times;</button>
+      <div class="modal-body">
+        <h3 class="modal-title" style="color: #ef4444;">
+          {lang === 'th' ? 'ยกเลิกการเข้าร่วมกิจกรรม' : 'Cancel Participation'}
+        </h3>
+        <p class="modal-subtitle">
+          {lang === 'th' ? 'โปรดระบุเหตุผลที่คุณต้องการยกเลิก' : 'Please specify your reason for cancellation'}
+        </p>
+        <div class="cancel-options">
+          {#each cancelReasons as reason}
+            <label class="radio-item">
+              <input type="radio" bind:group={selectedCancelReason} value={reason} />
+              <span class="radio-label">{reason}</span>
+            </label>
+          {/each}
+        </div>
+        {#if selectedCancelReason.includes("อื่นๆ") || selectedCancelReason.includes("Other")}
+          <div class="reason-input" transition:slide>
+            <textarea 
+              placeholder={lang === 'th' ? 'ระบุเหตุผลอื่นๆ...' : 'Specify other reason...'} 
+              bind:value={otherCancelReason} 
+              rows="3"
+            ></textarea>
+          </div>
+        {/if}
+        <div class="action-row">
+          <button 
+            class="cancel-confirm-btn" 
+            on:click={confirmCancellation}
+            disabled={
+              !selectedCancelReason || 
+              ((selectedCancelReason.includes("Other") || selectedCancelReason.includes("อื่นๆ")) && !otherCancelReason.trim())
+            }
+          >
+            {lang === 'th' ? 'ยืนยันการยกเลิก' : 'Confirm Cancellation'}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
@@ -2400,4 +2536,98 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
       font-size: 0.9rem;
   }
   .holiday-list-dash li { margin-bottom: 4px; }
+
+  /* CANCEL BUTTON & MODAL */
+  .cancel-btn {
+      background: transparent;
+      border: 1px solid #ef4444;
+      color: #ef4444;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 8px;
+  }
+  .cancel-btn:hover {
+      background: rgba(239, 68, 68, 0.1);
+      transform: translateY(-1px);
+  }
+
+  .cancel-modal {
+      max-width: 450px;
+  }
+  .cancel-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 20px 0;
+  }
+  .radio-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+  }
+  .radio-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+  }
+  .radio-item input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #ef4444;
+  }
+  .radio-label {
+      color: var(--text-main);
+      font-size: 0.95rem;
+  }
+  .reason-input {
+      margin-top: 12px;
+  }
+  .reason-input textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      resize: none;
+      box-sizing: border-box;
+  }
+  .reason-input textarea:focus {
+      outline: none;
+      border-color: #ef4444;
+  }
+  .action-row {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+  }
+  .cancel-confirm-btn {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+  }
+  .cancel-confirm-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+  }
+  .cancel-confirm-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+  }
 </style>
