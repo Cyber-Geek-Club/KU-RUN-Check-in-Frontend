@@ -527,9 +527,17 @@
   
   // [NEW HELPER] เช็คว่ากิจกรรมนี้ยังไม่เปิดให้สมัคร (วันนี้ยังไม่ถึงวันเริ่ม)
   function isUpcomingTomorrow(event: EventItem): boolean {
+    // ถ้ากิจกรรม is_active = true → ถือว่าเปิดรับสมัครแล้ว (ไม่ต้องเช็ควันที่)
+    if (event.is_active && event.is_published) {
+      return false;
+    }
+    
+    // Fallback: เช็ควันที่
     const now = new Date();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
+    
+    if (!event.startDate) return false;
     
     const startDate = new Date(event.startDate);
     startDate.setHours(0, 0, 0, 0);
