@@ -59,7 +59,7 @@
 
   // Request interceptor - เพิ่ม token อัตโนมัติ
   api.interceptors.request.use(
-    (config) => {
+    (config: AxiosRequestConfig & { __retryCount?: number }) => {
       const token = localStorage.getItem("access_token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -68,14 +68,14 @@
       (config as any).__retryCount = (config as any).__retryCount || 0;
       return config;
     },
-    (error) => {
+    (error: AxiosError) => {
       return Promise.reject(error);
     }
   );
 
   // Response interceptor - จัดการ error, 401, และ retry สำหรับ 502
   api.interceptors.response.use(
-    (response) => response,
+    (response: any) => response,
     async (error: AxiosError) => {
       const config = error.config as any;
 
@@ -6194,7 +6194,7 @@
             const deletePromises = existingConfigs.map((config: any) =>
               api
                 .delete(`/api/reward-leaderboards/configs/${config.id}`)
-                .catch((err) => {
+                .catch((err: any) => {
                   console.warn(`Failed to delete config ${config.id}:`, err);
                   return null; // ไม่ให้ throw error ถ้าลบไม่ได้
                 })
@@ -13635,6 +13635,7 @@
                         Finalized
                       </div>
                     {/if}
+                  {/if}
                   {#if showCalculateRanksButton}
                     <button class="action-btn btn-calc" on:click={handleCalculateRanks} disabled={rewardData.loading} style="margin-right:0.5rem;">
                       <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -13696,7 +13697,6 @@
                       </div>
                     {/if}
                   </div>
-                  {/if}
                 </div>
               </div>
 
