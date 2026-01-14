@@ -347,9 +347,7 @@ async function resolveStravaShortLink(shortUrl: string): Promise<{ url: string; 
 
 /**
  * Parse Strava HTML to extract activity data
- * Target elements:
- * - Distance: <div class="Stat_statValue__lmw2H">1.1 km</div>
- * - Also checks for other common patterns
+ * Based on Python script approach - more reliable regex patterns
  */
 function parseStravaHtml(html: string): {
     distance_km: number | null;
@@ -358,171 +356,144 @@ function parseStravaHtml(html: string): {
     elevation_gain: string | null;
 } {
     let distance_km: number | null = null;
+    let moving_time_seconds: number = 0;
     let moving_time: string | null = null;
     let activity_name: string | null = null;
     let elevation_gain: string | null = null;
 
     try {
-        console.log('🔎 Parsing HTML...');
+        console.log('🔎 Parsing HTML (Python method)...');
         
-        // Pattern 1: New Strava UI - Stat_statValue class (exact match from user)
-        // <div class="Stat_statValue__lmw2H">1.1 km</div>
-        const statValuePattern = /class="Stat_statValue[^"]*"[^>]*>\s*([^<]+)\s*</gi;
-        const statMatches = [...html.matchAll(statValuePattern)];
+        // Strip HTML tags for text search (like BeautifulSoup's get_text)
+        const textContent = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
         
-        console.log('📊 Found stat values:', statMatches.length);
-        
-        for (const match of statMatches) {
-            const value = match[1].trim();
-            console.log('  - Stat value:', value);
-            
-            // Check for distance (km or mi) - more flexible matching
-            const distanceMatch = value.match(/^([\d.,]+)\s*(km|mi|กม\.?|ก\.?ม\.?|kilometer|กิโลเมตร)?$/i);
-            if (distanceMatch && distance_km === null) {
-                let dist = parseFloat(distanceMatch[1].replace(',', '.'));
-                // Convert miles to km if needed
-                if (distanceMatch[2] && distanceMatch[2].toLowerCase() === 'mi') {
-                    dist = dist * 1.60934;
-                }
-                if (!isNaN(dist) && dist > 0) {
-                    distance_km = dist;
-                    console.log('  ✓ Distance found:', dist, 'km');
-                    continue;
-                }
-            }
-            
-            // Check for time (h:mm:ss or mm:ss format)
-            const timeMatch = value.match(/^(\d{1,2}:\d{2}(:\d{2})?)$/);
-            if (timeMatch && moving_time === null) {
-                moving_time = value;
-                console.log('  ✓ Time found:', value);
-                continue;
-            }
-            
-            // Check for elevation (m or ft)
-            const elevMatch = value.match(/^([\d.,]+)\s*(m|ft|เมตร)$/i);
-            if (elevMatch && elevation_gain === null) {
-                elevation_gain = value;
-                console.log('  ✓ Elevation found:', value);
+        // ---------------------------------------------------------
+        // 🎯 1. หา Activity Title
+        // ---------------------------------------------------------
+        const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+        if (titleMatch) {
+            activity_name = titleMatch[1].replace(/\s*\|\s*Strava.*$/i, '').trim();
+            console.log('  ✓ Activity name:', activity_name);
+        }
+
+        // ---------------------------------------------------------
+        // 📏 2. หาระยะทาง (Distance) - regex from Python
+        // ---------------------------------------------------------
+        const distMatch = html.match(/"distance"\s*:\s*([\d.]+)/);
+        if (distMatch) {
+            const dist = parseFloat(distMatch[1]);
+            if (!isNaN(dist) && dist > 0) {
+                // Strava stores distance in meters
+                distance_km = dist / 1000;
+                console.log('  ✓ Distance from JSON:', distance_km, 'km');
             }
         }
 
-        // Pattern 2: Alternative - look for stats in different container
+        // ---------------------------------------------------------
+        // ⏱️ 3. หาเวลา (Time) - multiple methods from Python
+        // ---------------------------------------------------------
+        // Step A: หาใน JSON keys
+        const timeKeys = ['moving_time', 'elapsed_time', 'time_seconds'];
+        for (const key of timeKeys) {
+            const timeMatch = html.match(new RegExp(`"${key}"\\s*:\\s*(\\d+)`));
+            if (timeMatch) {
+                const val = parseInt(timeMatch[1]);
+                if (val > 0) {
+                    moving_time_seconds = val;
+                    console.log(`  ✓ Time from ${key}:`, val, 'seconds');
+                    break;
+                }
+            }
+        }
+        
+        // Step B: Text scan patterns (like BeautifulSoup get_text)
+        if (moving_time_seconds === 0) {
+            // Pattern: 1h 20m
+            const hmMatch = textContent.match(/(\d+)h\s+(\d+)m/);
+            if (hmMatch) {
+                moving_time_seconds = (parseInt(hmMatch[1]) * 3600) + (parseInt(hmMatch[2]) * 60);
+                console.log('  ✓ Time from h m pattern:', moving_time_seconds, 'seconds');
+            }
+            
+            // Pattern: 50m 30s
+            if (moving_time_seconds === 0) {
+                const msMatch = textContent.match(/(\d+)m\s+(\d+)s/);
+                if (msMatch) {
+                    moving_time_seconds = (parseInt(msMatch[1]) * 60) + parseInt(msMatch[2]);
+                    console.log('  ✓ Time from m s pattern:', moving_time_seconds, 'seconds');
+                }
+            }
+            
+            // Pattern: Time 1:20:30 or Time 20:30
+            if (moving_time_seconds === 0) {
+                const clockMatch = textContent.match(/Time\s*(\d{1,2}:\d{2}(?::\d{2})?)/i);
+                if (clockMatch) {
+                    const parts = clockMatch[1].split(':').map(Number);
+                    if (parts.length === 3) {
+                        moving_time_seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                    } else if (parts.length === 2) {
+                        moving_time_seconds = parts[0] * 60 + parts[1];
+                    }
+                    console.log('  ✓ Time from clock pattern:', moving_time_seconds, 'seconds');
+                }
+            }
+        }
+        
+        // Step C: Calculate from Pace (ไม้ตาย)
+        if (moving_time_seconds === 0 && distance_km && distance_km > 0) {
+            // Pattern: 5:30 /km
+            const paceMatch = textContent.match(/(\d{1,2}):(\d{2})\s*\/km/);
+            if (paceMatch) {
+                const paceSeconds = (parseInt(paceMatch[1]) * 60) + parseInt(paceMatch[2]);
+                moving_time_seconds = Math.round(distance_km * paceSeconds);
+                console.log('  💡 Time calculated from pace:', moving_time_seconds, 'seconds');
+            }
+        }
+        
+        // Format time to string
+        if (moving_time_seconds > 0) {
+            const h = Math.floor(moving_time_seconds / 3600);
+            const m = Math.floor((moving_time_seconds % 3600) / 60);
+            const s = moving_time_seconds % 60;
+            moving_time = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // ---------------------------------------------------------
+        // 🏔️ 4. หา Elevation (bonus)
+        // ---------------------------------------------------------
+        const elevMatch = html.match(/"elevation_gain"\s*:\s*([\d.]+)/);
+        if (elevMatch) {
+            elevation_gain = `${Math.round(parseFloat(elevMatch[1]))} m`;
+            console.log('  ✓ Elevation:', elevation_gain);
+        }
+
+        // ---------------------------------------------------------
+        // 🔄 Fallback: Try Stat_statValue pattern for distance
+        // ---------------------------------------------------------
         if (distance_km === null) {
-            // Try matching stat containers with labels
-            const statWithLabelPattern = /(?:distance|ระยะทาง)[^<]*<[^>]*class="[^"]*Stat[^"]*"[^>]*>\s*([\d.,]+)\s*(km|mi)?/gi;
-            const labelMatches = [...html.matchAll(statWithLabelPattern)];
-            for (const match of labelMatches) {
+            const statValuePattern = /class="Stat_statValue[^"]*"[^>]*>\s*([\d.,]+)\s*(km|mi)?/gi;
+            const statMatches = [...html.matchAll(statValuePattern)];
+            for (const match of statMatches) {
                 let dist = parseFloat(match[1].replace(',', '.'));
                 if (match[2]?.toLowerCase() === 'mi') {
                     dist = dist * 1.60934;
                 }
-                if (!isNaN(dist) && dist > 0) {
+                if (!isNaN(dist) && dist > 0 && dist < 1000) {
                     distance_km = dist;
-                    console.log('  ✓ Distance from label pattern:', dist, 'km');
+                    console.log('  ✓ Distance from Stat class:', dist, 'km');
                     break;
                 }
             }
         }
 
-        // Pattern 3: Activity title from <title> tag or og:title
-        const ogTitleMatch = html.match(/property="og:title"\s*content="([^"]+)"/i) ||
-                            html.match(/content="([^"]+)"\s*property="og:title"/i);
-        if (ogTitleMatch) {
-            activity_name = ogTitleMatch[1].trim();
-        } else {
-            const titleMatch = html.match(/<title>([^<|]+)/i);
-            if (titleMatch) {
-                activity_name = titleMatch[1].trim();
-            }
-        }
-        if (activity_name) {
-            // Clean up Strava suffix
-            activity_name = activity_name.replace(/\s*\|\s*Strava.*$/i, '').trim();
-            activity_name = activity_name.replace(/\s*on Strava.*$/i, '').trim();
-            console.log('  ✓ Activity name:', activity_name);
-        }
-
-        // Pattern 4: Fallback - Look for __NEXT_DATA__ JSON
-        if (distance_km === null) {
-            const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/i);
-            if (nextDataMatch) {
-                try {
-                    const nextData = JSON.parse(nextDataMatch[1]);
-                    // Navigate to find distance in the data
-                    const activity = nextData?.props?.pageProps?.activity || 
-                                    nextData?.props?.pageProps?.initialActivity;
-                    if (activity?.distance) {
-                        distance_km = activity.distance / 1000; // meters to km
-                        console.log('  ✓ Distance from __NEXT_DATA__:', distance_km, 'km');
-                    }
-                    if (activity?.moving_time && !moving_time) {
-                        const seconds = activity.moving_time;
-                        const h = Math.floor(seconds / 3600);
-                        const m = Math.floor((seconds % 3600) / 60);
-                        const s = seconds % 60;
-                        moving_time = h > 0 
-                            ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-                            : `${m}:${s.toString().padStart(2, '0')}`;
-                        console.log('  ✓ Time from __NEXT_DATA__:', moving_time);
-                    }
-                } catch (e) {
-                    console.log('  ⚠️ Could not parse __NEXT_DATA__');
-                }
-            }
-        }
-
-        // Pattern 5: Fallback - JSON-LD schema
-        if (distance_km === null) {
-            const jsonLdMatch = html.match(/<script type="application\/ld\+json">([^<]+)<\/script>/i);
-            if (jsonLdMatch) {
-                try {
-                    const jsonData = JSON.parse(jsonLdMatch[1]);
-                    if (jsonData.distance) {
-                        const dist = parseFloat(jsonData.distance);
-                        if (!isNaN(dist)) {
-                            distance_km = dist / 1000; // Usually in meters
-                            console.log('  ✓ Distance from JSON-LD:', distance_km, 'km');
-                        }
-                    }
-                } catch (e) {
-                    // Ignore JSON parse errors
-                }
-            }
-        }
-
-        // Pattern 6: Fallback - Inline stats pattern
-        if (distance_km === null) {
-            const inlineDistMatch = html.match(/(?:distance|ระยะทาง)[:\s]*?([\d.,]+)\s*(km|mi|กม)/i);
-            if (inlineDistMatch) {
-                let dist = parseFloat(inlineDistMatch[1].replace(',', '.'));
-                if (inlineDistMatch[2].toLowerCase() === 'mi') {
-                    dist = dist * 1.60934;
-                }
-                distance_km = dist;
-                console.log('  ✓ Distance from inline pattern:', dist, 'km');
-            }
-        }
-
-        // Pattern 7: Meta tags
-        if (distance_km === null) {
-            const metaMatch = html.match(/content="[^"]*?([\d.,]+)\s*(km|kilometers|mi|miles)[^"]*"/i);
-            if (metaMatch) {
-                let dist = parseFloat(metaMatch[1].replace(',', '.'));
-                if (metaMatch[2].toLowerCase().includes('mi')) {
-                    dist = dist * 1.60934;
-                }
-                distance_km = dist;
-                console.log('  ✓ Distance from meta tag:', dist, 'km');
-            }
-        }
-
-        // Pattern 8: Look for any "X.X km" pattern in the page
+        // ---------------------------------------------------------
+        // 🔄 Fallback: Generic >X.X km< pattern
+        // ---------------------------------------------------------
         if (distance_km === null) {
             const anyKmMatch = html.match(/>(\d+\.?\d*)\s*km</i);
             if (anyKmMatch) {
                 const dist = parseFloat(anyKmMatch[1]);
-                if (!isNaN(dist) && dist > 0 && dist < 1000) { // Sanity check
+                if (!isNaN(dist) && dist > 0 && dist < 1000) {
                     distance_km = dist;
                     console.log('  ✓ Distance from generic pattern:', dist, 'km');
                 }
