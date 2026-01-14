@@ -1725,8 +1725,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
 
         <div class="events-grid">
           {#each filteredHistory as event, i}
-            <div class="event-card">
-              <div class="card-image" style="background-image: url('{event.banner_image_url}');"></div>
+                        <div class="event-card">
+                            <div class="card-image" use:lazyLoadBg={event.banner_image_url}></div>
               <div class="card-content">
                 <div class="card-header-row">
                   <h3 class="card-title">{event.title}</h3>

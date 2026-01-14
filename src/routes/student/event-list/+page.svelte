@@ -1166,7 +1166,7 @@
           <div class="events-grid">
             {#each filteredEvents as event, i}
               <div class="event-card">
-                <div class="card-image" style="background-image: url('{event.banner_image_url}');"></div>
+                <div class="card-image" use:lazyLoadBg={event.banner_image_url}></div>
                 <div class="card-content">
 
                   <div class="card-header-row">
