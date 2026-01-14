@@ -1515,8 +1515,8 @@
   .pill-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.85; margin-top: 2px; }
   
   .card-separator { height: 1px; background-color: rgba(255, 255, 255, 0.1); width: 100%; margin-bottom: 16px; }
-  .card-footer-actions { display: grid; grid-template-columns: 1fr auto; align-items: center; margin-top: auto; gap: 12px; }
-  .footer-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+  .card-footer-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-top: auto; gap: 12px; }
+  .footer-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
   /* =========================================
      4. BUTTONS
@@ -1554,10 +1554,10 @@
   .cancel-direct-btn:hover { filter: brightness(1.1); transform: translateY(-3px); box-shadow: 0 12px 28px -4px rgba(239, 68, 68, 0.6), 0 6px 12px rgba(0, 0, 0, 0.3); border-color: rgba(255, 255, 255, 0.3); }
 
   @media (max-width: 520px) {
-    .card-footer-actions { grid-template-columns: 1fr; }
+    .card-footer-actions { flex-direction: column; align-items: stretch; }
     .view-btn { width: 100%; justify-content: center; }
-    .footer-actions { width: 100%; }
-    .footer-actions > button { flex: 1 1 0; min-width: 0; }
+    .footer-actions { width: 100%; flex-direction: column; }
+    .footer-actions > button { width: 100%; }
     .register-btn, .cancel-direct-btn { width: 100%; min-width: 0; }
   }
 
