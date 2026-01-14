@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import OrganizerLayout from "$lib/components/organizer/OrganizerLayout.svelte";
   import ParticipantHistoryViewer from "$lib/components/organizer/ParticipantHistoryViewer.svelte";
   import { lazyLoad } from '$lib/utils/lazyLoad';
+  import { lang, currentLang as langStore } from '$lib/stores/organizerStore';
+  import { api } from '$lib/api/organizerApi';
 
-  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
-    /\/$/,
-    ""
-  );
+  // Translations specific to this page
+  $: t = $lang;
+  $: currentLang = $langStore;
 
   interface User {
     id: number;
@@ -53,7 +55,6 @@
   
   // View mode: 'logs' or 'history'
   let viewMode: 'logs' | 'history' = 'logs';
-  let currentLang: 'th' | 'en' = 'th';
 
   let mainSearchQuery = "";
   let showDateFilter = false;
@@ -152,27 +153,26 @@
   }
 
   async function fetchEventList(token: string | null) {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+    try {
+      const response = await api.get('/api/events/');
+      const data = response.data;
+      const list = Array.isArray(data) ? data : data.data || [];
 
-    const res = await fetch(`${API_BASE_URL}/api/events/`, { headers });
-    if (!res.ok) throw new Error("Fetch failed");
-    const data = await res.json();
-    const list = Array.isArray(data) ? data : data.data || [];
-
-    events = list.map((evt: any) => ({
-      id: evt.id,
-      title: evt.title,
-      dateDisplay: formatDate(evt.event_date),
-      rawDate: evt.event_date ? new Date(evt.event_date) : null,
-      image: evt.banner_image_url || "https://via.placeholder.com/400x200",
-      logs: [],
-      statsLoaded: false,
-      isLoading: false,
-      searchQuery: "",
-    }));
+      events = list.map((evt: any) => ({
+        id: evt.id,
+        title: evt.title,
+        dateDisplay: formatDate(evt.event_date),
+        rawDate: evt.event_date ? new Date(evt.event_date) : null,
+        image: evt.banner_image_url || "https://via.placeholder.com/400x200",
+        logs: [],
+        statsLoaded: false,
+        isLoading: false,
+        searchQuery: "",
+      }));
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      throw error;
+    }
   }
 
   async function fetchUserDetails(
@@ -180,10 +180,8 @@
     token: string | null
   ): Promise<User | null> {
     try {
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      const r = await fetch(`${API_BASE_URL}/api/users/${userId}`, { headers });
-      return r.ok ? await r.json() : null;
+      const response = await api.get(`/api/users/${userId}`);
+      return response.data;
     } catch {
       return null;
     }
@@ -207,68 +205,50 @@
     events = events;
 
     const token = localStorage.getItem("access_token");
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
 
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/participations/event/${eventId}`,
-        { headers }
-      );
+      const response = await api.get(`/api/participations/event/${eventId}`);
+      const raw = response.data;
+      const list: Participation[] = Array.isArray(raw) ? raw : raw.data || [];
       
-      if (res.ok) {
-        const raw = await res.json();
-        const list: Participation[] = Array.isArray(raw) ? raw : raw.data || [];
-        
-        console.log(`📊 Found ${list.length} participation records`);
-        
-        if (list.length === 0) {
-          events[idx].logs = [
-            { 
-              action: "No Participants Yet", 
-              timestamp: "0", 
-              type: "info",
-              detail: "No one has joined this event yet" 
-            }
-          ];
-          events[idx].statsLoaded = true;
-          return;
-        }
-        
-        const uids = [...new Set(list.map((p) => p.user_id))];
-        console.log(`👥 Loading ${uids.length} unique user profiles...`);
-        
-        const users = await Promise.all(
-          uids.map((u) => fetchUserDetails(u, token))
-        );
-        
-        const uMap: Record<number, User> = {};
-        users.forEach((u) => {
-          if (u) uMap[u.id] = u;
-        });
-        
-        console.log(`✅ Loaded ${Object.keys(uMap).length} user profiles`);
-        
-        events[idx].logs = convertParticipantsToLogs(list, uMap);
-        events[idx].statsLoaded = true;
-        
-        console.log(`✅ Successfully processed event ${eventId} data`);
-      } else {
-        console.error(`❌ Failed to fetch participations: ${res.status} ${res.statusText}`);
+      console.log(`📊 Found ${list.length} participation records`);
+      
+      if (list.length === 0) {
         events[idx].logs = [
           { 
-            action: "Error Loading Data", 
-            timestamp: "-", 
-            type: "error",
-            detail: `Failed to load: ${res.statusText}` 
+            action: t.noParticipantsYet || "No Participants Yet", 
+            timestamp: "0", 
+            type: "info",
+            detail: t.noOneJoined || "No one has joined this event yet" 
           }
         ];
+        events[idx].statsLoaded = true;
+        return;
       }
+      
+      const uids = [...new Set(list.map((p) => p.user_id))];
+      console.log(`👥 Loading ${uids.length} unique user profiles...`);
+      
+      const users = await Promise.all(
+        uids.map((u) => fetchUserDetails(u, token))
+      );
+      
+      const uMap: Record<number, User> = {};
+      users.forEach((u) => {
+        if (u) uMap[u.id] = u;
+      });
+      
+      console.log(`✅ Loaded ${Object.keys(uMap).length} user profiles`);
+      
+      events[idx].logs = convertParticipantsToLogs(list, uMap);
+      events[idx].statsLoaded = true;
+      
+      console.log(`✅ Successfully processed event ${eventId} data`);
     } catch (error) {
       console.error(`❌ Exception while fetching participants:`, error);
       events[idx].logs = [
         { 
-          action: "Error Loading Data", 
+          action: t.errorLoadingData || "Error Loading Data", 
           timestamp: "-", 
           type: "error",
           detail: error instanceof Error ? error.message : "Unknown error" 
@@ -404,26 +384,11 @@
   }
 </script>
 
+<OrganizerLayout>
 <div class="app-screen">
-  <div class="header-container">
-    <div class="glass-header">
-      <a href="/organizer/create-event" class="back-btn" aria-label="Back">
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
-        </svg>
-      </a>
-      <h1 class="page-title">EVENT LOG</h1>
-    </div>
+  <div class="page-header">
+    <h1 class="page-title">{t.eventLog || 'EVENT LOG'}</h1>
+    <p class="page-subtitle">{t.eventLogDesc || 'View participation logs and history'}</p>
   </div>
 
   <div class="fixed-search-area">
@@ -733,82 +698,46 @@
     {/if}
   </div>
 </div>
+</OrganizerLayout>
 
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
-  :global(body) {
-    margin: 0;
-    background-color: #111827;
-    color: white;
-    font-family: "Inter", sans-serif;
-  }
 
   .app-screen {
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    padding: 0 1rem;
   }
 
-  .header-container {
-    flex-shrink: 0;
-    z-index: 50;
+  .page-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-top: 1rem;
   }
-  .glass-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 80px;
-    z-index: 50;
-    background: #111827;
-    backdrop-filter: blur(12px);
-    
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid #111827;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+
+  .page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: 1px;
+  }
+
+  .page-subtitle {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin: 0;
   }
 
   .fixed-search-area {
-    flex-shrink: 0;
-    z-index: 45;
-    padding: 16px 20px 0 20px;
-    background: transparent;
-    margin-bottom: 30px;
-  }
-
-  .back-btn {
-    position: absolute;
-    left: 20px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    transition: 0.2s;
-  }
-
-  .back-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-  .page-title {
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    margin: 0;
+    margin-bottom: 1.5rem;
   }
 
   .scroll-container {
     flex: 1;
     overflow-y: auto;
-    padding: 0 20px 40px 20px;
+    padding: 0 0 40px 0;
     scrollbar-width: none;
   }
 
@@ -831,7 +760,6 @@
     border-radius: 12px;
     padding: 0 12px;
     height: 48px;
-    margin-top: 70px;
     transition: all 0.3s ease;
   }
   .main-search-input-box.active {

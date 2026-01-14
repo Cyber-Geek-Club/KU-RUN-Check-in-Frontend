@@ -2,27 +2,22 @@
   import { fade, slide } from "svelte/transition";
   import { onMount } from "svelte";
   import Swal from "sweetalert2";
-  const API_BASE_URL = (
-    import.meta.env.VITE_API_BASE_URL || ""
-  ).replace(/\/$/, "");
+  import OrganizerLayout from "$lib/components/organizer/OrganizerLayout.svelte";
+  import { lang } from '$lib/stores/organizerStore';
+  import { unlockUser, findUserByEmail } from '$lib/api/organizerApi';
+
+  $: t = $lang;
+
   let email = "";
   let isLoading = false;
   let organizerId: number | null = null;
-  let token: string = ""; 
   let notificationMessage = "";
   let notificationType: "error" | "success" = "error";
   let notificationTimeout: any = null;
   let errorField: string | null = null;
 
   onMount(() => {
-    const storedToken = localStorage.getItem("access_token");
     const userInfoStr = localStorage.getItem("user_info");
-    if (storedToken) {
-      token = storedToken;
-    } else {
-      console.warn("Access Token is missing. User might not be logged in.");
-     
-    }
     if (userInfoStr) {
       try {
         const userInfo = JSON.parse(userInfoStr);
@@ -32,6 +27,7 @@
       }
     }
   });
+  
   function validateEmail(value: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }
@@ -60,109 +56,50 @@
     }, 3000);
   }
 
-  async function findUserIdByEmail(
-    targetEmail: string
-  ): Promise<string | null> {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/users/`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      let usersList: any[] = [];
-      if (Array.isArray(data)) {
-        usersList = data;
-      } else if (data.data && Array.isArray(data.data)) {
-        usersList = data.data;
-      } else if (data.users && Array.isArray(data.users)) {
-        usersList = data.users;
-      }
-      const foundUser = usersList.find(
-        (u: any) =>
-          u.email && u.email.toLowerCase() === targetEmail.toLowerCase()
-      );
-      return foundUser ? foundUser.id : null;
-    } catch (error) {
-      console.error("Error finding user:", error);
-      return null;
-    }
-  }
-
-  async function unlockUserApi(userId: string) {
-    if (!organizerId) {
-      throw new Error("Organizer ID missing. Please login again.");
-    }
-    const url = `${API_BASE_URL}/api/users/${userId}/unlock?organizer_id=${organizerId}`;
-    console.log("Hitting API URL:", url); 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      console.error("API Error:", errorData);
-      throw new Error(errorData.message || "Failed to unlock user.");
-    }
-    return await res.json();
-  }
-
   async function handleUnlock() {
     clearNotification();
 
-    if (!token) {
-      showNotification("Authentication failed. Please login again.", "error");
-      return;
-    }
     if (!organizerId) {
-      showNotification("Organizer info missing. Please login again.", "error");
+      showNotification(t.organizerInfoMissing || "Organizer info missing. Please login again.", "error");
       return;
     }
     if (!email || !validateEmail(email)) {
-      showNotification("Please enter a valid email address.", "error", "email");
+      showNotification(t.enterValidEmail || "Please enter a valid email address.", "error", "email");
       return;
     }
 
     isLoading = true;
 
     try {
-      const targetUserId = await findUserIdByEmail(email);
+      const targetUserId = await findUserByEmail(email);
 
       if (!targetUserId) {
-        showNotification("User with this email not found.", "error", "email");
+        showNotification(t.userNotFound || "User with this email not found.", "error", "email");
         isLoading = false;
         return;
       }
 
       isLoading = false;
       Swal.fire({
-        title: "Unlock Account?",
-        text: `Confirm unlock for ${email}?`, 
+        title: t.unlockAccount || "Unlock Account?",
+        text: `${t.confirmUnlockFor || "Confirm unlock for"} ${email}?`, 
         icon: "question",
         showCancelButton: true,
         confirmButtonColor: "#10B981", 
         iconColor: "#10B981", 
         cancelButtonColor: "#6B7280", 
-        confirmButtonText: "Yes, Unlock",
+        confirmButtonText: t.yesUnlock || "Yes, Unlock",
+        cancelButtonText: t.cancel || "Cancel",
         width: "320px",
         customClass: { popup: "my-swal-popup" },
-        // --------------------------
       }).then(async (result) => {
         if (result.isConfirmed) {
           isLoading = true;
           try {
-            await unlockUserApi(targetUserId);
+            await unlockUser(targetUserId, organizerId!);
             Swal.fire({
-              title: "Unlocked!",
-              text: "User account has been successfully unlocked.",
+              title: t.unlocked || "Unlocked!",
+              text: t.userUnlockedSuccess || "User account has been successfully unlocked.",
               icon: "success",
               iconColor: "#10B981",
               showConfirmButton: false,
@@ -170,12 +107,11 @@
               width: "320px",
               customClass: { popup: "swal-white-popup" },
             });
-
             email = ""; 
           } catch (err: any) {
             Swal.fire({
-              title: "Error",
-              text: err.message || "Something went wrong.",
+              title: t.error || "Error",
+              text: err.message || t.somethingWentWrong || "Something went wrong.",
               icon: "error",
               iconColor: "#EF4444",
               showConfirmButton: false,
@@ -190,30 +126,17 @@
       });
     } catch (error) {
       console.error(error);
-      showNotification("System error occurred.", "error");
+      showNotification(t.systemError || "System error occurred.", "error");
       isLoading = false;
     }
   }
 </script>
 
+<OrganizerLayout>
 <div class="app-screen">
-  <div class="glass-header">
-    <a href="/organizer/event-log" class="back-btn" aria-label="Back">
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
-      </svg>
-    </a>
-    <h1 class="page-title">UNLOCKE USER</h1>
+  <div class="page-header">
+    <h1 class="page-title">{t.unlockUser || 'UNLOCK USER'}</h1>
+    <p class="page-subtitle">{t.unlockUserDesc || 'Restore access to locked accounts'}</p>
   </div>
 
   <div class="scroll-container">
@@ -314,76 +237,36 @@
     </div>
   </div>
 </div>
+</OrganizerLayout>
 
 <style>
-
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    background-color: #111827;
-    color: #111827;
-    font-family: "Inter", sans-serif;
-    overflow: hidden;
-  }
-  :global(*),
-  :global(*::before),
-  :global(*::after) {
-    box-sizing: border-box;
-  }
-
   .app-screen {
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    position: relative;
-    overflow: hidden;
+    padding: 0 1rem;
   }
 
-  .glass-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 80px;
-    z-index: 50;
-    background: #111827;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid #111827;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .back-btn {
-    position: absolute;
-    left: 20px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    transition: 0.2s;
-  }
-
-  .back-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+  .page-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-top: 1rem;
   }
 
   .page-title {
-    color: #ffffff;
-    font-size: 28px;
+    font-size: 1.75rem;
     font-weight: 700;
-    margin: 0;
+    color: white;
+    margin: 0 0 0.5rem 0;
     letter-spacing: 1px;
-    text-transform: uppercase;
+  }
+
+  .page-subtitle {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin: 0;
   }
 
   .scroll-container {
@@ -393,8 +276,8 @@
     display: flex;
     flex-direction: column; 
     align-items: center; 
-    justify-content: center; 
-    padding: 80px 24px;
+    justify-content: flex-start; 
+    padding: 0 24px 40px 24px;
     box-sizing: border-box;
   }
   .content-wrapper {

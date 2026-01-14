@@ -2,6 +2,11 @@
   import { onMount } from "svelte";
   import Swal from "sweetalert2";
   import { fly, fade, slide } from "svelte/transition";
+  import OrganizerLayout from "$lib/components/organizer/OrganizerLayout.svelte";
+  import { lang } from '$lib/stores/organizerStore';
+  import { fetchLeaderboard, calculateRanks, finalizeRewards } from '$lib/api/organizerApi';
+
+  $: t = $lang;
 
 
   interface UserTracker {
@@ -297,24 +302,11 @@
   }
 </script>
 
+<OrganizerLayout>
 <div class="app-screen">
-  <div class="glass-header">
-    <a href="/organizer/event-log" class="back-btn" aria-label="Back">
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
-      </svg>
-    </a>
-    <h1 class="page-title">MONTHLY REWARD</h1>
+  <div class="page-header">
+    <h1 class="page-title">{t.monthlyReward || 'MONTHLY REWARD'}</h1>
+    <p class="page-subtitle">{t.monthlyRewardDesc || 'Track and manage participant rewards'}</p>
   </div>
 
   <div class="scroll-container">
@@ -645,70 +637,41 @@
     </div>
   {/if}
 </div>
+</OrganizerLayout>
 
 <style>
-  :global(body) {
-    margin: 0;
-    background-color: #111827;
-    color: #334155;
-    font-family: "Inter", "Segoe UI", sans-serif;
-  }
   .app-screen {
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    position: relative;
+    padding: 0 1rem;
+    color: #334155;
   }
 
-  .glass-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 80px;
-    z-index: 50;
-    background: #111827;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid #111827;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .page-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-top: 1rem;
   }
 
-  .back-btn {
-    position: absolute;
-    left: 20px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    transition: 0.2s;
-  }
-
-  .back-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
   .page-title {
-    margin: 0;
-    font-size: 28px;
+    font-size: 1.75rem;
     font-weight: 700;
-    color: #ffffff;
-    letter-spacing: 0.5px;
+    color: white;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: 1px;
+  }
+
+  .page-subtitle {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin: 0;
   }
 
   .scroll-container {
     flex: 1;
     width: 100%;
     overflow-y: auto;
-    padding-top: 60px;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
@@ -719,7 +682,7 @@
     position: sticky;
     top: 0;
     z-index: 40;
-    padding: 20px 20px 0 20px;
+    padding: 0 20px;
     pointer-events: none;
   }
   .content-wrapper {

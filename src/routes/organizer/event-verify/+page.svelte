@@ -1,9 +1,10 @@
 <script lang="ts">
   import Swal from "sweetalert2";
-  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
-    /\/$/,
-    ""
-  );
+  import OrganizerLayout from "$lib/components/organizer/OrganizerLayout.svelte";
+  import { lang } from '$lib/stores/organizerStore';
+  import { checkInByCode, checkOutByCode } from '$lib/api/organizerApi';
+
+  $: t = $lang;
 
   let pins = ["", "", "", "", ""];
   let inputRefs: HTMLInputElement[] = [];
@@ -12,6 +13,9 @@
   let isVerifying = false;
   let errorTimeout: any;
   let errorIndex: number | null = null;
+
+  // Check-in or Check-out mode
+  let mode: 'check-in' | 'check-out' = 'check-in';
 
   function handleFocus(index: number) {
     const firstEmptyIndex = pins.findIndex((p) => p === "");
@@ -67,7 +71,7 @@
     if (finalPin.length !== 5) {
       const firstEmpty = pins.findIndex((p) => p === "");
       errorIndex = firstEmpty !== -1 ? firstEmpty : 4;
-      errorMessage = "Please enter the full 5-digit code.";
+      errorMessage = t.enterFullCode || "Please enter the full 5-digit code.";
       inputRefs[errorIndex]?.focus();
       triggerErrorTimeout();
       return;
@@ -78,34 +82,28 @@
     errorIndex = null;
 
     try {
-      const token = localStorage.getItem("access_token");
-      if (!token) throw new Error("No access token. Please login.");
-      const res = await fetch(`${API_BASE_URL}/api/participations/check-in`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ join_code: finalPin }),
-      });
+      const data = mode === 'check-in' 
+        ? await checkInByCode(finalPin)
+        : await checkOutByCode(finalPin);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data.message || data.detail || "Invalid code or check-in failed"
-        );
-      }
-      console.log("Check-in Success:", data);
+      console.log(`${mode} Success:`, data);
       const participantName =
         data.participant?.user?.first_name ||
         data.participant_name ||
-        "Participant";
+        t.participant || "Participant";
+
+      const successTitle = mode === 'check-in' 
+        ? (t.checkInSuccess || "Check-in Successful!")
+        : (t.checkOutSuccess || "Check-out Successful!");
+      
+      const successText = mode === 'check-in'
+        ? `${participantName} ${t.hasBeenCheckedIn || "has been checked in."}`
+        : `${participantName} ${t.hasBeenCheckedOut || "has been checked out."}`;
 
       await Swal.fire({
         icon: "success",
-        title: "Check-in Successful!",
-        text: `${participantName} has been checked in.`,
+        title: successTitle,
+        text: successText,
         timer: 2000,
         showConfirmButton: false,
         background: "#fff",
@@ -114,8 +112,8 @@
       pins = ["", "", "", "", ""];
       inputRefs[0]?.focus();
     } catch (err: any) {
-      console.error("Check-in Error:", err);
-      errorMessage = err.message;
+      console.error(`${mode} Error:`, err);
+      errorMessage = err.message || (t.invalidCodeOrFailed || "Invalid code or operation failed");
       errorIndex = 0;
       triggerErrorTimeout();
       pins = ["", "", "", "", ""];
@@ -134,39 +132,46 @@
   }
 </script>
 
+<OrganizerLayout>
 <div class="app-screen">
-  <div class="glass-header">
-    <a href="/organizer/event-log" class="back-btn" aria-label="Back">
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
-      </svg>
-    </a>
-    <h1 class="page-title">VERIFY CODE</h1>
+  <div class="page-header">
+    <h1 class="page-title">{t.verifyCode || 'VERIFY CODE'}</h1>
+    <p class="page-subtitle">{t.verifyCodeDesc || 'Verify participants with PIN code'}</p>
   </div>
 
   <div class="scroll-container">
     <div class="content-wrapper">
+      <!-- Mode Toggle -->
+      <div class="mode-toggle">
+        <button 
+          class="mode-btn {mode === 'check-in' ? 'active' : ''}"
+          on:click={() => mode = 'check-in'}
+        >
+          ✅ {t.checkIn || 'Check In'}
+        </button>
+        <button 
+          class="mode-btn {mode === 'check-out' ? 'active' : ''}"
+          on:click={() => mode = 'check-out'}
+        >
+          🚪 {t.checkOut || 'Check Out'}
+        </button>
+      </div>
+
       <div class="verify-card">
         <div class="card-header-wrapper">
-          <h2 class="card-title">Verify Participant</h2>
+          <h2 class="card-title">{t.verifyParticipant || 'Verify Participant'}</h2>
         </div>
 
         <p class="card-desc">
-          Enter the participant's 5-digit PIN code to check-in.
+          {#if mode === 'check-in'}
+            {t.enterPinCheckIn || "Enter the participant's 5-digit PIN code to check-in."}
+          {:else}
+            {t.enterPinCheckOut || "Enter the participant's 5-digit PIN code to check-out."}
+          {/if}
         </p>
 
         <div class="pin-section">
-          <h3 class="input-label">PIN CODE</h3>
+          <h3 class="input-label">{t.pinCode || 'PIN CODE'}</h3>
           <div class="pin-inputs-wrapper">
             {#each pins as _, i}
               <input
@@ -211,95 +216,52 @@
         {/if}
 
         <button
-          class="submit-btn"
+          class="submit-btn {mode === 'check-out' ? 'checkout' : ''}"
           on:click={handleVerify}
           disabled={isVerifying}
         >
           {#if isVerifying}
-            Verifying...
+            {t.verifying || 'Verifying...'}
+          {:else if mode === 'check-in'}
+            {t.checkIn || 'CHECK IN'}
           {:else}
-            CHECK IN
+            {t.checkOut || 'CHECK OUT'}
           {/if}
         </button>
       </div>
     </div>
   </div>
 </div>
+</OrganizerLayout>
 
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    background-color: #111827;
-    font-family: "Inter", sans-serif;
-    overflow: hidden;
-  }
-
-  :global(button),
-  :global(input),
-  :global(h1),
-  :global(h2),
-  :global(h3),
-  :global(p),
-  :global(span),
-  :global(a),
-  :global(div) {
-    font-family: "Inter", sans-serif !important;
-  }
-
   .app-screen {
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    position: relative;
+    padding: 0 1rem;
   }
 
-  .glass-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 80px;
-    z-index: 50;
-    background: rgba(17, 24, 39, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(17, 24, 39, 0.95);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .back-btn {
-    position: absolute;
-    left: 20px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    transition: 0.2s;
-  }
-
-  .back-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+  .page-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-top: 1rem;
   }
 
   .page-title {
-    color: white;
-    font-size: 28px;
+    font-size: 1.75rem;
     font-weight: 700;
-    margin: 0;
+    color: white;
+    margin: 0 0 0.5rem 0;
     letter-spacing: 1px;
-    text-transform: uppercase;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .page-subtitle {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin: 0;
   }
 
   .scroll-container {
@@ -307,7 +269,6 @@
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding-top: 100px;
     padding-bottom: 40px;
   }
 
@@ -320,6 +281,42 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+  }
+
+  .mode-toggle {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 16px;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    width: 100%;
+    max-width: 350px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    border-radius: 12px;
+    color: #94a3b8;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .mode-btn:hover {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+  }
+
+  .mode-btn.active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
   }
 
   .verify-card {
@@ -424,24 +421,32 @@
   }
   .submit-btn {
     width: 100%;
-    background-color: #10b981;
-    color: #111827;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
     border: none;
     padding: 14px;
     border-radius: 10px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
     text-transform: uppercase;
-    font-family: "Inter", sans-serif;
   }
   .submit-btn:hover {
-    background-color: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
   }
   .submit-btn:disabled {
-    background-color: #9ca3af;
+    background: #9ca3af;
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  .submit-btn.checkout {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  }
+  .submit-btn.checkout:hover {
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
   }
   @media (max-width: 380px) {
     .pin-box {

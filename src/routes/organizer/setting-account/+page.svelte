@@ -4,6 +4,11 @@
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { ROUTES } from "$lib/utils/routes";
+  import OrganizerLayout from "$lib/components/organizer/OrganizerLayout.svelte";
+  import { lang } from '$lib/stores/organizerStore';
+  import { api } from '$lib/api/organizerApi';
+
+  $: t = $lang;
 
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "";
@@ -396,31 +401,18 @@ console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
 
 <svelte:window on:click={closeAllDropdowns} />
 
+<OrganizerLayout>
 <div class="app-screen">
-  <div class="glass-header">
-    <a href={backUrl} class="back-btn" aria-label="Back">
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <line x1="19" y1="12" x2="5" y2="12"></line>
-        <polyline points="12 19 5 12 12 5"></polyline>
-      </svg>
-    </a>
+  <div class="page-header">
+    <h1 class="page-title">{t.settings || 'ACCOUNT SETTINGS'}</h1>
+    <p class="page-subtitle">{t.settingsDesc || 'Update your profile information'}</p>
   </div>
 
   <div class="scroll-container">
     <div class="content-wrapper">
       <div class="form-card">
         <div class="title-section">
-          <h1 class="main-title">ACCOUNT SETTINGS</h1>
-          <p class="sub-title">Update your profile information.</p>
+          <h2 class="section-title">{t.profileInfo || 'Profile Information'}</h2>
         </div>
 
         {#if isLoading}
@@ -745,7 +737,7 @@ console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
               on:click={handleSaveChanges}
               disabled={!isFormDirty || isSaving}
             >
-              {isSaving ? "SAVING..." : "SAVE CHANGES"}
+              {isSaving ? (t.saving || "SAVING...") : (t.saveChanges || "SAVE CHANGES")}
             </button>
           </div>
         {/if}
@@ -753,72 +745,34 @@ console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
     </div>
   </div>
 </div>
+</OrganizerLayout>
 
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    background-color: #111827;
-    color: white;
-    font-family: "Inter", sans-serif;
-    overflow: hidden;
-  }
-  :global(button),
-  :global(input),
-  :global(label),
-  :global(span),
-  :global(h1),
-  :global(p),
-  :global(a),
-  :global(div) {
-    font-family: "Inter", sans-serif !important;
-  }
-  :global(::placeholder) {
-    font-family: "Inter", sans-serif !important;
-    color: #6b7280;
-  }
-
   .app-screen {
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    position: relative;
+    padding: 0 1rem;
   }
 
-  .glass-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 80px;
-    z-index: 50;
-    background: rgba(17, 24, 39, 0.95);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(17, 24, 39, 0.95);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .page-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-top: 1rem;
   }
-
-  .back-btn {
-    position: absolute;
-    left: 20px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
     color: white;
-    cursor: pointer;
-    transition: 0.2s;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: 1px;
   }
-  .back-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+  .page-subtitle {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin: 0;
   }
 
   .scroll-container {
@@ -826,7 +780,6 @@ console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding-top: 100px;
     padding-bottom: 40px;
   }
   .scroll-container::-webkit-scrollbar {
@@ -851,15 +804,10 @@ console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
     text-align: left;
     margin-bottom: 24px;
   }
-  .main-title {
+  .section-title {
     color: #f3f4f6;
-    font-size: 28px;
-    font-weight: 700;
-    margin: 0 0 8px 0;
-  }
-  .sub-title {
-    color: #9ca3af;
-    font-size: 14px;
+    font-size: 18px;
+    font-weight: 600;
     margin: 0;
   }
 
