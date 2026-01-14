@@ -19,6 +19,8 @@
       backUrl = ROUTES.organizer.eventLog;
     } else if (role === "student") {
       backUrl = ROUTES.student.eventList;
+    } else if (role === "officer") {
+      backUrl = ROUTES.officer.eventList;
     } else {
       backUrl = "/organizer/create-event";
     }
