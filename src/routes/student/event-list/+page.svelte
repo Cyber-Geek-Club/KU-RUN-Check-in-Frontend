@@ -388,9 +388,14 @@
         userId = userInfo.id || userInfo.user_id;
       } catch (e) { return; }
 
-      // 1. ดึงข้อมูลประวัติ (History)
-      const res = await fetch(`${BASE_URL}/api/participations/user/${userId}`, {
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      // 1. ดึงข้อมูลประวัติ (History) พร้อม cache-busting
+      const cacheBuster = Date.now();
+      const res = await fetch(`${BASE_URL}/api/participations/user/${userId}?_=${cacheBuster}`, {
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}`,
+          "Cache-Control": "no-cache"
+        },
         signal: statusController.signal
       });
 
@@ -422,7 +427,10 @@
             const s = record.status ? record.status.toUpperCase() : "";
             
             // ข้าม CANCELLED/CANCEL เท่านั้น - record อื่นๆ (JOINED, PENDING, COMPLETED, etc.) ถือว่าสมัครแล้ว
-            if (s === 'CANCELLED' || s === 'CANCEL') continue;
+            if (s === 'CANCELLED' || s === 'CANCEL') {
+              console.log(`[Event ${e.id}] Skipping CANCELLED record:`, record.id);
+              continue;
+            }
             
             // เก็บ active record (ล่าสุด ไม่ใช่ CANCELLED)
             if (!anyActiveRecord || record.id > anyActiveRecord.id) {
@@ -433,6 +441,12 @@
           // [SIMPLIFIED] ถ้ามี record ที่ไม่ใช่ CANCELLED → ถือว่าสมัครแล้ว (ไม่ว่าจะวันไหน)
           const finalRecord = anyActiveRecord;
           const isJoined = !!finalRecord;
+          
+          if (finalRecord) {
+            console.log(`[Event ${e.id}] Active record found:`, finalRecord.id, finalRecord.status);
+          } else {
+            console.log(`[Event ${e.id}] No active record - can register`);
+          }
           const isJoinedToday = false; // ไม่ใช้แล้ว เพราะสมัครได้แค่ครั้งเดียว
 
           return {
@@ -651,7 +665,24 @@
           const contentType = joinRes.headers.get("content-type");
           if (contentType && contentType.includes("application/json")) {
               const errorData = await joinRes.json();
-              Swal.fire("Failed", errorData.detail || "Error", "error");
+              const errorMsg = errorData.detail || "Error";
+              
+              // [FIX] ถ้า error เกี่ยวกับ "ยกเลิก" หรือ "cancelled" → force reload
+              if (errorMsg.includes('ยกเลิก') || errorMsg.includes('cancelled') || errorMsg.includes('CANCELLED')) {
+                  await Swal.fire({
+                      icon: 'info',
+                      title: lang === 'th' ? 'กรุณาลองใหม่อีกครั้ง' : 'Please try again',
+                      text: lang === 'th' 
+                          ? 'กิจกรรมถูกยกเลิกไปแล้ว กำลังรีเฟรชข้อมูล...' 
+                          : 'Event was cancelled. Refreshing data...',
+                      timer: 2000,
+                      showConfirmButton: false
+                  });
+                  await updateUserStatus();
+                  await fetchEvents();
+              } else {
+                  Swal.fire("Failed", errorMsg, "error");
+              }
           } else {
               const errorText = await joinRes.text();
               console.warn("Non-JSON API Response:", errorText);
