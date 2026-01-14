@@ -451,8 +451,7 @@
           // [FIX] สำหรับ multi-day events - เช็คว่า join ไปวันนี้แล้วหรือยัง
           let isJoinedToday = false;
           if (e.event_type === 'multi_day' && myRecords.length > 0) {
-            // ใช้ getDebugDate() เพื่อรองรับทั้ง debug mode และ production
-            const serverNow = getDebugDate();
+            const serverNow = new Date();
             serverNow.setHours(0, 0, 0, 0);
             const todayStr = serverNow.toISOString().split('T')[0];
             
@@ -511,25 +510,8 @@
     }
   }
 
-  // [DEBUG] ฟังก์ชันสำหรับ override วันที่เพื่อทดสอบ
-  // ใช้โดยเพิ่ม ?debug_date=2026-01-14 ใน URL
-  function getDebugDate(): Date {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const debugDate = params.get('debug_date');
-      if (debugDate) {
-        const testDate = new Date(debugDate);
-        if (!isNaN(testDate.getTime())) {
-          console.log(`🔧 [DEBUG MODE] Using simulated date: ${debugDate}`);
-          return testDate;
-        }
-      }
-    }
-    return new Date();
-  }
-
   function canRegisterTodayCheck(event: EventItem): boolean {
-    const now = getDebugDate();
+    const now = new Date();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
     
