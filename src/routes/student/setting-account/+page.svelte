@@ -131,7 +131,7 @@
   }
 
   // --- Computed ---
-  $: backUrl = role === "student" ? ROUTES.student.eventList : "/organizer/create-event";
+  $: backUrl = role === "student" ? ROUTES.student.eventList : ROUTES.organizer.createEvent;
   $: userInitials = firstName && lastName 
     ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
     : "?";

@@ -9,7 +9,7 @@
     const ROLE_HOME: Record<string, string> = {
         student: "/student/event-list",
         officer: "/officer/event-list",
-        organizer: "/organizer/create-event",
+        organizer: "/organizer/create-event-new",
     };
 
     const GUEST_PATHS = [

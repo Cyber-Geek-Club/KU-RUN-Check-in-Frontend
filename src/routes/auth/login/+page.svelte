@@ -52,7 +52,7 @@
       case "student":
         return "/student/event-list";
       case "organizer":
-        return "/organizer/create-event";
+        return "/organizer/create-event-new";
       default:
         return "/student/event-list";
     }

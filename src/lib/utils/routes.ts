@@ -28,7 +28,7 @@ export const ROUTES = {
   },
   organizer: {
     home: '/organizer',
-    createEvent: '/organizer/create-event',
+    createEvent: '/organizer/create-event-new',
     eventLog: '/organizer/event-log',
     eventVerify: '/organizer/event-verify',
     monthlyReward: '/organizer/monthly-reward',
