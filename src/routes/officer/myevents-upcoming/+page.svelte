@@ -748,7 +748,15 @@
                 <div
                   class="details-section"
                   transition:slide
+                  role="button"
+                  aria-label="Event details (expanded)"
+                  tabindex="0"
                   on:click|stopPropagation={() => {}}
+                  on:keydown|stopPropagation={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                    }
+                  }}
                 >
                   <div class="separator"></div>
 
@@ -877,6 +885,8 @@
                                   type="button"
                                   class="action-btn edit"
                                   on:click|stopPropagation={triggerFileUpload}
+                                  aria-label="Change selected photo"
+                                  title="Change photo"
                                 >
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -893,6 +903,8 @@
                                   type="button"
                                   class="action-btn remove"
                                   on:click|stopPropagation={removeFile}
+                                  aria-label="Remove selected photo"
+                                  title="Remove photo"
                                 >
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -1029,14 +1041,15 @@
     pointer-events: none;
   }
   .tabs-bg {
-    background-color: #374151;
+    background: linear-gradient(135deg, rgba(55, 65, 81, 0.95), rgba(31, 41, 55, 0.95));
     border-radius: 50px;
     padding: 4px;
     display: flex;
     width: 100%;
     max-width: 240px;
     pointer-events: auto;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
   .tab-btn {
     flex: 1;
@@ -1049,6 +1062,7 @@
     cursor: pointer;
     transition: 0.2s;
     font-size: 14px;
+    font-weight: 700;
   }
   .tab-btn.active {
     background-color: white;
@@ -1064,7 +1078,7 @@
   }
   .content-wrapper {
     width: 100%;
-    max-width: 400px;
+    max-width: 520px;
     margin: 0 auto;
     padding: 0 20px;
     box-sizing: border-box;
@@ -1074,9 +1088,14 @@
     border-radius: 16px;
     overflow: hidden;
     margin-bottom: 20px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
+    box-shadow: 0 10px 18px -12px rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    transition: transform 0.2s, box-shadow 0.2s;
     cursor: pointer;
+  }
+  .event-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 30px -18px rgba(0, 0, 0, 0.55);
   }
   .event-card.locked {
     opacity: 0.75;
@@ -1119,10 +1138,10 @@
   }
   .event-title {
     margin: 0 0 10px 0;
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 700;
     color: #111827;
-    text-transform: uppercase;
+    text-transform: none;
   }
   .event-meta {
     display: flex;

@@ -1548,7 +1548,12 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                 <div class="card-image" use:lazyLoadBg={event.banner_image_url}>
                     {#if event.isLocked}
                         <div class="lock-overlay">
-                            <svg width="40" height="40" fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                            <div class="lock-overlay-content">
+                                <div class="lock-icon-circle">
+                                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                </div>
+                                <div class="lock-text">{event.lockMessage || t[lang].btn_locked}</div>
+                            </div>
                         </div>
                     {/if}
                 </div>
@@ -1652,6 +1657,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                                 <span>{lang === 'th' ? 'ดูสถิติ' : 'Stats'}</span>
                             </button>
 
+                            <div class="footer-actions">
+
                             {#if event.isLocked}
                                 <button class="status-btn" style="background: #334155; cursor: not-allowed; display: flex; align-items: center; gap: 6px; width: auto;" disabled>
                                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
@@ -1696,6 +1703,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                                     {lang === 'th' ? '❌ ยกเลิก' : '❌ Cancel'}
                                 </button>
                             {/if}
+
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2231,36 +2240,38 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   @media (min-width: 1024px) { .events-grid { grid-template-columns: repeat(3, 1fr); } }
   @media (min-width: 1280px) { .events-grid { grid-template-columns: repeat(4, 1fr); } }
 
-  .event-card { background-color: #1e293b; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); transition: transform 0.2s ease; }
-  .event-card:hover { transform: translateY(-4px); }
-  .card-image { height: 180px; background-size: cover; background-position: center; width: 100%; position: relative; background-color: #1e293b; transition: opacity 0.3s ease; }
+    .event-card { background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95)); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(16, 185, 129, 0.12); box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.03); transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1); }
+    .event-card:hover { transform: translateY(-6px); border-color: rgba(16, 185, 129, 0.25); box-shadow: 0 22px 40px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(16, 185, 129, 0.18); }
+    .card-image { height: 180px; background-size: cover; background-position: center; width: 100%; position: relative; background-color: #1e293b; transition: opacity 0.3s ease; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   .card-image:not(.lazy-loaded) { opacity: 0.6; }
   .card-content { padding: 20px; flex: 1; display: flex; flex-direction: column; }
   .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 10px; }
-  .card-title { font-size: 1.25rem; font-weight: 700; color: white; margin: 0; line-height: 1.4; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.8em; line-clamp: 2; }
+    .card-title { font-size: 1.25rem; font-weight: 800; background: linear-gradient(135deg, #ffffff, #e0e7ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 0; line-height: 1.35; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.8em; line-clamp: 2; letter-spacing: 0.02em; }
   .badges-col { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
   
-  .status-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 10px; border-radius: 12px; letter-spacing: 0.5px; text-transform: uppercase; }
-  .status-badge.running { color: #f59e0b; border: 1px solid #f59e0b; }
+    .status-badge { font-size: 0.7rem; font-weight: 800; padding: 5px 12px; border-radius: 16px; letter-spacing: 0.5px; text-transform: uppercase; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18); }
+    .status-badge.running { color: #f59e0b; border-color: rgba(245, 158, 11, 0.6); background: rgba(245, 158, 11, 0.12); }
   .status-badge.ended-normal { color: #94a3b8; border: 1px solid #94a3b8; }
   .status-badge.ended-canceled { color: #9f1239; border: 1px solid #881337; background-color: rgba(136, 19, 55, 0.1); } 
-  .status-badge.resubmit-badge { color: #ef4444; border: 1px solid #ef4444; background: rgba(239, 68, 68, 0.1); }
-  .status-badge.proof-badge { color: #d8b4fe; border: 1px solid #d8b4fe; background: rgba(168, 85, 247, 0.1); }
+    .status-badge.resubmit-badge { color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.7); background: rgba(239, 68, 68, 0.12); }
+    .status-badge.proof-badge { color: #d8b4fe; border: 1px solid rgba(216, 180, 254, 0.7); background: rgba(168, 85, 247, 0.12); }
 
-  .count-badge { background-color: #3b82f6; color: white; font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border-radius: 12px; display: flex; align-items: center; white-space: nowrap; }
+    .count-badge { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; font-size: 0.78rem; font-weight: 800; padding: 6px 12px; border-radius: 16px; display: flex; align-items: center; white-space: nowrap; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.28); }
   .card-desc { font-size: 0.9rem; color: #94a3b8; margin: 0 0 20px 0; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 3.2em; line-clamp: 2; }
   .card-desc.expanded { -webkit-line-clamp: unset; overflow: visible; min-height: auto; line-clamp: unset; }
 
   .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-  .info-pill { background-color: #0f172a; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: #cbd5e1; min-height: 20px; }
+    .info-pill { background: linear-gradient(135deg, rgba(30, 41, 59, 0.65), rgba(15, 23, 42, 0.8)); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 10px; padding: 12px; display: flex; align-items: flex-start; gap: 10px; font-size: 0.8rem; color: #cbd5e1; min-height: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
   .highlight-pill { color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
   .highlight-pill .pill-icon { stroke: #fbbf24; }
   .pill-icon { width: 18px; height: 18px; opacity: 0.8; flex-shrink: 0; }
 
-  .card-footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 10px; }
+    .card-footer-actions { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin-top: auto; padding-top: 12px; }
+    .footer-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 
-  .status-btn { color: white; border: none; padding: 9px 24px; border-radius: 8px; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: 0.2s; }
-  .status-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .status-btn { color: white; border: none; padding: 12px 18px; border-radius: 12px; font-size: 0.92rem; font-weight: 800; text-transform: uppercase; cursor: pointer; box-shadow: 0 10px 22px -8px rgba(0,0,0,0.45); transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); min-height: 44px; letter-spacing: 0.4px; position: relative; overflow: hidden; }
+    .status-btn:hover { filter: brightness(1.12); transform: translateY(-2px); }
+    .status-btn:disabled { cursor: not-allowed; opacity: 0.8; transform: none; filter: none; box-shadow: none; }
   
   .register-btn { background: #86efac; color: #064e3b; }
   .sending-btn { background: #3b82f6; }
@@ -2270,9 +2281,20 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .canceled-btn { background: #ef4444; }
   .waiting-btn { background: #facc15; color: #854d0e; }
 
-  .locked-card .card-image { filter: grayscale(100%); opacity: 0.8; }
+    .locked-card .card-image { filter: grayscale(100%); opacity: 0.85; }
   .locked-card .card-content { opacity: 0.7; }
-  .lock-overlay { width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; opacity: 0.8; }
+    .lock-overlay { width: 100%; height: 100%; background: radial-gradient(circle at 30% 10%, rgba(16, 185, 129, 0.18), rgba(15, 23, 42, 0.75) 55%, rgba(15, 23, 42, 0.85)); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 14px; box-sizing: border-box; }
+    .lock-overlay-content { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; color: rgba(255,255,255,0.92); }
+    .lock-icon-circle { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(0,0,0,0.25); }
+    .lock-text { font-weight: 800; font-size: 0.95rem; letter-spacing: 0.3px; }
+
+    @media (max-width: 560px) {
+        .card-footer-actions { grid-template-columns: 1fr; }
+        .dashboard-text-btn { width: 100%; justify-content: center; margin-right: 0; }
+        .footer-actions { width: 100%; }
+        .footer-actions > button { flex: 1 1 0; min-width: 0; }
+        .status-btn, .cancel-btn { width: 100%; }
+    }
 
   /* FOOTER */
   .app-footer { margin-top: 60px; text-align: center; padding-bottom: 40px; }
