@@ -1,27 +1,4 @@
 <script lang="ts">
-import { onMount } from 'svelte';
-import { goto } from '$app/navigation';
-import { auth } from '$lib/utils/auth';
-
-onMount(() => {
-  // Get user info from localStorage or auth util
-  let user: any = null;
-  try {
-    const userStr = localStorage.getItem('user') || localStorage.getItem('user_info');
-    if (userStr) user = JSON.parse(userStr);
-  } catch {}
-  // Fallback: try auth util if available
-  if (!user && auth?.getUser) user = auth.getUser();
-
-  // Check role
-  const role = user?.role || user?.roles?.[0];
-  if (role !== 'organizer') {
-    // Not allowed, redirect
-    goto('/');
-  }
-});
-</script>
-<script lang="ts">
   import { onMount } from "svelte";
   import { fade, slide, scale, fly } from "svelte/transition";
   import { quintOut } from "svelte/easing";
