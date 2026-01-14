@@ -6,6 +6,26 @@
   import { enhance } from "$app/forms";
   import { auth } from "$lib/stores/auth";
 
+  interface EventItem {
+    id: number;
+    title: string;
+    image: string;
+    description: string;
+    date: string;
+    time: string;
+    location: string;
+    participants: number;
+    maxParticipants: number;
+    isReadMore: boolean;
+    startDate?: string;
+    endDate?: string;
+    participationDate?: string;
+    isJoinedToday?: boolean;
+    is_active?: boolean;
+    is_published?: boolean;
+    is_full?: boolean;
+  }
+
   let isMenuOpen = false;
 
   let events = [
@@ -114,6 +134,35 @@
         });
       }
     });
+  }
+
+  function canRegisterTodayCheck(event: EventItem): boolean {
+    // ตรวจสอบ properties ที่จำเป็น
+    if (!event.startDate) return false;
+    
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    
+    const startDate = new Date(event.startDate);
+    startDate.setHours(0, 0, 0, 0);
+    
+    // วันนี้ต้องเป็นวันที่สามารถสมัครได้ (อยู่ในช่วง start-end)
+    const endDate = event.endDate ? new Date(event.endDate) : startDate;
+    endDate.setHours(23, 59, 59, 999);
+    
+    const isTodayInRange = today >= startDate && today <= endDate;
+    
+    // [FIX] ตรวจสอบว่าสมัครของวันนี้หรือไม่ โดยเปรียบเทียบ participationDate กับวันปัจจุบัน
+    let isJoinedToday = false;
+    if (event.participationDate) {
+      const participationDate = new Date(event.participationDate);
+      participationDate.setHours(0, 0, 0, 0);
+      isJoinedToday = participationDate.getTime() === today.getTime();
+    }
+    
+    // สามารถสมัครได้ถ้า: อยู่ในช่วงวันที่ + ยังไม่ได้สมัครวันนี้ + event active + published + ยังไม่เต็ม
+    return isTodayInRange && !isJoinedToday && (event.is_active ?? true) && (event.is_published ?? true) && !(event.is_full ?? false);
   }
 </script>
 
