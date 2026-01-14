@@ -7,106 +7,854 @@
   import { resolveImageUrl, API_BASE_URL as IMAGE_API_BASE } from "$lib/utils/imageUtils";
 
   // --- Configuration ---
-  const API_BASE_URL = IMAGE_API_BASE;
+  <script lang="ts">
+    import { fade, slide, scale } from "svelte/transition";
+    import { goto } from "$app/navigation";
+    import { auth } from "$lib/utils/auth";
+    import { onMount, onDestroy } from "svelte";
+    import Swal from "sweetalert2";
+    import { lazyLoadBg } from "$lib/utils/lazyLoad";
+    import { resolveImageUrl, API_BASE_URL } from "$lib/utils/imageUtils";
+    import { ROUTES } from "$lib/utils/routes";
+    import { navigateToEventList } from "$lib/utils/navigation";
+    import { apiRequest } from "$lib/utils/apiClient";
 
-  // --- Interfaces ---
-  interface EventDetail {
-    id: number;
-    title: string;
-    date: string;
-    rawDate: Date;
-    rawEndDate: Date;
-    time: string;
-    image: string;
-    location: string;
-  }
+    // --- CONFIG ---
+    const BASE_URL = API_BASE_URL;
+    import holidaysJson from '$lib/data/holidays.json';
 
-  interface RawParticipation {
-    id: number;
-    user_id: number;
-    event_id: number;
-    status: string;
-    join_code: string;
-    rejection_reason?: string;
-    proof_image_url?: string;
-  }
+    // --- STATE: LAYOUT ---
+    let isMobileMenuOpen = false;
+    let currentView = "my-event";
 
-  interface Participation {
-    id: number;
-    event: EventDetail;
-    status: string;
-    join_code: string;
-    rejection_reason?: string;
-    proof_image_url?: string;
-  }
+    // --- STATE: SESSION TIMER ---
+    let timeLeftStr = "--:--:--"; 
+    let timeLeftSeconds = 0;
+    let timerInterval: ReturnType<typeof setInterval> | null = null;
 
-  let isRefreshing = false;
+    // --- STATE: AUTO-REFRESH POLLING ---
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let pollDelay = 5000; // 5 seconds for realtime updates
+    let isPollingActive = false;
 
-  // --- Auto-refresh polling ---
-  let pollInterval: ReturnType<typeof setInterval> | null = null;
-  let pollDelay = 5000; // 5 seconds for realtime updates
-  let isPollingActive = false;
+    // --- STATE: SEARCH ---
+    let searchQuery = "";
 
-  // --- State ---
-  let participations: Participation[] = [];
-  let isLoading = true;
-  let isSubmitting = false;
-  let errorMessage = "";
-  let token = "";
-  let currentUserId: number | null = null;
+    // --- STATE: LANGUAGE ---
+    let lang: 'th' | 'en' = 'th';
 
-  // UI State
-  let activeTab: "upcoming" | "history" = "upcoming";
-  let expandedEventId: number | null = null;
-  let selectedFile: File | null = null;
-  let previewUrl: string | null = null;
-  let fileInput: HTMLInputElement;
+    const t = {
+      th: {
+        upcoming_header: "กิจกรรมเร็วๆ นี้",
+        history_header: "ประวัติกิจกรรม",
+        search_placeholder: "ค้นหากิจกรรม...",
+        read_more: "ดูรายละเอียด",
+        read_less: "ย่อลง",
+        status_register: "ลงทะเบียน",
+        status_waiting: "รอตรวจสอบ",
+        status_rejected: "แก้ไขรูปภาพ",
+        status_sending: "ส่งผลวิ่ง",
+        status_completed_badge: "✔ ผ่านแล้ว (รอกิจกรรมจบ)",
+        status_ended: "จบกิจกรรม",
 
-  // --- Helper Functions ---
+        btn_checkin: "เข้าร่วมกิจกรรม",
+        btn_register: "ลงทะเบียน",
+        btn_waiting: "⏳ กำลังตรวจสอบ",
+        btn_send_proof: "ส่งผลวิ่ง",
+        btn_send_image: "ส่งรูปภาพ",
+        btn_completed: "🕒 รอกิจกรรมจบ",
+        btn_checkout: "เช็คเอาท์กิจกรรม",
+        btn_locked: "ยังไม่เปิด",
+        btn_confirm_checkin: "ยืนยันการเช็คอิน",
+        btn_next: "ถัดไป (อัปโหลดรูปภาพ) →",
+        btn_submit: "ยืนยันการส่งข้อมูล",
+        btn_resubmit: "ยืนยันการส่งซ้ำ",
+        btn_back_strava: "← ย้อนกลับไปแก้ไข Strava",
+        btn_verify_link: "🔍 ตรวจสอบ",
+        status_daily_completed: "เจอกันพรุ่งนี้",
+        btn_daily_wait: "รอวันถัดไป",
 
-  const formatTimeRange = (startDateStr: string, endDateStr?: string) => {
-    if (!startDateStr) return "N/A";
-    const options: Intl.DateTimeFormatOptions = {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      timeZone: "Asia/Bangkok",
+        modal_step1: "ขั้นตอนที่ 1: ข้อมูลการวิ่ง",
+        modal_step1_sub: "กรอกข้อมูลจาก Strava ของคุณ",
+        modal_link_label: "ลิงก์กิจกรรม Strava (จำเป็น)",
+        modal_dist_label: "ระยะทาง (กิโลเมตร)",
+        modal_dist_warn: "*ระบบจะล็อคการแก้ไข กรุณากดปุ่ม 'ตรวจสอบ' เพื่อดึงข้อมูลจริง",
+        modal_step2: "ขั้นตอนที่ 2: หลักฐานรูปภาพ",
+        modal_step2_sub: "อัปโหลดภาพแคปหน้าจอผลการวิ่ง",
+        modal_upload_txt: "แตะเพื่ออัปโหลดรูปภาพ",
+        modal_rejected: "⚠️ รูปภาพถูกปฏิเสธ:",
+        modal_verifying_title: "อยู่ระหว่างตรวจสอบ",
+        modal_verifying_desc: "ระบบได้รับข้อมูลแล้ว กำลังรอเจ้าหน้าที่ตรวจสอบความถูกต้องครับ",
+        modal_close: "ปิด",
+
+        dash_location: "สถานที่",
+        dash_date: "วันที่",
+        dash_time: "เวลา",
+        dash_rank_title: "ลำดับของฉัน (วันนี้)",
+        dash_success_title: "ความสำเร็จสะสม",
+        dash_unit_days: "วัน",
+        dash_holiday_title: "📅 วันหยุดกิจกรรม",
+        dash_holiday_weekend: "ทุกวันเสาร์ - อาทิตย์",
+        dash_no_holiday: "- ไม่มีวันหยุด (วิ่งได้ทุกวัน) -",
+        rank_label: "ลำดับที่",
+
+        alert_success: "ทำรายการสำเร็จ",
+        alert_not_checked_in: "ยังไม่ได้รับการเช็คอิน",
+        alert_contact_staff: "กรุณาส่งรหัส PIN หรือ QR Code ให้เจ้าหน้าที่ทำการเช็คอิน",
+        alert_checkin_success: "เช็คอินสำเร็จ!",
+        alert_go_next: "เข้าสู่ขั้นตอนการส่งผลวิ่ง",
+        btn_ok: "ตกลง",
+        alert_warning: "แจ้งเตือน",
+        alert_error: "ข้อผิดพลาด",
+        alert_success_title: "สำเร็จ",
+        alert_link_required: "กรุณากรอกลิงก์กิจกรรม Strava",
+        alert_link_invalid: "ลิงก์ไม่ถูกต้อง (ต้องเป็น strava.app.link หรือ strava.com)",
+        alert_checking: "กำลังตรวจสอบ...",
+        alert_fetching_strava: "กำลังดึงข้อมูลจาก Strava...",
+        alert_not_found: "ไม่พบข้อมูล",
+        alert_connection_error: "เกิดข้อผิดพลาดในการเชื่อมต่อ",
+        alert_verify_first: "กรุณากดปุ่ม 'ตรวจสอบ' เพื่อดึงระยะทางก่อน",
+        alert_image_required: "กรุณาอัปโหลดรูปภาพหลักฐาน",
+        alert_upload_failed: "อัปโหลดไม่สำเร็จ",
+        alert_submit_success: "ส่งข้อมูลเรียบร้อยแล้ว",
+        alert_session_expired: "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่",
+      },
+      en: {
+        upcoming_header: "Upcoming",
+        history_header: "History",
+        search_placeholder: "Search events...",
+        read_more: "Read more",
+        read_less: "Read less",
+
+        status_register: "REGISTER",
+        status_waiting: "Verifying",
+        status_rejected: "Action Required",
+        status_sending: "Draft",
+        status_completed_badge: "✔ Completed",
+        status_ended: "ENDED",
+
+        btn_checkin: "CHECK-IN",
+        btn_register: "REGISTER",
+        btn_waiting: "⏳ VERIFYING",
+        btn_send_proof: "SEND PROOF",
+        btn_send_image: "SEND IMAGE",
+        btn_completed: "🕒 COMPLETED",
+        btn_checkout: "CHECK-OUT",
+        btn_locked: "LOCKED",
+        btn_confirm_checkin: "CONFIRM CHECK-IN",
+        btn_next: "Next (Upload Image) →",
+        btn_submit: "Submit Proof",
+        btn_resubmit: "Resubmit Proof",
+        btn_back_strava: "← Back to Strava Link",
+        btn_verify_link: "🔍 Verify Link",
+        status_daily_completed: "NEXT DAY",
+        btn_daily_wait: "Wait Next Day",
+
+        modal_step1: "Step 1: Activity Data",
+        modal_step1_sub: "Enter your Strava activity link",
+        modal_link_label: "Strava Activity Link (Required)",
+        modal_dist_label: "Distance (KM)",
+        modal_dist_warn: "*Input is locked. Please click 'Verify Link' to fetch data.",
+        modal_step2: "Step 2: Proof Image",
+        modal_step2_sub: "Upload a screenshot of your run result",
+        modal_upload_txt: "📸 Tap to upload image",
+        modal_rejected: "⚠️ Image Rejected:",
+        modal_verifying_title: "Verification Pending",
+        modal_verifying_desc: "We are verifying your submission. Please wait.",
+        modal_close: "Close",
+
+        dash_location: "Location",
+        dash_date: "Date",
+        dash_time: "Time",
+        dash_rank_title: "My Rank (Today)",
+        dash_success_title: "Success Count",
+        dash_unit_days: "days",
+        dash_holiday_title: "📅 Holidays / Free Days",
+        dash_holiday_weekend: "Every Sat - Sun",
+        dash_no_holiday: "- No holidays (Run everyday) -",
+        rank_label: "Rank",
+
+        alert_success: "Success",
+        alert_not_checked_in: "Check-in Pending",
+        alert_contact_staff: "Please present your PIN or QR Code to staff.",
+        alert_checkin_success: "Check-in Successful!",
+        alert_go_next: "Proceeding to proof submission.",
+        btn_ok: "OK",
+        alert_warning: "Warning",
+        alert_error: "Error",
+        alert_success_title: "Success",
+        alert_link_required: "Strava activity link is required.",
+        alert_link_invalid: "Invalid link (Must be strava.app.link or strava.com)",
+        alert_checking: "Checking...",
+        alert_fetching_strava: "Fetching Strava data...",
+        alert_not_found: "Not Found",
+        alert_connection_error: "Connection Error",
+        alert_verify_first: "Please click 'Verify Link' first.",
+        alert_image_required: "Proof image is required.",
+      }
     };
-    const start = new Date(startDateStr).toLocaleTimeString("th-TH", options);
 
-    if (endDateStr) {
-      const end = new Date(endDateStr).toLocaleTimeString("th-TH", options);
-      if (start === end) return start;
-      return `${start} - ${end}`;
-    }
-    return start;
-  };
+    // --- STATE: DATA ---
+    let loading = true;
+    let rawParticipations: any[] = [];
+    let eventsMap: Record<number, any> = {}; 
+    let holidaysMap: Record<number, any> = {};
+  
+    let upcomingEvents: EventItem[] = [];
+    let historyEvents: EventItem[] = [];
 
-  async function handleSessionExpired() {
-    await Swal.fire({
-      icon: "warning",
-      title: "Session Expired",
-      text: "Your token is times up",
-      confirmButtonText: "Login",
-      confirmButtonColor: "#10B981",
-      allowOutsideClick: false,
-    });
-    auth.logout();
-    goto("/auth/login", { replaceState: true });
+    // --- MODAL STATE ---
+    let showModal = false;
+    let selectedEvent: EventItem | null = null;
+    let checkInMethod: 'PIN' | 'QR' = 'PIN';
+    let proofImage: string | null = null; 
+    let proofFile: File | null = null;
+    let sendingLink = "";
+    let currentParticipationId: number | null = null;
+    let distanceInput = 0;
+
+    // --- CANCEL MODAL STATE ---
+    let showCancelModal = false;
+    let eventToCancel: EventItem | null = null;
+    let selectedCancelReason = "";
+    let otherCancelReason = "";
+    const cancelReasons = [
+    "ติดธุระด่วน / Urgent matter",
+    "ปัญหาสุขภาพ / Health issue",
+    "สภาพอากาศ / Weather condition",
+    "การเดินทาง / Transportation",
+    "อื่นๆ / Other"
+    ];
+
+    // --- MENU ITEMS ---
+    const menuItems = [
+    { id: "event-list", label: "Event list", path: "/officer/event-list", svg: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9 2 2 4-4" },
+    { id: "my-event", label: "My event", path: "/officer/myevents-upcoming", svg: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
+    { id: "account-setting", label: "Account setting", path: "/officer/setting-account", svg: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+    ];
+
+    interface EventItem {
+    id: number;
+    participation_id: number;
+    title: string;
+    description: string;
+    location: string;
+    distance_km: number;
+    actual_distance_km?: number;
+    banner_image_url: string;
+    status: "JOINED" | "CHECKED_IN" | "REJECTED" | "proof_submitted" | "CHECKED_OUT" | "COMPLETED" | "CANCELED"; 
+    
+    participant_count: number;
+    max_participants: number;
+    isJoined: boolean; 
+    isExpanded: boolean;
+    rejection_reason?: string;
+    proof_image_url?: string;
+    join_code?: string;       // PIN Check-in (สำหรับสถานะ JOINED)
+    completion_code?: string; // PIN Check-out (สำหรับสถานะ CHECKED_OUT)
+
+    raw_start_date?: string;
+    raw_end_date?: string;
+    raw_start_time?: string;
+    raw_end_time?: string;
+    completed_count: number;
+    isLocked?: boolean;
+    lockMessage?: string;
+    completion_rank?: number;
+    total_days?: number;
   }
 
-  async function loadData() {
-    if (!token || !currentUserId) {
-      errorMessage = "ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่";
-      isLoading = false;
+    // --- DATA FETCHING ---
+    async function loadData() {
+    loading = true;
+    try {
+      const token = getToken();
+      const userId = getUserIdFromToken();
+      if (!token || !userId) {
+        console.warn("No credentials found");
+        Swal.fire({
+          icon: 'warning',
+          title: t[lang].alert_session_expired || 'Session Expired',
+          text: 'Please login again',
+          confirmButtonText: 'OK'
+        }).then(() => {
+          goto("/auth/login");
+        });
+        return;
+      }
+
+      holidaysMap = {};
+      if (Array.isArray(holidaysJson)) {
+          holidaysJson.forEach((h: any) => {
+            if (h && h.eventId) holidaysMap[h.eventId] = h;
+          });
+      }
+
+      const [resPart, resAllEvents] = await Promise.all([
+         fetch(`${BASE_URL}/api/participations/user/${userId}`, {
+           method: 'GET',
+           headers: { 
+             'Authorization': `Bearer ${token}`,
+             'Content-Type': 'application/json'
+           }
+         }).catch(err => {
+           console.error("Participations fetch error:", err);
+           throw new Error("Cannot connect to participations API");
+         }),
+        
+         fetch(`${BASE_URL}/api/events/`, { 
+           method: 'GET',
+           headers: { 
+             'Authorization': `Bearer ${token}`,
+             'Content-Type': 'application/json'
+           }
+         }).catch(err => {
+           console.error("Events fetch error:", err);
+           throw new Error("Cannot connect to events API");
+         })
+      ]);
+
+      if (!resPart.ok) {
+        const errText = await resPart.text().catch(() => "Unknown error");
+        console.error(`Participations API Error (${resPart.status}):`, errText);
+        throw new Error(`Failed to fetch participations (${resPart.status})`);
+      }
+        
+      if (!resAllEvents.ok) {
+        const errText = await resAllEvents.text().catch(() => "Unknown error");
+        console.error(`Events API Error (${resAllEvents.status}):`, errText);
+        throw new Error(`Failed to fetch events (${resAllEvents.status})`);
+      }
+
+      rawParticipations = await resPart.json().catch(err => {
+        console.error("Error parsing participations JSON:", err);
+        throw new Error("Invalid participations data format");
+      });
+      const allEvents = await resAllEvents.json().catch(err => {
+        console.error("Error parsing events JSON:", err);
+        throw new Error("Invalid events data format");
+      });
+
+      eventsMap = {};
+      if (Array.isArray(allEvents)) {
+        allEvents.forEach((ev: any) => {
+          if (ev && ev.id) eventsMap[ev.id] = ev;
+        });
+      }
+
+      processData();
+
+    } catch (e: any) {
+      console.error("Error loading data:", e);
+      let errorMsg = "ไม่สามารถโหลดข้อมูลกิจกรรมได้";
+      if (e.message?.includes("connect")) {
+        errorMsg = "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต";
+      } else if (e.message?.includes("401") || e.message?.includes("403")) {
+        errorMsg = "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่";
+        Swal.fire({
+          icon: 'error',
+          title: 'Authentication Error',
+          text: errorMsg,
+          confirmButtonText: 'OK'
+        }).then(() => {
+          goto("/auth/login");
+        });
+        return;
+      } else if (e.message?.includes("format")) {
+        errorMsg = "ข้อมูลจากเซิร์ฟเวอร์ไม่ถูกต้อง";
+      }
+        
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: errorMsg,
+        footer: `<small>Technical: ${e.message || 'Unknown error'}</small>`
+      });
+    } finally {
+      loading = false;
+    }
+    }
+
+    async function fetchMyStatus(eventId: number) {
+      const token = getToken();
+      if (!token) return null;
+      try {
+        const res = await fetch(`${BASE_URL}/api/participations/my-codes/${eventId}`, {
+          method: 'GET',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!res.ok) throw new Error("Failed to fetch status");
+        return await res.json();
+      } catch (e) {
+        console.error("Fetch status error:", e);
+        return null;
+      }
+    }
+
+    function processData() {
+      const upcoming: EventItem[] = [];
+      const history: EventItem[] = [];
+      const now = new Date();
+
+      // 1. นับจำนวนครั้งที่ทำสำเร็จ
+      const completionCounts: Record<number, number> = {};
+      rawParticipations.forEach(p => {
+        if (p.status && p.status.toUpperCase() === 'COMPLETED') {
+          completionCounts[p.event_id] = (completionCounts[p.event_id] || 0) + 1;
+        }
+      });
+
+      // 2. หารายการล่าสุด
+      const latestParticipations: Record<number, any> = {};
+      rawParticipations.forEach(p => {
+        if (!latestParticipations[p.event_id] || p.id > latestParticipations[p.event_id].id) {
+          latestParticipations[p.event_id] = p;
+        }
+      });
+
+      // 3. Loop Events
+      Object.values(eventsMap).forEach((ev: any) => {
+          
+        const p = latestParticipations[ev.id];
+        if (!p) return; 
+
+        let uiStatus: EventItem['status'] = mapApiStatusToUi(p.status);
+        let participationId = p.id;
+        let proofImg = p.proof_image_url;
+        let rejectReason = p.rejection_reason;
+        let joinCode = p.join_code;
+        let compCode = p.completion_code;
+        let actualDist = p.actual_distance_km;
+        let compRank = p.completion_rank;
+          
+        // [NEW LOGIC] ตรวจสอบวัน: หากกิจกรรมที่สมัครมาไม่ใช่วันปัจจุบัน และ status ไม่ใช่ COMPLETED
+        // ให้ AUTO CANCEL ทันที (ระบบวันต่อวัน)
+        const recordDateStr = p.created_at || p.date || p.start_date;
+        if (recordDateStr) {
+          const recordDate = new Date(recordDateStr);
+          const today = new Date();
+          recordDate.setHours(0, 0, 0, 0);
+          today.setHours(0, 0, 0, 0);
+              
+          // ถ้าวันที่ของ Record ไม่ใช่วันนี้ และ status ไม่ใช่ COMPLETED
+          if (recordDate.getTime() !== today.getTime() && uiStatus !== 'COMPLETED') {
+            console.log(`[AUTO CANCEL] Event ${ev.id}: Registered on different day (${recordDateStr}). Auto-canceling.`);
+            uiStatus = 'CANCELED';
+          }
+        }
+        // Logic Draft Key
+        if (uiStatus === 'CHECKED_IN' && typeof localStorage !== 'undefined') {
+          const draftKey = `proof_draft_${p.id}`;
+          const draftJson = localStorage.getItem(draftKey);
+          if (draftJson) {
+            try {
+              const draft = JSON.parse(draftJson);
+              if (draft.step && draft.step >= 2) uiStatus = 'proof_submitted';
+            } catch (e) { }
+          }
+        }
+
+        const count = completionCounts[ev.id] || 0;
+
+        // --- จัดการเรื่องวันและเวลา ---
+        const startIso = ev.event_date || ev.startDate || ev.event_start_date;
+        const endIso = ev.event_end_date || ev.endDate;
+          
+        const extractTimeRaw = (isoStr: string) => {
+          if (!isoStr) return "";
+          const date = new Date(isoStr);
+          const bangkokHours = date.getHours();
+          const bangkokMinutes = date.getMinutes();
+          const hours = String(bangkokHours).padStart(2, '0');
+          const minutes = String(bangkokMinutes).padStart(2, '0');
+          return `${hours}:${minutes}`;
+        };
+
+        const startTimeStr = extractTimeRaw(startIso); 
+        const endTimeStr = extractTimeRaw(endIso);
+          
+        const parseDateOnly = (isoStr: string): Date | null => {
+          if (!isoStr) return null;
+          if (isoStr.includes('Z') || isoStr.includes('+')) {
+            const d = new Date(isoStr);
+            return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          }
+          const part = isoStr.includes('T') ? isoStr.split('T')[0] : isoStr;
+          const [y, m, d] = part.split('-').map(Number);
+          return new Date(y, m - 1, d);
+        };
+
+        const projectStartDate = parseDateOnly(startIso);
+        const projectEndDate = parseDateOnly(endIso);
+
+        if (projectStartDate) projectStartDate.setHours(0, 0, 0, 0);
+        if (projectEndDate) projectEndDate.setHours(23, 59, 59, 999);
+
+        const nextWorkingDate = getNextWorkingDay(now, ev.id);
+        nextWorkingDate.setHours(0, 0, 0, 0); 
+
+        const isNextDayAfterEnd = projectEndDate ? (nextWorkingDate.getTime() > projectEndDate.getTime()) : false;
+
+        const isProjectEnded = projectEndDate && now > projectEndDate;
+        const isProjectNotStarted = projectStartDate && now < projectStartDate;
+
+        let isTimeOver = false;   
+        let isBeforeTime = false; 
+        let isTodayTimeRemaining = false;
+
+        if (startTimeStr && endTimeStr) {
+           const [sh, sm] = startTimeStr.split(':').map(Number);
+           const [eh, em] = endTimeStr.split(':').map(Number);
+               
+           const todayStart = new Date(); todayStart.setHours(sh, sm, 0, 0);
+           const todayEnd = new Date(); todayEnd.setHours(eh, em, 59, 999);
+               
+           if (now < todayStart) isBeforeTime = true;
+           if (now > todayEnd) isTimeOver = true;
+           if (now <= todayEnd) isTodayTimeRemaining = true;
+        }
+
+        let isLocked = false;
+        let lockMessage = t[lang].btn_locked;
+
+        if (isProjectEnded) {
+          isLocked = true;
+          lockMessage = lang === 'th' ? "จบกิจกรรม" : "Activity Ended";
+        } 
+        else if (isProjectNotStarted && uiStatus !== 'JOINED') {
+          isLocked = true;
+          const openDate = getDisplayDate(startIso, undefined, lang);
+          lockMessage = lang === 'th' ? `เปิด ${openDate}` : `Open ${openDate}`;
+        }
+        else if (uiStatus === 'COMPLETED') {
+          isLocked = true;
+          if (isNextDayAfterEnd) {
+            if (isTimeOver) {
+              lockMessage = lang === 'th' ? "จบกิจกรรม" : "Activity Ended";
+            } else {
+              lockMessage = lang === 'th' ? "เช็คเอาท์เรียบร้อย" : "Checkout Completed";
+            }
+          } else {
+            if (isTodayTimeRemaining) {
+               lockMessage = lang === 'th' ? "เช็คเอาท์เรียบร้อย" : "Checkout Completed";
+            } else {
+               const nextDateStr = nextWorkingDate.toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' });
+               lockMessage = lang === 'th' ? `เปิด ${nextDateStr}` : `Open ${nextDateStr}`;
+            }
+          }
+        }
+        else if (uiStatus === 'CHECKED_OUT') {
+          isLocked = false;
+        }
+        else if (isBeforeTime) {
+          isLocked = true;
+          lockMessage = lang === 'th' ? "ยังไม่ถึงเวลา" : "Not yet time";
+        }
+        else if (isTimeOver) {
+          isLocked = true;
+          lockMessage = lang === 'th' ? "หมดเวลากิจกรรม" : "Time's up";
+        }
+          
+        const shouldGoToHistory = 
+        (isProjectEnded ||
+        uiStatus === 'CANCELED' ||
+        (isNextDayAfterEnd && isTimeOver));
+
+        if (shouldGoToHistory) {
+         if (count === 0) {
+           uiStatus = 'CANCELED';
+         } 
+         else if (count >= 1) {
+           if (uiStatus !== 'CANCELED') {
+             uiStatus = 'COMPLETED';
+           }
+         }
+        }
+          
+        const totalValidDays = calculateTotalValidDays(startIso || "", endIso || "", ev?.id || 0);
+
+        const item: EventItem = {
+          id: ev.id,
+          participation_id: participationId,
+          title: ev.title || "Unknown Event",
+          description: ev.description || "",
+          location: ev.location || "-",
+          distance_km: ev.distance_km || 0,
+          actual_distance_km: actualDist,
+          banner_image_url: resolveImageUrl(ev.banner_image_url) || "https://via.placeholder.com/400",
+          participant_count: ev.participant_count || 0,
+          max_participants: ev.max_participants || 0,
+              
+          join_code: joinCode,
+          completion_code: compCode,
+          rejection_reason: rejectReason,
+          proof_image_url: proofImg,
+              
+          raw_start_date: startIso,
+          raw_end_date: endIso,
+          raw_start_time: startTimeStr, 
+          raw_end_time: endTimeStr,
+              
+          status: uiStatus,
+          isJoined: true,
+          isExpanded: false,
+              
+          completed_count: count,
+          isLocked: isLocked,           
+          lockMessage: lockMessage,      
+          completion_rank: compRank,
+          total_days: totalValidDays
+        };
+
+        if (shouldGoToHistory) history.push(item);
+        else upcoming.push(item);
+      });
+
+      upcomingEvents = upcoming;
+      historyEvents = history;
+    }
+
+    function formatTime(start: string, end: string, currentLang: string) {
+    if (!start) return "";
+    const extractTime = (val: string) => {
+      if (!val) return "";
+      if (val.includes('T')) {
+        const d = new Date(val);
+        return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
+      }
+      const parts = val.split(':');
+      if (parts.length >= 2) return `${parts[0]}:${parts[1]}`;
+      return val;
+    };
+
+    const timeStart = extractTime(start);
+    const timeEnd = extractTime(end);
+    if (!timeStart || timeStart === "Invalid Date") return "";
+    if (currentLang === 'th') {
+      return timeEnd ? `${timeStart} - ${timeEnd} น.` : `${timeStart} น.`;
+    } else {
+      return timeEnd ? `${timeStart} - ${timeEnd}` : `${timeStart}`;
+    }
+    }
+
+  function mapApiStatusToUi(apiStatus: string): EventItem['status'] {
+    if (!apiStatus) return 'JOINED'; // Default
+    
+    const s = apiStatus.toLowerCase();
+
+    if (s === 'joined') return 'JOINED';
+    if (s === 'checked_in') return 'CHECKED_IN';
+    if (s === 'rejected') return 'REJECTED';
+    if (s === 'proof_submitted' || s === 'submitted' || s === 'pending' || s.includes('wait') || s === 'pending_proof') {
+      return 'proof_submitted';
+    }
+    if (s === 'checked_out' || s === 'pass' || s === 'verified') {
+      return 'CHECKED_OUT';
+    }
+    if (s === 'completed' || s === 'finished') return 'COMPLETED';
+    if (s === 'canceled' || s === 'cancelled') return 'CANCELED';
+    return 'JOINED';
+  }
+
+    $: filteredUpcoming = upcomingEvents.filter(event => 
+      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    $: filteredHistory = historyEvents.filter(event => 
+      (event.title.toLowerCase().includes(searchQuery.toLowerCase())) &&
+      event.status !== 'CANCELED'
+    );
+
+    async function CheckInEvent(eventId: number) {
+      const token = getToken();
+      if (!token) return null;
+      try {
+        const res = await fetch(`${BASE_URL}/api/participations/join`, { 
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ event_id: eventId }) 
+        });
+        if (!res.ok) {
+          try {
+            const errJson = await res.json();
+            console.warn("⚠️ Backend Error Detail:", errJson);
+            if (errJson.join_code || errJson.id) return errJson;
+            if (errJson.detail || errJson.message) {
+              throw new Error(errJson.detail || errJson.message);
+            }
+          } catch(e) {
+            if (e instanceof Error && !e.message.includes("Join")) throw e;
+          }
+          console.error("Join event failed status:", res.status);
+          throw new Error(`Server Refused (${res.status}): Cannot Join Event`);
+        }
+        return await res.json();
+      } catch (e: any) {
+        console.error("Join event error:", e);
+        Swal.fire({
+          icon: 'error',
+          title: 'Join Failed',
+          text: e.message || "ไม่สามารถเข้าร่วมกิจกรรมได้",
+        });
+        return null;
+      }
+    }
+
+    function getLocalToken() {
+    if (typeof localStorage === 'undefined') return "";
+    let token = localStorage.getItem("token") || localStorage.getItem("access_token") || "";
+    if (!token) {
+      const userStr = localStorage.getItem("user") || localStorage.getItem("user_info");
+      if (userStr) { 
+        try { 
+          const userObj = JSON.parse(userStr);
+          token = userObj.token || userObj.accessToken || userObj.access_token || "";
+        } catch (e) {} 
+      }
+    }
+    return token;
+    }
+    function getToken() { return getLocalToken(); } 
+    function getUserIdFromToken() {
+      const token = getLocalToken();
+      if (!token) return null;
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        const payload = JSON.parse(jsonPayload);
+        return payload.id || payload.user_id || payload.sub || payload.userId;
+      } catch (e) {
+        console.error("Token parsing error", e);
+        return null;
+      }
+    }
+
+    function startSessionTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    const token = getToken();
+    if (!token) { timeLeftStr = "00:00:00"; return; }
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(decodeURIComponent(window.atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+      if (payload.exp) {
+        const expTime = payload.exp * 1000;
+        timerInterval = setInterval(() => {
+        const now = Date.now();
+        const diff = expTime - now;
+        if (diff <= 0) {
+          if (timerInterval) clearInterval(timerInterval);
+          timeLeftStr = "00:00:00";
+          timeLeftSeconds = 0;
+          handleSessionExpired(); 
+        } else {
+          const totalSeconds = Math.floor(diff / 1000);
+          timeLeftSeconds = totalSeconds;
+          const h = Math.floor(totalSeconds / 3600);
+          const m = Math.floor((totalSeconds % 3600) / 60);
+          const s = totalSeconds % 60;
+          timeLeftStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+        }
+        }, 1000);
+      }
+    } catch (e) { console.error("Error parsing token expiration:", e); }
+    }
+
+    async function handleCheckInConfirm() {
+    if (!selectedEvent) return;
+
+    if (selectedEvent.status === 'CHECKED_OUT') {
+      Swal.fire({
+        icon: 'success',
+        title: t[lang].alert_success_title,
+        text: t[lang].status_completed_badge,
+        timer: 2000,
+        showConfirmButton: false
+      });
+
+      selectedEvent.status = 'COMPLETED'; 
+      await loadData();
+      closeModal();
       return;
     }
 
-    if (!isRefreshing) isLoading = true;
-    isRefreshing = true;
-    errorMessage = "";
-
     try {
+      Swal.fire({
+        title: t[lang].alert_checking,
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      const latestStatus = await fetchMyStatus(selectedEvent.id);
+        
+      if (latestStatus && latestStatus.status) {
+        const newUiStatus = mapApiStatusToUi(latestStatus.status);
+        selectedEvent.status = newUiStatus;
+            
+        Swal.close();
+
+        if (newUiStatus === 'CHECKED_IN') {
+           Swal.fire({
+            icon: 'success',
+            title: t[lang].alert_checkin_success,
+            text: t[lang].alert_go_next,
+            timer: 1500,
+            showConfirmButton: false
+          });
+        } else if (newUiStatus === 'COMPLETED') {
+           Swal.fire({
+            icon: 'success',
+            title: 'Mission Completed!',
+            text: 'กิจกรรมเสร็จสมบูรณ์',
+          });
+        } else {
+          Swal.fire({
+            icon: 'info',
+            title: t[lang].alert_not_checked_in,
+            text: t[lang].alert_contact_staff,
+          });
+        }
+      } else {
+        Swal.close();
+      }
+      await loadData();
+
+    } catch (e) {
+      console.error(e);
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Connection failed' });
+    }
+    }
+
+    function handleSessionExpired() {
+    auth.logout();
+    Swal.fire({
+      icon: 'error',
+      title: 'Session Expired',
+      text: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
+      allowOutsideClick: false,
+      confirmButtonText: 'OK'
+    }).then(() => {
+      goto("/auth/login");
+    });
+    }
+
+    function handleLogout() { 
+    isMobileMenuOpen = false;
+    auth.logout();
+    goto("/auth/login", { replaceState: true });
+    }
+
+    // ... (the rest of the student page code continues unchanged, with all '/student/' occurrences replaced with '/officer/' and 'STUDENT' brand replaced with 'OFFICER')
+  </script>
       const res = await fetch(
         `${API_BASE_URL}/api/participations/user/${currentUserId}`,
         { headers: { Authorization: `Bearer ${token}` } },
