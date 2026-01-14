@@ -456,7 +456,39 @@
 
       setTimeout(() => window.location.reload(), 500);
     } catch (error: any) {
-      console.ercontainer">
+      console.error(error);
+      showMessage(error.message, "error");
+    } finally {
+      isSaving = false;
+    }
+  }
+
+  // --- Logout ---
+  async function handleLogout() {
+    const result = await Swal.fire({
+      title: "Logout?",
+      text: "Are you sure you want to logout?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, logout",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#ef4444",
+      background: "#1f2937",
+      color: "#f3f4f6",
+    });
+
+    if (result.isConfirmed) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user_info");
+      goto("/auth/login");
+    }
+  }
+</script>
+
+<svelte:window on:click={closeAllDropdowns} />
+
+<div class="app-container">
   <!-- Header -->
   <header class="header">
     <a href={backUrl} class="back-btn" aria-label="Back">
