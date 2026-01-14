@@ -240,9 +240,9 @@
 
   // --- MENU ITEMS ---
   const menuItems = [
-    { id: "event-list", label: "Event list", path: "/student/event-list", svg: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9 2 2 4-4" },
-    { id: "my-event", label: "My event", path: "/student/myevents-upcoming", svg: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
-    { id: "account-setting", label: "Account setting", path: "/student/setting-account", svg: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+    { id: "event-list", label: "Event list", path: "/officer/event-list", svg: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9 2 2 4-4" },
+    { id: "my-event", label: "My event", path: "/officer/myevents-upcoming", svg: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
+    { id: "account-setting", label: "Account setting", path: "/officer/setting-account", svg: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
   ];
   interface EventItem {
     id: number;
@@ -1150,7 +1150,7 @@ async function handleCheckInConfirm() {
             text: 'กรุณาสมัครกิจกรรมนี้จากหน้า "ค้นหากิจกรรม" ก่อน',
             confirmButtonText: 'ไปสมัคร'
         }).then(result => {
-            if (result.isConfirmed) navigateToEventList('student');
+            if (result.isConfirmed) navigateToEventList('officer');
         });
         return;
     }
@@ -1698,7 +1698,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   <header class="header-bar">
     <div class="header-inner">
       <div class="left-group">
-        <div class="brand"><span class="brand-name">STUDENT</span></div>
+        <div class="brand"><span class="brand-name">OFFICER</span></div>
         <nav class="nav-menu desktop-only">
           {#each menuItems as item}
             <button class="menu-btn" class:active={currentView === item.id} on:click={() => selectView(item.id, item.path)}>

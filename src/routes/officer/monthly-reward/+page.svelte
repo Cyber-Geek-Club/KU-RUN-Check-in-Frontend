@@ -30,7 +30,7 @@
 <div class="app-screen">
 
     <div class="glass-header">
-        <a href="/student/eventlist" class="back-btn" aria-label="Back">
+        <a href="/officer/event-list" class="back-btn" aria-label="Back">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </a>
         <h1 class="page-title">MONTHLY REWARD</h1>
