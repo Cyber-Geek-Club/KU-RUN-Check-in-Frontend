@@ -1,13 +1,4 @@
 <script lang="ts">
-  import { slide } from "svelte/transition";
-  import { onMount } from "svelte";
-  import Swal from "sweetalert2";
-  import { goto } from "$app/navigation";
-  import { auth } from "$lib/utils/auth";
-  import { resolveImageUrl, API_BASE_URL as IMAGE_API_BASE } from "$lib/utils/imageUtils";
-
-  // --- Configuration ---
-  <script lang="ts">
     import { fade, slide, scale } from "svelte/transition";
     import { goto } from "$app/navigation";
     import { auth } from "$lib/utils/auth";

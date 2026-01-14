@@ -246,7 +246,7 @@
         throw new Error("Failed to fetch user data");
       }
 
-      const data = await response.json();
+      const data = await response.json();W
       console.log("Fetched:", data);
 
       if (data.role) role = data.role.toLowerCase();
