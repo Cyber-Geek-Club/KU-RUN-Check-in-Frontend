@@ -1,5 +1,8 @@
 {
 	"/": [],
+	"/api/strava/parse": [
+		"src/routes/api/strava/parse/+server.ts"
+	],
 	"/auth/forgot-password": [],
 	"/auth/login": [],
 	"/auth/register": [],
