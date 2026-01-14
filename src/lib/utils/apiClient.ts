@@ -1,0 +1,110 @@
+// src/lib/utils/apiClient.ts
+import { browser } from '$app/environment';
+import { auth } from '$lib/utils/auth';
+import { goto } from '$app/navigation';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+interface ApiRequestOptions extends RequestInit {
+    skipAuth?: boolean;
+    skipRefresh?: boolean;
+}
+
+/**
+ * Enhanced fetch with automatic token refresh
+ */
+export async function apiRequest(
+    endpoint: string,
+    options: ApiRequestOptions = {}
+): Promise<Response> {
+    const { skipAuth, skipRefresh, ...fetchOptions } = options;
+
+    // Prepare headers
+    const headers = new Headers(fetchOptions.headers || {});
+
+    // Add auth token if not skipped
+    if (!skipAuth && browser) {
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            headers.set('Authorization', `Bearer ${token}`);
+        }
+    }
+
+    // Add Content-Type if not present
+    if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
+    }
+
+    fetchOptions.headers = headers;
+
+    // Make the request
+    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
+    let response = await fetch(url, fetchOptions);
+
+    // If 401 and we have a refresh token, try to refresh
+    if (response.status === 401 && !skipRefresh && browser) {
+        const refreshToken = localStorage.getItem('refresh_token');
+
+        if (refreshToken) {
+            console.log('Got 401, attempting token refresh...');
+
+            // Try to refresh the token
+            const refreshSuccess = await auth.refreshAccessToken();
+
+            if (refreshSuccess) {
+                // Retry the original request with new token
+                const newToken = localStorage.getItem('access_token');
+                if (newToken) {
+                    headers.set('Authorization', `Bearer ${newToken}`);
+                    fetchOptions.headers = headers;
+                    response = await fetch(url, fetchOptions);
+                }
+            } else {
+                // Refresh failed, redirect to login
+                auth.logout();
+                goto('/auth/login');
+                throw new Error('Session expired. Please login again.');
+            }
+        } else {
+            // No refresh token, logout
+            auth.logout();
+            goto('/auth/login');
+            throw new Error('Session expired. Please login again.');
+        }
+    }
+
+    return response;
+}
+
+// Convenience methods
+export const api = {
+    get: (endpoint: string, options?: ApiRequestOptions) =>
+        apiRequest(endpoint, { ...options, method: 'GET' }),
+
+    post: (endpoint: string, data?: any, options?: ApiRequestOptions) =>
+        apiRequest(endpoint, {
+            ...options,
+            method: 'POST',
+            body: data ? JSON.stringify(data) : undefined
+        }),
+
+    put: (endpoint: string, data?: any, options?: ApiRequestOptions) =>
+        apiRequest(endpoint, {
+            ...options,
+            method: 'PUT',
+            body: data ? JSON.stringify(data) : undefined
+        }),
+
+    delete: (endpoint: string, options?: ApiRequestOptions) =>
+        apiRequest(endpoint, { ...options, method: 'DELETE' }),
+
+    patch: (endpoint: string, data?: any, options?: ApiRequestOptions) =>
+        apiRequest(endpoint, {
+            ...options,
+            method: 'PATCH',
+            body: data ? JSON.stringify(data) : undefined
+        })
+};
+
+// Export for use in +page.ts load functions
+export { apiRequest as fetch };

@@ -1,5 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import Swal from "sweetalert2";
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
+    /\/$/,
+    ""
+  );
 
   let pins = ["", "", "", "", ""];
   let inputRefs: HTMLInputElement[] = [];
@@ -7,12 +11,10 @@
   let errorMessage = "";
   let isVerifying = false;
   let errorTimeout: any;
-
   let errorIndex: number | null = null;
 
   function handleFocus(index: number) {
     const firstEmptyIndex = pins.findIndex((p) => p === "");
-
     if (firstEmptyIndex !== -1 && index > firstEmptyIndex) {
       inputRefs[firstEmptyIndex]?.focus();
     }
@@ -20,10 +22,8 @@
 
   function handleInput(index: number, event: Event) {
     if (errorMessage) errorMessage = "";
-
     const input = event.target as HTMLInputElement;
     let value = input.value;
-
     value = value.replace(/\D/g, "");
 
     pins[index] = value;
@@ -35,7 +35,6 @@
 
     if (value.length === 1) {
       const nextEmptyIndex = pins.findIndex((p, i) => i > index && p === "");
-
       if (nextEmptyIndex !== -1) {
         inputRefs[nextEmptyIndex]?.focus();
       } else if (index < 4) {
@@ -50,7 +49,6 @@
 
   function handleKeydown(index: number, event: KeyboardEvent) {
     if (errorMessage) errorMessage = "";
-
     if (event.key === "Backspace") {
       if (pins[index]) {
         pins[index] = "";
@@ -64,12 +62,75 @@
     }
   }
 
-  function handleVerify() {
+  async function handleVerify() {
     const finalPin = pins.join("");
+    if (finalPin.length !== 5) {
+      const firstEmpty = pins.findIndex((p) => p === "");
+      errorIndex = firstEmpty !== -1 ? firstEmpty : 4;
+      errorMessage = "Please enter the full 5-digit code.";
+      inputRefs[errorIndex]?.focus();
+      triggerErrorTimeout();
+      return;
+    }
 
-    if (finalPin.length === 5) {
+    isVerifying = true;
+    errorMessage = "";
+    errorIndex = null;
+
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) throw new Error("No access token. Please login.");
+      const res = await fetch(`${API_BASE_URL}/api/participations/check-in`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ join_code: finalPin }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data.message || data.detail || "Invalid code or check-in failed"
+        );
+      }
+      console.log("Check-in Success:", data);
+      const participantName =
+        data.participant?.user?.first_name ||
+        data.participant_name ||
+        "Participant";
+
+      await Swal.fire({
+        icon: "success",
+        title: "Check-in Successful!",
+        text: `${participantName} has been checked in.`,
+        timer: 2000,
+        showConfirmButton: false,
+        background: "#fff",
+        color: "#111827",
+      });
+      pins = ["", "", "", "", ""];
+      inputRefs[0]?.focus();
+    } catch (err: any) {
+      console.error("Check-in Error:", err);
+      errorMessage = err.message;
+      errorIndex = 0;
+      triggerErrorTimeout();
+      pins = ["", "", "", "", ""];
+      inputRefs[0]?.focus();
+    } finally {
+      isVerifying = false;
+    }
+  }
+
+  function triggerErrorTimeout() {
+    if (errorTimeout) clearTimeout(errorTimeout);
+    errorTimeout = setTimeout(() => {
       errorMessage = "";
       errorIndex = null;
+<<<<<<< HEAD
       if (errorTimeout) clearTimeout(errorTimeout);
 
       isVerifying = true;
@@ -92,6 +153,9 @@
         errorIndex = null;
       }, 3000);
     }
+=======
+    }, 3000);
+>>>>>>> origin/master
   }
 </script>
 
@@ -122,7 +186,9 @@
           <h2 class="card-title">Verify Participant</h2>
         </div>
 
-        <p class="card-desc">Enter the participant's PIN code.</p>
+        <p class="card-desc">
+          Enter the participant's 5-digit PIN code to check-in.
+        </p>
 
         <div class="pin-section">
           <h3 class="input-label">PIN CODE</h3>
@@ -132,13 +198,17 @@
                 type="text"
                 inputmode="numeric"
                 maxlength="1"
-                class="pin-box {errorIndex === i ? 'error-border' : ''}"
+                class="pin-box {errorIndex !== null &&
+                (errorMessage ? true : errorIndex === i)
+                  ? 'error-border'
+                  : ''}"
                 bind:value={pins[i]}
                 bind:this={inputRefs[i]}
                 on:input={(e) => handleInput(i, e)}
                 on:keydown={(e) => handleKeydown(i, e)}
                 on:focus={() => handleFocus(i)}
                 on:click={() => handleFocus(i)}
+                disabled={isVerifying}
               />
             {/each}
           </div>
@@ -155,7 +225,7 @@
               stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
-              style="margin-right: 6px;"
+              style="margin-right: 6px; flex-shrink: 0;"
             >
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -170,7 +240,11 @@
           on:click={handleVerify}
           disabled={isVerifying}
         >
-          {isVerifying ? "Verifying..." : "VERIFY"}
+          {#if isVerifying}
+            Verifying...
+          {:else}
+            CHECK IN
+          {/if}
         </button>
       </div>
     </div>
@@ -190,19 +264,13 @@
 
   :global(button),
   :global(input),
-  :global(textarea),
-  :global(select),
   :global(h1),
   :global(h2),
   :global(h3),
-  :global(h4),
-  :global(h5),
-  :global(h6),
   :global(p),
   :global(span),
   :global(a),
-  :global(div),
-  :global(label) {
+  :global(div) {
     font-family: "Inter", sans-serif !important;
   }
 
@@ -266,10 +334,6 @@
     -webkit-overflow-scrolling: touch;
     padding-top: 100px;
     padding-bottom: 40px;
-  }
-
-  .scroll-container::-webkit-scrollbar {
-    display: none;
   }
 
   .content-wrapper {
@@ -347,6 +411,11 @@
     border-color: #10b981;
     box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
     background: white;
+  }
+  .pin-box:disabled {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
   }
   .pin-box.error-border {
     border-color: #ef4444 !important;

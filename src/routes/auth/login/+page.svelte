@@ -1,11 +1,19 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { slide } from "svelte/transition";
+<<<<<<< HEAD
   import { auth } from "$lib/stores/auth";
+=======
+  import { auth } from "$lib/utils/auth";
+>>>>>>> origin/master
 
   let email = "";
   let password = "";
   let showPassword = false;
+<<<<<<< HEAD
+=======
+  let isSubmitting = false;
+>>>>>>> origin/master
 
   let errorMessage = "";
   let errorTimeout: any = null;
@@ -61,12 +69,15 @@
   async function submitLogin() {
     clearError();
 
+    if (isSubmitting) return;
+
     if (!email) return showError("Please enter your email.", "email");
     if (!validateEmail(email))
       return showError("Invalid email format.", "email");
     if (!password) return showError("Please enter your password.", "password");
 
     try {
+      isSubmitting = true;
       const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
       const API_URL = `${base}/api/users/login`;
 
@@ -79,6 +90,11 @@
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+<<<<<<< HEAD
+=======
+        // Clear any stale auth state on failed login
+        auth.logout();
+>>>>>>> origin/master
         return showError(
           data?.detail ?? "Login failed. Please check your credentials.",
           "both"
@@ -86,6 +102,10 @@
       }
 
       const accessToken = data.access_token;
+<<<<<<< HEAD
+=======
+      const refreshToken = data.refresh_token;
+>>>>>>> origin/master
       const rawRole = data.role || data.user?.role;
       const userRole = normalizeRole(rawRole);
 
@@ -96,6 +116,7 @@
         return showError("System Error: Invalid response from server.", "both");
       }
 
+<<<<<<< HEAD
       const sessionUser = {
         ...(data.user ?? data),
         role: userRole,
@@ -104,12 +125,32 @@
       try {
         localStorage.setItem("access_token", accessToken);
         localStorage.setItem("user_info", JSON.stringify(sessionUser));
+=======
+      // Prepare user data matching LoginResponse interface
+      const loginResponse = {
+        access_token: accessToken,
+        refresh_token: refreshToken || undefined,
+        token_type: data.token_type || "Bearer",
+        expires_in: data.expires_in || 3600,
+        user_id: data.user_id || data.id || data.user?.id,
+        email: data.email || data.user?.email || email,
+        name: data.name || data.user?.name || data.username || data.user?.username || email.split('@')[0],
+        role: userRole
+      };
+
+      // Use auth store - it will handle all localStorage operations
+      auth.login(loginResponse);
+
+      // Store additional role-based routing info
+      try {
+>>>>>>> origin/master
         localStorage.setItem("strict_allowed_path", getRoleHome(userRole));
         localStorage.setItem("strict_allowed_path_ts", Date.now().toString());
       } catch (e) {
         console.warn("localStorage write failed:", e);
       }
 
+<<<<<<< HEAD
       try {
         sessionStorage.setItem("access_token", accessToken);
         sessionStorage.setItem("user_info", JSON.stringify(sessionUser));
@@ -123,6 +164,8 @@
         user: sessionUser,
       });
 
+=======
+>>>>>>> origin/master
       const home = getRoleHome(userRole);
       console.log("REDIRECTING TO:", home);
 
@@ -130,6 +173,8 @@
     } catch (err) {
       console.error("Login Error:", err);
       showError("Cannot connect to server. Please try again later.", "both");
+    } finally {
+      isSubmitting = false;
     }
   }
 </script>
@@ -241,7 +286,7 @@
             </div>
           {/if}
 
-          <button class="login-button" type="submit"> LOGIN NOW </button>
+          <button class="login-button" type="submit" disabled={isSubmitting}> {isSubmitting ? 'LOGGING IN…' : 'LOGIN NOW'} </button>
           <div class="signup-section">
             <span class="signup-text">Don't have an account?</span>
             <a href="/auth/register" class="signup-link">Sign up</a>

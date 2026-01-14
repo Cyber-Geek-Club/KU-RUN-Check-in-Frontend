@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import { slide, scale } from "svelte/transition";
   import { onMount, onDestroy } from "svelte";
+  import { page } from "$app/stores";
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
@@ -13,10 +14,26 @@
   let messageTimeout: any;
   let errorField = "";
 
+<<<<<<< HEAD
   function handleStorageEvent(event: StorageEvent) {
     if (event.key === "password_reset_done") {
       goto("/auth/login");
       localStorage.removeItem("password_reset_done");
+=======
+  let returnUrl = "/auth/login"; 
+  
+  $: {
+    const param = $page.url.searchParams.get("return_to");
+    if (param) {
+      returnUrl = param;
+    }
+  }
+
+  function handleStorageEvent(event: StorageEvent) {
+    if (event.key === "password_reset_done") {
+      localStorage.removeItem("password_reset_done");
+      goto(returnUrl); 
+>>>>>>> origin/master
     }
   }
 
@@ -94,7 +111,11 @@
     <button
       class="back-btn"
       aria-label="Back"
+<<<<<<< HEAD
       on:click={() => goto("/auth/login")}
+=======
+      on:click={() => goto(returnUrl)} 
+>>>>>>> origin/master
       disabled={isLoading}
     >
       <svg
@@ -118,7 +139,13 @@
       <div class="form-card">
         {#if currentStep === 1}
           <div class="title-section" in:slide>
+<<<<<<< HEAD
             <h1 class="main-title">FORGOT PASSWORD</h1>
+=======
+            <h1 class="main-title">
+               {returnUrl.includes('login') ? 'FORGOT PASSWORD' : 'CHANGE PASSWORD'}
+            </h1>
+>>>>>>> origin/master
             <p class="sub-title">Enter your email to receive a reset link.</p>
           </div>
 
@@ -185,8 +212,12 @@
               Please check your inbox.
             </p>
             <p class="footer-text" style="font-size: 13px; opacity: 0.7;">
+<<<<<<< HEAD
               (This page will redirect to Login automatically once reset is
               complete)
+=======
+              (This page will redirect automatically once reset is complete)
+>>>>>>> origin/master
             </p>
           </div>
           <div class="footer-text">
@@ -205,6 +236,15 @@
 
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+  .resend-link {
+    background: none;
+    border: none;
+    color: #10b981;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
   .resend-link {
     background: none;
     border: none;
@@ -403,4 +443,8 @@
     font-size: 14px;
     margin-top: 14px;
   }
+<<<<<<< HEAD
 </style>
+=======
+</style>
+>>>>>>> origin/master
