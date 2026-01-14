@@ -525,7 +525,7 @@
     return isTodayInRange && !event.isJoinedToday && event.is_active && event.is_published && !event.is_full;
   }
   
-  // [NEW HELPER] เช็คว่ากิจกรรมนี้จะมาถึงในวันถัดไปหรือไม่
+  // [NEW HELPER] เช็คว่ากิจกรรมนี้ยังไม่เปิดให้สมัคร (วันนี้ยังไม่ถึงวันเริ่ม)
   function isUpcomingTomorrow(event: EventItem): boolean {
     const now = new Date();
     const today = new Date(now);
@@ -534,6 +534,18 @@
     const startDate = new Date(event.startDate);
     startDate.setHours(0, 0, 0, 0);
     
+    // ถ้ากิจกรรมมี endDate และวันนี้อยู่ในช่วง startDate - endDate ก็ถือว่าเปิดแล้ว
+    if (event.endDate) {
+      const endDate = new Date(event.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      
+      // ถ้าวันนี้อยู่ในช่วง → ไม่ใช่ upcoming
+      if (today >= startDate && now <= endDate) {
+        return false;
+      }
+    }
+    
+    // วันนี้ยังไม่ถึงวันเริ่ม
     return startDate > today;
   }
 
