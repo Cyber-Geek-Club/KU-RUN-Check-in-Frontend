@@ -167,7 +167,7 @@
     console.log("Student Settings Updated:", updateData);
 
     showMessage("Account updated successfully!", "success");
-    setTimeout(() => goto("/eventlist"), 1500);
+    setTimeout(() => goto("/officer/event-list"), 1500);
   }
 </script>
 
