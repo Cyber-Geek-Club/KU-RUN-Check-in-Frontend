@@ -64,7 +64,7 @@
           btn_submit: "ยืนยันการส่งข้อมูล",
           btn_resubmit: "ยืนยันการส่งซ้ำ",
           btn_back_strava: "← ย้อนกลับไปแก้ไข Strava",
-          btn_verify_link: "🔍 ตรวจสอบ",
+          btn_verify_link: "✅ ยืนยันลิงก์",
           status_daily_completed: "เจอกันพรุ่งนี้",
           btn_daily_wait: "รอวันถัดไป",
 
@@ -145,7 +145,7 @@
           btn_submit: "Submit Proof",
           btn_resubmit: "Resubmit Proof",
           btn_back_strava: "← Back to Strava Link",
-          btn_verify_link: "🔍 Verify Link",
+          btn_verify_link: "✅ Verify Link"
           status_daily_completed: "NEXT DAY",
           btn_daily_wait: "Wait Next Day",
 
@@ -1462,7 +1462,13 @@ async function submitProofAction() {
           return;
       }
 
-      // 2. Validate Image
+      // 2. Validate Strava Link (Required)
+      if (!sendingLink || sendingLink.trim() === "") {
+          Swal.fire(t[lang].alert_warning, t[lang].alert_link_required, "warning");
+          return;
+      }
+
+      // 3. Validate Image
       if (!proofFile && !selectedEvent.proof_image_url) {
           Swal.fire(t[lang].alert_warning, t[lang].alert_image_required, "warning");
           return;
@@ -2132,7 +2138,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                             </div>
                         {:else}
                             <div class="qr-box">
-                                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${currentCode || 'WAITING'}`} alt="QR" />
+                                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${currentCode || 'WAITING'}`} alt="QR" />
                             </div>
                         {/if}
                     </div>
@@ -2275,7 +2281,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                 </div>
 
                 <div class="stats-container">
-                    <div class="stat-box gold-stat">
+                    <!-- Rank hidden per requirement -->
+                    <!-- <div class="stat-box gold-stat">
                         <div class="stat-icon">🏆</div>
                         <div class="stat-info">
                             <span class="stat-label">{t[lang].dash_rank_title}</span>
@@ -2287,7 +2294,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                                 {/if}
                             </span>
                         </div>
-                    </div>
+                    </div> -->
 
                     <div class="stat-box blue-stat">
                         <div class="stat-icon">🏃</div>

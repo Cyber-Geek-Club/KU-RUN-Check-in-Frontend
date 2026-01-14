@@ -17672,7 +17672,7 @@
                       eYear: "",
                       startTime: "",
                       endTime: "",
-                      totalSlots: null,
+                      totalSlots: 10000,  // Default high value
                       distanceKm: null,
                       holidays: [],
                       excludeWeekends: false,
@@ -18476,7 +18476,8 @@
                   <label for="ce_totalSlots"
                     >{lang.capacityLabel} <span class="ce-req">*</span></label
                   >
-                  <div
+                  <!-- Participant Slots - Hidden, auto set to 10000 -->
+                  <!-- <div
                     class="ce-dd-wrap"
                     class:error={ce_validationErrors.has("totalSlots")}
                   >
@@ -18530,7 +18531,7 @@
                         {/each}
                       </div>
                     {/if}
-                  </div>
+                  </div> -->
                 </div>
 
                 <div class="ce-input-group">
