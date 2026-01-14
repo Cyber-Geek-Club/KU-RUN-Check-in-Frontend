@@ -567,7 +567,7 @@
                           >{/if}
                       </div>
                       <div class="timeline-track">
-                        {#each event.logs as log, i}
+                        {#each event.logs as log, i (`${log.action}-${i}-${log.timestamp}`)}
                           {@const fList = filterUsers(
                             log.participants,
                             event.searchQuery
