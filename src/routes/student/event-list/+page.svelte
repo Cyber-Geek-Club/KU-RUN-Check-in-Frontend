@@ -669,17 +669,35 @@
               
               // [FIX] ถ้า error เกี่ยวกับ "ยกเลิก" หรือ "cancelled" → force reload
               if (errorMsg.includes('ยกเลิก') || errorMsg.includes('cancelled') || errorMsg.includes('CANCELLED')) {
-                  await Swal.fire({
-                      icon: 'info',
-                      title: lang === 'th' ? 'กรุณาลองใหม่อีกครั้ง' : 'Please try again',
-                      text: lang === 'th' 
-                          ? 'กิจกรรมถูกยกเลิกไปแล้ว กำลังรีเฟรชข้อมูล...' 
-                          : 'Event was cancelled. Refreshing data...',
-                      timer: 2000,
-                      showConfirmButton: false
-                  });
+                  console.log('[JOIN ERROR] Cancelled-related error, forcing refresh...');
+                  
+                  // รอ Backend update ก่อน
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  
+                  // Refresh ข้อมูล
                   await updateUserStatus();
                   await fetchEvents();
+                  
+                  // เช็คว่าสมัครสำเร็จหรือไม่
+                  const updatedEvent = events.find(e => e.id === eventItem.id);
+                  if (updatedEvent && updatedEvent.isJoined) {
+                      // สมัครสำเร็จแล้วจริงๆ
+                      Swal.fire({
+                          icon: 'success',
+                          title: t[lang].alert_success,
+                          text: lang === 'th' ? 'ลงทะเบียนสำเร็จ' : 'Registration successful',
+                          timer: 2000,
+                          showConfirmButton: false
+                      });
+                  } else {
+                      // ยังไม่สำเร็จ แสดง error
+                      Swal.fire({
+                          icon: 'info',
+                          title: lang === 'th' ? 'กรุณาลองใหม่อีกครั้ง' : 'Please try again',
+                          text: errorMsg,
+                          confirmButtonText: 'OK'
+                      });
+                  }
               } else {
                   Swal.fire("Failed", errorMsg, "error");
               }
