@@ -9,7 +9,8 @@
   import { 
     getParticipantSnapshots, 
     getSnapshotEntries,
-    createParticipantSnapshot 
+    createParticipantSnapshot,
+    deleteParticipantSnapshot 
   } from '$lib/utils/apiClient';
 
   export let eventId: number;
@@ -23,6 +24,8 @@
   
   let isLoadingSnapshots = false;
   let isLoadingEntries = false;
+  let isDeletingSnapshot = false;
+  let snapshotDescription = '';
   let isCreatingSnapshot = false;
   
   let snapshotsPage = 1;
@@ -39,7 +42,13 @@
   const t = {
     th: {
       title: 'ประวัติผู้เข้าร่วม',
-      snapshots: 'ประวัติการบันทึก (Snapshots)',
+      snapshots: 'ประวัติการบันทึก (Snap
+      deleteSnapshot: 'ลบ',
+      deletingSnapshot: 'กำลังลบ...',
+      confirmDelete: 'ยืนยันการลบ snapshot นี้?',
+      snapshotDeleted: 'ลบ snapshot เรียบร้อยแล้ว',
+      description: 'คำอธิบาย (ไม่บังคับ)',
+      descriptionPlaceholder: 'เช่น: รายงานประจำวัน, สิ้นสุดงาน',shots)',
       noSnapshots: 'ยังไม่มีประวัติการบันทึก',
       createSnapshot: 'สร้าง Snapshot ใหม่',
       creatingSnapshot: 'กำลังสร้าง...',
@@ -65,7 +74,13 @@
       cancelled: 'ยกเลิก',
       rejected: 'ปฏิเสธ',
       pending: 'รอดำเนินการ',
-      errorLoading: 'เกิดข้อผิดพลาดในการโหลดข้อมูล',
+      errorLoading: 'เกิดข้อผิดพลาดในก
+      deleteSnapshot: 'Delete',
+      deletingSnapshot: 'Deleting...',
+      confirmDelete: 'Confirm delete this snapshot?',
+      snapshotDeleted: 'Snapshot deleted successfully',
+      description: 'Description (optional)',
+      descriptionPlaceholder: 'e.g.: Daily report, End of event',ารโหลดข้อมูล',
       refresh: 'รีเฟรช',
     },
     en: {
@@ -161,18 +176,50 @@
       
       entries = response.entries;
       entriesTotal = response.total;
+        eventId, 
+        snapshotDescription.trim() || undefined
+      );
+      
+      // Clear description input
+      snapshotDescription = '';
+      
+      // Reload snapshots list
+      snapshotsPage = 1;
+      await loadSnapshots();
+      
+      console.log('✅ Snapshot created:', result);
     } catch (error) {
-      console.error('Failed to load entries:', error);
-      errorMessage = lang.errorLoading;
+      console.error('Failed to create snapshot:', error);
+      errorMessage = 'Failed to create snapshot';
     } finally {
-      isLoadingEntries = false;
+      isCreatingSnapshot = false;
     }
   }
 
-  async function handleCreateSnapshot() {
-    isCreatingSnapshot = true;
+  async function handleDeleteSnapshot(snapshot: Snapshot) {
+    if (!confirm(lang.confirmDelete)) return;
+    
+    isDeletingSnapshot = true;
     errorMessage = '';
     
+    try {
+      await deleteParticipantSnapshot(eventId, snapshot.snapshot_id);
+      
+      // If deleted snapshot was selected, clear selection
+      if (selectedSnapshot?.snapshot_id === snapshot.snapshot_id) {
+        selectedSnapshot = null;
+        entries = [];
+      }
+      
+      // Reload snapshots list
+      await loadSnapshots();
+      
+      console.log('✅', lang.snapshotDeleted);
+    } catch (error) {
+      console.error('Failed to delete snapshot:', error);
+      errorMessage = 'Failed to delete snapshot';
+    } finally {
+      isDele
     try {
       const result = await createParticipantSnapshot(eventId);
       
@@ -248,6 +295,17 @@
     const rows = entries.map(entry => [
       entry.user_id,
       entry.user_name,
+      </div>
+
+      <!-- Create Snapshot Form -->
+      <div class="create-snapshot-form">
+        <input
+          type="text"
+          bind:value={snapshotDescription}
+          placeholder={lang.descriptionPlaceholder}
+          class="description-input"
+          disabled={isCreatingSnapshot}
+        />
       entry.user_email,
       lang[entry.action as keyof typeof lang] || entry.action,
       formatDateTime(entry.created_at)
@@ -258,21 +316,31 @@
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
-    
-    // Create download link
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `participants_${eventId}_${selectedSnapshot.snapshot_id}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-</script>
+    div class="snapshot-item">
+              <button
+                class="snapshot-card"
+                class:active={selectedSnapshot?.snapshot_id === snapshot.snapshot_id}
+                on:click={() => selectSnapshot(snapshot)}
+              >
+                <div class="snapshot-info">
+                  <div class="snapshot-time">
+                    {formatDateTime(snapshot.snapshot_time)}
+                  </div>
+                  <div class="snapshot-count">
+                    {snapshot.entry_count} {lang.entries}
+                  </div>
+                </div>
+                <div class="snapshot-icon">→</div>
+              </button>
+              <button
+                class="delete-btn"
+                on:click|stopPropagation={() => handleDeleteSnapshot(snapshot)}
+                disabled={isDeletingSnapshot}
+                title={lang.deleteSnapshot}
+              >
+                🗑️
+              </button>
+            </div
 
 <div class="history-viewer">
   <div class="header">
@@ -481,7 +549,44 @@
   .error-banner {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);
+    bordersnapshot-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(100, 116, 139, 0.3);
     border-radius: 12px;
+  }
+
+  .description-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    border-radius: 8px;
+    color: #f8fafc;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+  }
+
+  .description-input:focus {
+    outline: none;
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+
+  .description-input::placeholder {
+    color: #64748b;
+  }
+
+  .description-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .create--radius: 12px;
     padding: 1rem;
     margin-bottom: 1.5rem;
     display: flex;
@@ -510,19 +615,25 @@
     gap: 2rem;
     min-height: 500px;
   }
-
-  @media (max-width: 1024px) {
-    .content-grid {
-      grid-template-columns: 1fr;
-    }
+item {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
   }
 
-  .snapshots-panel,
-  .entries-panel {
-    background: rgba(15, 23, 42, 0.6);
+  .snapshot-card {
+    background: rgba(30, 41, 59, 0.6);
     border: 1px solid rgba(100, 116, 139, 0.3);
-    border-radius: 16px;
-    padding: 1.5rem;
+    border-radius: 12px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+    color: #cbd5e1;
+    flex: 15rem;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -554,7 +665,32 @@
     border: none;
     border-radius: 10px;
     color: white;
-    padding: 0.625rem 1.25rem;
+   delete-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+  }
+
+  .delete-btn:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    transform: scale(1.05);
+  }
+
+  .delete-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  . padding: 0.625rem 1.25rem;
     font-size: 0.875rem;
     font-weight: 600;
     cursor: pointer;

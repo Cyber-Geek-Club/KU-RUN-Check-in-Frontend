@@ -185,17 +185,36 @@ export async function getSnapshotEntries(
  * Create a new snapshot (on-demand)
  */
 export async function createParticipantSnapshot(
-    eventId: number
-): Promise<{ snapshot_id: string; snapshot_time: string }> {
-    const response = await api.post(
-        `/api/events/${eventId}/participants/snapshots`
-    );
+    eventId: number,
+    description?: string
+): Promise<{ snapshot_id: string; snapshot_time: string; entry_count: number }> {
+    const url = description
+        ? `/api/events/${eventId}/participants/snapshots?description=${encodeURIComponent(description)}`
+        : `/api/events/${eventId}/participants/snapshots`;
+    
+    const response = await api.post(url);
     
     if (!response.ok) {
         throw new Error(`Failed to create snapshot: ${response.statusText}`);
     }
     
     return await response.json();
+}
+
+/**
+ * Delete a snapshot
+ */
+export async function deleteParticipantSnapshot(
+    eventId: number,
+    snapshotId: string
+): Promise<void> {
+    const response = await api.delete(
+        `/api/events/${eventId}/participants/history/${snapshotId}`
+    );
+    
+    if (!response.ok) {
+        throw new Error(`Failed to delete snapshot: ${response.statusText}`);
+    }
 }
 
 // Export for use in +page.ts load functions
