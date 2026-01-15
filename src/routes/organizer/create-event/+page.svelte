@@ -1123,35 +1123,70 @@
           const entriesData = Array.isArray(entriesRes.data) ? entriesRes.data : (entriesRes.data?.data || []);
           
           if (entriesData.length > 0) {
+            // ✅ Deduplicate: Group by user_id และรวมข้อมูล
+            const userMap = new Map<number, any>();
+            
+            entriesData.forEach((entry: any) => {
+              const userId = entry.user_id;
+              if (!userMap.has(userId)) {
+                // สร้าง record ใหม่สำหรับ user นี้
+                userMap.set(userId, {
+                  user_id: userId,
+                  user_full_name: entry.user_full_name || 'Unknown',
+                  user_email: entry.user_email || '',
+                  event_id: eventId,
+                  event_name: rewardData.selectedEvent?.title || '',
+                  total_participations: 1,
+                  completed_participations: entry.qualified_at ? 1 : 0,
+                  checked_in_count: 1,
+                  proof_submitted_count: 1,
+                  rejected_count: 0,
+                  cancelled_count: 0,
+                  total_distance_km: null,
+                  first_participation_at: entry.qualified_at || null,
+                  last_participation_at: entry.qualified_at || null,
+                  leaderboard_config_id: configId,
+                  leaderboard_rank: entry.rank || null,
+                  leaderboard_qualified: !!entry.qualified_at,
+                  leaderboard_reward_name: entry.reward_name || null,
+                  tier_progress: null,
+                  total_completions: entry.total_completions || 0
+                });
+              } else {
+                // อัพเดท record ที่มีอยู่ - รวมจำนวน participation
+                const existing = userMap.get(userId)!;
+                existing.total_participations += 1;
+                if (entry.qualified_at) {
+                  existing.completed_participations += 1;
+                }
+                // เก็บ rank ที่ดีที่สุด
+                if (entry.rank && (!existing.leaderboard_rank || entry.rank < existing.leaderboard_rank)) {
+                  existing.leaderboard_rank = entry.rank;
+                  existing.leaderboard_reward_name = entry.reward_name;
+                }
+                // เก็บ total_completions สูงสุด
+                if ((entry.total_completions || 0) > existing.total_completions) {
+                  existing.total_completions = entry.total_completions;
+                }
+                // อัพเดท qualified status
+                if (entry.qualified_at) {
+                  existing.leaderboard_qualified = true;
+                }
+              }
+            });
+            
+            // Convert Map to array
+            const uniqueUsers = Array.from(userMap.values());
+            
             // Convert entries to unique users format
             uniqueUsersData = {
-              total_users: entriesData.length,
+              total_users: uniqueUsers.length,
               event_id: eventId,
               event_name: rewardData.selectedEvent?.title || '',
-              users: entriesData.map((entry: any) => ({
-                user_id: entry.user_id,
-                user_full_name: entry.user_full_name || 'Unknown',
-                user_email: entry.user_email || '',
-                event_id: eventId,
-                event_name: rewardData.selectedEvent?.title || '',
-                total_participations: entry.total_completions || 0,
-                completed_participations: entry.total_completions || 0,
-                checked_in_count: entry.total_completions || 0,
-                proof_submitted_count: entry.total_completions || 0,
-                rejected_count: 0,
-                cancelled_count: 0,
-                total_distance_km: null,
-                first_participation_at: null,
-                last_participation_at: entry.qualified_at || null,
-                leaderboard_config_id: configId,
-                leaderboard_rank: entry.rank || null,
-                leaderboard_qualified: !!entry.qualified_at,
-                leaderboard_reward_name: entry.reward_name || null,
-                tier_progress: null
-              }))
+              users: uniqueUsers
             };
             
-            if (isDev) console.log(`[Leaderboard] Loaded ${entriesData.length} users from entries API (fallback)`);
+            if (isDev) console.log(`[Leaderboard] Loaded ${uniqueUsers.length} unique users from entries API (deduplicated from ${entriesData.length} entries)`);
           }
         } catch (entriesError: any) {
           if (isDev) console.warn(`[Leaderboard] Entries fallback failed:`, entriesError.message);
