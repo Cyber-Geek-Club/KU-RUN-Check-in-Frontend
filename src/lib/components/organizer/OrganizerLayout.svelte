@@ -201,7 +201,7 @@
       </div>
 
       <nav class="nav-menu desktop-only">
-        {#each menuItems as item}
+        {#each menuItems as item (item.id)}
           <a
             class="menu-btn"
             class:active={isActive(item.href)}
@@ -321,7 +321,7 @@
           </span>
         </button>
         <div class="drawer-divider"></div>
-        {#each menuItems as item}
+        {#each menuItems as item (item.id)}
           <a
             class="drawer-item"
             class:active={isActive(item.href)}
@@ -349,7 +349,7 @@
     <!-- Breadcrumb -->
     {#if breadcrumb.length > 1}
       <nav class="breadcrumb" aria-label="Breadcrumb">
-        {#each breadcrumb as crumb, i}
+        {#each breadcrumb as crumb, i (crumb.href)}
           {#if i > 0}
             <svg class="breadcrumb-separator" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
