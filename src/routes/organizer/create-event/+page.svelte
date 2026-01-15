@@ -7949,16 +7949,19 @@
     ce_holidayMode = mode;
 
     if (mode === "none") {
+      // ไม่มีวันหยุดเลย
       ce_formData.holidays = [];
       ce_formData.excludeWeekends = false;
       ce_formData.holidayType = "none";
       ce_formData.specificDates = [];
     } else if (mode === "weekends") {
+      // ยกเว้นวันเสาร์-อาทิตย์
       ce_formData.holidays = [];
       ce_formData.excludeWeekends = true;
-      ce_formData.holidayType = "none";
+      ce_formData.holidayType = "weekends";
       ce_formData.specificDates = [];
     } else if (mode === "specific") {
+      // เลือกวันหยุดเฉพาะ
       ce_formData.excludeWeekends = false;
       ce_formData.holidayType = "specific";
       // เก็บ holidays ไว้ตามเดิม
@@ -8458,7 +8461,7 @@
     }
 
     // =========================================================
-    // 5. 🔥 Mapping ข้อมูลลง ce_formData (Full Update)
+    // 6. 🔥 Mapping ข้อมูลลง ce_formData (Full Update)
     // =========================================================
     ce_formData = {
       title: apiData.title || "",
@@ -8493,22 +8496,22 @@
       maxCheckinsPerUser: apiData.max_checkins_per_user || 1,
         
       // --- Holidays ---
-      holidays:  holidaysData,
+      holidays: holidaysData,
       excludeWeekends: apiData.exclude_weekends || false,
-      holidayType: apiData.exclude_weekends ? "none" : (holidaysData && holidaysData.length > 0) ? "specific" : "none",
+      holidayType: holidaysData.length > 0 ? "specific" : (apiData.exclude_weekends ? "weekends" : "none"),
       specificDates: holidaysData,
       tempHoliday:  ""
     };
 
     // =========================================================
-    // 6. ตั้งค่าโหมดวันหยุด และเปลี่ยนหน้า
+    // 7. ตั้งค่าโหมดวันหยุด และเปลี่ยนหน้า
     // =========================================================
-    if (ce_formData.excludeWeekends) {
-        ce_holidayMode = "weekends";
-    } else if (ce_formData.holidays.length > 0) {
-        ce_holidayMode = "specific";
+    if (holidaysData.length > 0) {
+      ce_holidayMode = "specific";
+    } else if (apiData.exclude_weekends) {
+      ce_holidayMode = "weekends";
     } else {
-        ce_holidayMode = "none";
+      ce_holidayMode = "none";
     }
 
     // เปลี่ยนไปหน้า create ก่อน force update
@@ -8912,7 +8915,7 @@
         }
 
         // 🔵 STEP D: Save Holidays Configuration
-        if (ce_formData.holidayType !== "none" || ce_formData.excludeWeekends || (ce_formData.specificDates && ce_formData.specificDates.length > 0)) {
+        if (ce_formData.holidayType !== "none" || ce_formData.excludeWeekends || (ce_formData.holidays && ce_formData.holidays.length > 0)) {
             console.log("🎉 Saving holidays configuration...");
             
             try {
@@ -8934,13 +8937,9 @@
               // ✅ Prepare holiday dates array
               let holidayDates: string[] = [];
 
-              // If user picked specific holidays in the UI we track them in `ce_formData.holidays`.
-              // `specificDates` may be empty if the UI did not sync — ensure we use holidays as fallback.
-              if (ce_formData.holidayType === "specific") {
-                if (!ce_formData.specificDates || ce_formData.specificDates.length === 0) {
-                  ce_formData.specificDates = [...(ce_formData.holidays || [])];
-                }
-                holidayDates = [...(ce_formData.specificDates || [])];
+              // If user picked specific holidays in the UI we track them in `ce_formData.holidays`
+              if (ce_formData.holidayType === "specific" && ce_formData.holidays && ce_formData.holidays.length > 0) {
+                holidayDates = [...ce_formData.holidays];
               }
               
               // ✅ Add weekends if enabled
