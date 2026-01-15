@@ -255,7 +255,7 @@
       </div>
     {:else}
       <div class="events-grid">
-        {#each filteredEvents as event (event.id)}
+        {#each filteredEvents as event, index (event.id ?? `event-${index}`)}
           {@const status = getEventStatus(event)}
           <div class="event-card">
             <div class="card-image">
