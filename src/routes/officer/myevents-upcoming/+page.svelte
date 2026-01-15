@@ -1326,7 +1326,8 @@ async function handleCheckInConfirm() {
     selectedEvent = updatedEvent;
     currentParticipationId = updatedEvent.participation_id;
     checkInMethod = 'PIN';
-    proofImage = updatedEvent.proof_image_url || null;
+    // ✅ Resolve proof image URL to full API URL
+    proofImage = updatedEvent.proof_image_url ? resolveImageUrl(updatedEvent.proof_image_url) : null;
     
     if (updatedEvent.status === 'CHECKED_IN' || updatedEvent.status === 'proof_submitted' || updatedEvent.status === 'REJECTED') {
          const draftJson = localStorage.getItem(getDraftKey(updatedEvent.participation_id));
@@ -2335,7 +2336,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                             </label>
                         {:else}
                             <div class="image-preview" style="position: relative; text-align: center;">
-                                <img src={proofImage} alt="Preview" style="max-height: 200px; border-radius: 8px; margin: 0 auto;" />
+                                <img src={proofImage?.startsWith('data:') ? proofImage : resolveImageUrl(proofImage)} alt="Preview" style="max-height: 200px; border-radius: 8px; margin: 0 auto;" />
                                 <button class="remove-img-btn" 
                                         style="position: absolute; top: -10px; right: -10px; background: red; color: white; border-radius: 50%; width: 24px; height: 24px; border: none; cursor: pointer;"
                                         on:click={() => { proofImage = null; proofFile = null; }}>&times;</button>

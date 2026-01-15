@@ -3485,19 +3485,49 @@
 
   async function startCamera() {
     cameraError = "";
+    
+    // ✅ Ensure video element is ready
+    if (!videoRef) {
+      console.error("Video element not ready");
+      cameraError = "Video element not initialized. Please try again.";
+      return;
+    }
+    
     try {
+      // ✅ Stop existing stream first
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+        cameraStream = null;
+      }
+      
+      // ✅ Request camera with better constraints
       cameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+        video: { 
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
       });
 
       if (videoRef) {
         videoRef.srcObject = cameraStream;
+        
+        // ✅ Wait for video to be ready before playing
+        await new Promise((resolve) => {
+          if (videoRef) {
+            videoRef.onloadedmetadata = () => resolve(true);
+          }
+        });
+        
         await videoRef.play();
         scanning = true;
         startQRScanning();
       }
     } catch (err: any) {
-      cameraError = "Unable to access camera. Please check permissions.";
+      console.error("Camera access error:", err);
+      cameraError = err.name === "NotAllowedError" 
+        ? "Camera permission denied. Please allow camera access in your browser settings."
+        : "Unable to access camera. Please check permissions and try again.";
     }
   }
 
@@ -3549,7 +3579,7 @@
     }, 150); // เร็วขึ้นจาก 300ms เป็น 150ms
   }
 
-  function switchVerifyMode(newMode: "pin" | "qr") {
+  async function switchVerifyMode(newMode: "pin" | "qr") {
     if (verifyMode === newMode) return;
 
     if (verifyMode === "qr") {
@@ -3559,8 +3589,11 @@
     verifyMode = newMode;
 
     if (newMode === "qr") {
+      // ✅ Use tick() to ensure DOM is updated before starting camera
+      await tick();
       setTimeout(() => startCamera(), 100);
     } else {
+      await tick();
       setTimeout(() => pinInputRefs[0]?.focus(), 100);
     }
     // เปลี่ยนโหมด
