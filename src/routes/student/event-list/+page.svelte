@@ -1453,13 +1453,13 @@
                   {/if}
 
                   <div class="card-footer-actions">
-                    <button class="view-btn" on:click={() => toggleDetails(i)}>
+                    <button class="view-btn" onclick={() => toggleDetails(i)}>
                       {event.isExpanded ? t[lang].btn_read_less : t[lang].btn_read_more}
                     </button>
 
                     <div class="footer-actions">
                       {#if event.isJoined}
-                        <button class="register-btn running" on:click={() => navigateToMyEvents('student')}>
+                        <button class="register-btn running" onclick={() => navigateToMyEvents('student')}>
                           {lang === 'th' ? '✅ สมัครแล้ว' : '✅ Registered'}
                         </button>
 
@@ -1484,7 +1484,7 @@
                         </button>
 
                       {:else}
-                        <button class="register-btn" disabled={isRegistering} on:click={() => handleRegister(event)}>
+                        <button class="register-btn" disabled={isRegistering} onclick={() => handleRegister(event)}>
                           {#if event.hasCancelledRecord}
                             {lang === 'th' ? '🔄 สมัครใหม่อีกครั้ง' : '🔄 Register Again'}
                           {:else}
@@ -1494,7 +1494,7 @@
                       {/if}
 
                       {#if event.isJoined && event.checkin_count === 0}
-                        <button class="cancel-direct-btn" on:click={() => openCancelModal(event)}>
+                        <button class="cancel-direct-btn" onclick={() => openCancelModal(event)}>
                           {lang === 'th' ? '❌ ยกเลิก' : '❌ Cancel'}
                         </button>
                       {/if}
@@ -1521,7 +1521,7 @@
   {#if showUploadModal}
     <div class="modal-overlay" transition:fade={{ duration: 200 }}>
       <div class="modal-box" transition:scale={{ duration: 250, start: 0.9 }}>
-        <button class="modal-close" on:click={closeUploadModal}>&times;</button>
+        <button class="modal-close" onclick={closeUploadModal}>&times;</button>
         <div class="modal-body">
           <h3 class="modal-title">{t[lang].upload_title}</h3>
           {#if selectedEvent?.participationStatus === 'REJECTED'}
@@ -1532,17 +1532,17 @@
           <div class="upload-area">
             {#if !proofImage}
               <label class="upload-label">
-                <input type="file" accept="image/*" on:change={handleImageSelect} hidden />
+                <input type="file" accept="image/*" onchange={handleImageSelect} hidden />
                 <div class="upload-placeholder"><span>Click to Upload Image</span></div>
               </label>
             {:else}
               <div class="image-preview">
                 <img src={proofImage} alt="Proof" />
-                <button class="remove-img-btn" on:click={() => { proofImage = null; proofFile = null; }}>&times;</button>
+                <button class="remove-img-btn" onclick={() => { proofImage = null; proofFile = null; }}>&times;</button>
               </div>
             {/if}
           </div>
-          <button class="action-submit-btn purple-theme" disabled={!proofImage} on:click={submitProof}>
+          <button class="action-submit-btn purple-theme" disabled={!proofImage} onclick={submitProof}>
             {t[lang].upload_btn}
           </button>
         </div>
@@ -1553,7 +1553,7 @@
   {#if showCancelModal}
     <div class="modal-overlay" transition:fade={{ duration: 200 }}>
       <div class="modal-box" transition:scale={{ duration: 250, start: 0.9 }}>
-        <button class="modal-close" on:click={closeCancelModal}>&times;</button>
+        <button class="modal-close" onclick={closeCancelModal}>&times;</button>
         <div class="modal-body">
           <h3 class="modal-title" style="color: #ef4444;">{t[lang].cancel_title}</h3>
           <p class="modal-subtitle">{t[lang].cancel_desc}</p>
@@ -1573,7 +1573,7 @@
           <div class="action-row">
             <button 
               class="action-submit-btn cancel-confirm-btn" 
-              on:click={confirmCancellation}
+              onclick={confirmCancellation}
               disabled={
                 !selectedCancelReason || 
                 ((selectedCancelReason.includes("Other") || selectedCancelReason.includes("อื่นๆ")) && !otherCancelReason.trim())
