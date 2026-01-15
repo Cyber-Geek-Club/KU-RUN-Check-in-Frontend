@@ -224,7 +224,7 @@
       <select bind:value={selectedMonth} class="filter-select">
         <option value="all">{t.allMonths}</option>
         {#each availableMonths as month}
-          <option value={month}>{monthNames[month]?.[langValue] || month}</option>
+          <option value={month}>{monthNames[month]?.[langValue || 'en'] || month}</option>
         {/each}
       </select>
 
