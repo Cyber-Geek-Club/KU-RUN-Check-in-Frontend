@@ -1,0 +1,753 @@
+import { writable, derived, get } from "svelte/store";
+import type { Language } from "$lib/types/organizer";
+
+// ==========================================
+// 🌐 TRANSLATIONS / i18n SYSTEM
+// ==========================================
+
+export const translations = {
+  th: {
+    // Modal - Approve/Reject Submission
+    approveSubmission: "ยืนยันการตรวจสอบหลักฐาน",
+    approveSubmissionDesc: "คุณแน่ใจหรือไม่ว่าต้องการยืนยันหลักฐานนี้?",
+    approve: "อนุมัติ",
+    cancel: "ยกเลิก",
+    statusChangesTo: "สถานะเปลี่ยนเป็น",
+    completed: "เสร็จสิ้น",
+    distance: "ระยะทาง",
+    systemAutoAssigns: "ระบบจะจัดสรรรางวัลให้อัตโนมัติ",
+    yesApprove: "ใช่, อนุมัติ",
+    rejectSubmission: "ปฏิเสธหลักฐาน",
+    rejectSubmissionDesc: "กรุณาเลือกเหตุผลในการปฏิเสธ:",
+    unclearImage: "รูปภาพไม่ชัดเจน",
+    unclearImageDesc: "รูปภาพเบลอ มืด หรืออ่านข้อมูลไม่ได้",
+    incorrectData: "ข้อมูลไม่ถูกต้อง",
+    incorrectDataDesc: "ระยะทางหรือเวลาไม่ตรงตามเงื่อนไข",
+    duplicate: "ซ้ำซ้อน",
+    duplicateDesc: "หลักฐานนี้ถูกส่งมาแล้ว",
+    otherReason: "เหตุผลอื่น",
+    otherReasonDesc: "โปรดระบุเหตุผลเพิ่มเติม",
+    confirmReject: "ยืนยันการปฏิเสธ",
+    
+    // Navigation & Header
+    organizer: "ผู้จัดงาน",
+    events: "กิจกรรม",
+    createEvent: "สร้างกิจกรรม",
+    verifyProof: "ตรวจสอบหลักฐาน",
+    activityLogs: "ประวัติกิจกรรม",
+    rewards: "รางวัล",
+    settings: "ตั้งค่า",
+    logout: "ออกจากระบบ",
+    navigation: "เมนู",
+
+    // Event List
+    eventList: "รายการกิจกรรม",
+    searchEvents: "ค้นหากิจกรรม...",
+    allMonths: "ทุกเดือน",
+    allYears: "ทุกปี",
+    noEventsFound: "ไม่พบกิจกรรม",
+    participants: "ผู้เข้าร่วม",
+    slots: "ที่นั่ง",
+    active: "เปิดใช้งาน",
+    inactive: "ปิดใช้งาน",
+    published: "เผยแพร่แล้ว",
+    draft: "ฉบับร่าง",
+    closed: "ปิดแล้ว",
+    edit: "แก้ไข",
+    delete: "ลบ",
+    view: "ดู",
+    noDescription: "ไม่มีรายละเอียด",
+    holidaysOff: "วันหยุด",
+    noResults: "ไม่พบผลลัพธ์",
+    viewDetails: "ดูรายละเอียด",
+
+    // Create/Edit Event
+    createNewEvent: "สร้างกิจกรรมใหม่",
+    editEvent: "แก้ไขกิจกรรม",
+    eventName: "ชื่อกิจกรรม",
+    description: "รายละเอียด",
+    location: "สถานที่",
+    startDate: "วันที่เริ่ม",
+    endDate: "วันที่สิ้นสุด",
+    startTime: "เวลาเริ่ม",
+    endTime: "เวลาสิ้นสุด",
+    capacity: "จำนวนที่นั่ง",
+    day: "วัน",
+    month: "เดือน",
+    year: "ปี",
+    holidays: "วันหยุด",
+    excludeWeekends: "ไม่รวมวันเสาร์-อาทิตย์",
+    specificDates: "เลือกวันที่เฉพาะ",
+    noHolidays: "ไม่มีวันหยุด",
+    save: "บันทึก",
+    update: "อัพเดท",
+    create: "สร้าง",
+    uploadImage: "อัพโหลดรูปภาพ",
+    removeImage: "ลบรูปภาพ",
+    isPublic: "เผยแพร่",
+    isActive: "เปิดใช้งาน",
+    required: "จำเป็น",
+    publish: "เผยแพร่",
+
+    // Event Type
+    eventTypeTitle: "ประเภทกิจกรรม",
+    singleDay: "วันเดียว",
+    multiDay: "หลายวัน",
+    singleDayDesc: "กิจกรรมจัดขึ้นในวันเดียว เช็คอินได้ 1 ครั้ง",
+    multiDayDesc: "กิจกรรมหลายวัน สามารถเช็คอินได้หลายครั้ง",
+    maxCheckinsPerUser: "จำนวนเช็คอินสูงสุดต่อคน",
+    allowDailyCheckin: "อนุญาตเช็คอินรายวัน",
+    checkinTimes: "ครั้ง",
+
+    // Rewards
+    rewardTiers: "ระดับรางวัล",
+    addTier: "เพิ่มระดับ",
+    tierName: "ชื่อระดับ",
+    quota: "โควต้า",
+    requirement: "เงื่อนไข",
+    rounds: "รอบ",
+
+    // Verify Proof
+    proofSubmissions: "หลักฐานที่ส่งมา",
+    reject: "ปฏิเสธ",
+    pending: "รอตรวจสอบ",
+    approved: "อนุมัติแล้ว",
+    rejected: "ปฏิเสธแล้ว",
+    verifyCode: "ตรวจรหัส",
+    unlock: "ปลดล็อค",
+    enterCode: "กรอกรหัส",
+    scanQR: "สแกน QR",
+    verifyBtn: "ตรวจสอบ",
+    clearBtn: "ล้าง",
+    autoCheckIn: "เช็คอินอัตโนมัติ",
+    cameraAccess: "เข้าถึงกล้อง",
+    startCamera: "เปิดกล้อง",
+    stopCamera: "ปิดกล้อง",
+    scanning: "กำลังสแกน...",
+
+    // Logs
+    logs: "ประวัติ",
+    action: "การกระทำ",
+    status: "สถานะ",
+    timestamp: "เวลา",
+    user: "ผู้ใช้",
+    viewLogs: "ดูประวัติ",
+    activityHistory: "ประวัติกิจกรรม",
+    noLogs: "ไม่มีประวัติ",
+    exportLogs: "ส่งออกประวัติ",
+    filterByAction: "กรองตามการกระทำ",
+    filterByStatus: "กรองตามสถานะ",
+    actionJoined: "ลงทะเบียน",
+    actionCheckedIn: "เช็คอิน",
+    actionCompleted: "สำเร็จ",
+    actionCancelled: "ยกเลิก",
+    actionRejected: "ถูกปฏิเสธ",
+    joinCode: "รหัสเข้าร่วม",
+    joinedAt: "ลงทะเบียนเมื่อ",
+    checkedInAt: "เช็คอินเมื่อ",
+    completedAt: "สำเร็จเมื่อ",
+    cancelledAt: "ยกเลิกเมื่อ",
+    proofSubmittedAt: "ส่งหลักฐานเมื่อ",
+    lastUpdated: "อัปเดตล่าสุด",
+    viewProofImage: "ดูหลักฐาน",
+    cancellationReason: "เหตุผลการยกเลิก",
+
+    // Rewards
+    viewRewards: "ดูรางวัล",
+    rewardManagement: "จัดการรางวัล",
+    noRewards: "ไม่มีรางวัล",
+    rewardStatus: "สถานะรางวัล",
+    claimed: "รับแล้ว",
+    unclaimed: "ยังไม่รับ",
+    totalRewards: "รางวัลทั้งหมด",
+    sendNotification: "ส่งการแจ้งเตือน",
+    notificationSent: "ส่งการแจ้งเตือนสำเร็จ",
+
+    // Verify Code Page
+    participantCheckIn: "เช็คอินผู้เข้าร่วม",
+    participantCheckOut: "เช็คเอาท์ผู้เข้าร่วม",
+    verifyParticipantCode: "ตรวจสอบรหัสผู้เข้าร่วมเพื่อเช็คอิน",
+    verifyParticipantCodeOut: "ตรวจสอบรหัสผู้เข้าร่วมเพื่อเช็คเอาท์หลังจบกิจกรรม",
+    pinCode: "รหัส PIN",
+    checkIn: "เช็คอิน",
+    checkOut: "เช็คเอาท์",
+    enterDigitCode: "กรอกรหัส 5 หลัก",
+    autoCheckInEnabled: "เปิดเช็คอินอัตโนมัติ",
+    autoCheckOutEnabled: "เปิดเช็คเอาท์อัตโนมัติ",
+    pressCheckIn: "กด เช็คอิน เพื่อยืนยัน",
+    pressCheckOut: "กด เช็คเอาท์ เพื่อยืนยัน",
+    checkOutSuccess: "เช็คเอาท์สำเร็จ",
+    autoProcess: "อัตโนมัติ",
+
+    // Unlock Page
+    unlockAccount: "ปลดล็อคบัญชี",
+    enterEmailToRestore: "กรอกอีเมลของผู้ใช้เพื่อกู้คืนการเข้าถึง",
+    userEmailAddress: "อีเมลผู้ใช้",
+    enterEmailPlaceholder: "กรอกอีเมล",
+
+    // Verify Proof Page
+    verifyProofTitle: "ตรวจสอบหลักฐาน",
+    apply: "ใช้งาน",
+    reset: "รีเซ็ต",
+    inProgress: "กำลังดำเนินการ",
+    notStarted: "ยังไม่เริ่ม",
+    progress: "ความคืบหน้า",
+
+    // Reward Page
+    globalRank: "อันดับรวม",
+    tierRank: "อันดับใน Tier",
+    progressTo: "ความคืบหน้าไป",
+    times: "ครั้ง",
+    nextTier: "ถัดไป",
+    more: "อีก",
+    showing: "แสดง",
+    of: "จาก",
+    users: "ผู้ใช้",
+    allTiers: "ทุก Tier",
+    sortBy: "เรียงตาม",
+    globalBestFirst: "อันดับรวมดีที่สุด",
+    globalLowestFirst: "อันดับรวมต่ำที่สุด",
+    tierBestFirst: "อันดับ Tier ดีที่สุด",
+    tierLowestFirst: "อันดับ Tier ต่ำที่สุด",
+    bestFirst: "ดีที่สุด → ต่ำที่สุด",
+    lowestFirst: "ต่ำที่สุด → ดีที่สุด",
+    sendMessage: "ส่งข้อความ",
+
+    // Common
+    loading: "กำลังโหลด...",
+    error: "เกิดข้อผิดพลาด",
+    success: "สำเร็จ",
+    confirm: "ยืนยัน",
+    close: "ปิด",
+    search: "ค้นหา",
+    filter: "กรอง",
+    export: "ส่งออก",
+    refresh: "รีเฟรช",
+    back: "กลับ",
+    next: "ถัดไป",
+    previous: "ก่อนหน้า",
+    total: "ทั้งหมด",
+    select: "เลือก",
+    all: "ทั้งหมด",
+    backToEvents: "กลับไปหน้ากิจกรรม",
+    selectEvent: "เลือกกิจกรรม",
+    searchByName: "ค้นหาด้วยชื่อ อีเมล หรือรหัสนิสิต...",
+    batch: "รุ่น",
+    stdId: "รหัส",
+    fromDate: "จากวันที่",
+    toDate: "ถึงวันที่",
+    dateTime: "วันที่และเวลา",
+    basicInfo: "ข้อมูลพื้นฐาน",
+    schedule: "กำหนดการ",
+    eventSettings: "ตั้งค่ากิจกรรม",
+
+    // Messages
+    eventCreated: "สร้างกิจกรรมสำเร็จ!",
+    eventUpdated: "อัพเดทกิจกรรมสำเร็จ!",
+    eventDeleted: "ลบกิจกรรมสำเร็จ!",
+    fillAllFields: "กรุณากรอกข้อมูลให้ครบถ้วน",
+    invalidDateRange: "ช่วงวันที่ไม่ถูกต้อง",
+    confirmDelete: "ยืนยันการลบ?",
+    cannotUndo: "การกระทำนี้ไม่สามารถย้อนกลับได้",
+    deleteEventTitle: "ลบกิจกรรม?",
+    deleteEventText: "คุณแน่ใจหรือไม่ว่าต้องการลบกิจกรรมนี้?",
+    yesDelete: "ใช่, ลบเลย",
+    deleted: "ลบแล้ว!",
+    eventDeletedSuccess: "กิจกรรมถูกลบเรียบร้อยแล้ว",
+
+    // Profile/Settings
+    profile: "โปรไฟล์",
+    accountSettings: "ตั้งค่าบัญชี",
+    manageProfile: "จัดการข้อมูลโปรไฟล์และการตั้งค่า",
+    personalInfo: "ข้อมูลส่วนตัว",
+    academicInfo: "ข้อมูลการศึกษา",
+    departmentInfo: "ข้อมูลแผนก",
+    title: "คำนำหน้า",
+    firstName: "ชื่อ",
+    lastName: "นามสกุล",
+    email: "อีเมล",
+    emailAddress: "ที่อยู่อีเมล",
+    studentId: "รหัสนิสิต",
+    faculty: "คณะ",
+    major: "สาขา",
+    department: "แผนก",
+    saveChanges: "บันทึกการเปลี่ยนแปลง",
+    selectTitle: "เลือกคำนำหน้า",
+    selectFaculty: "เลือกคณะ",
+    selectMajor: "เลือกสาขา",
+    selectDepartment: "เลือกแผนก",
+    enterFirstName: "กรอกชื่อ",
+    enterLastName: "กรอกนามสกุล",
+    enterEmail: "กรอกอีเมล",
+    settingsUpdated: "อัปเดตการตั้งค่าสำเร็จ!",
+
+    // Language
+    language: "ภาษา",
+    thai: "ไทย",
+    english: "English",
+    switchToEnglish: "เปลี่ยนเป็น English",
+    switchToThai: "Switch to ภาษาไทย",
+
+    // Security
+    security: "ความปลอดภัย",
+    password: "รหัสผ่าน",
+    changePassword: "เปลี่ยนรหัสผ่าน",
+
+    // Create Event Form - Date & Time
+    dateAndTime: "วันที่และเวลา",
+    startDateLabel: "วันเริ่มต้น",
+    endDateLabel: "วันสิ้นสุด",
+    startTimeLabel: "เวลาเริ่ม",
+    endTimeLabel: "เวลาสิ้นสุด",
+    capacityLabel: "จำนวนที่รับ",
+    distanceLabel: "ระยะทาง",
+    dayPlaceholder: "วัน",
+    monthPlaceholder: "เดือน",
+    yearPlaceholder: "ปี",
+    selectTime: "เลือกเวลา",
+    invalidDateRangeMsg: "วันเริ่มต้นต้องไม่อยู่หลังวันสิ้นสุด",
+    dateRangeValid: "ช่วงวันที่ถูกต้อง",
+
+    // Create Event Form - Holidays
+    holidaysAndExclusions: "วันหยุดและข้อยกเว้น",
+    noHolidaysOption: "ไม่มีวันหยุด",
+    excludeWeekendsOption: "ยกเว้นวันเสาร์-อาทิตย์",
+    specificDatesOption: "เลือกวันที่เฉพาะ",
+    selectHolidayOption: "กรุณาเลือกตัวเลือกวันหยุด",
+    holidaysSelected: "วันหยุดที่เลือก",
+    clickToSelect: "คลิกวันที่เพื่อเลือก/ยกเลิก",
+
+    // Create Event Form - Rewards
+    rewardsDistribution: "การแจกรางวัล",
+    allocated: "จัดสรรแล้ว",
+    remainingSlots: "คงเหลือ",
+    exceededBy: "เกินไป",
+    tierLabel: "ระดับ",
+    quotaLabel: "โควต้า",
+    requirementLabel: "เงื่อนไข (รอบ)",
+    rewardNameLabel: "ชื่อรางวัล",
+    addTierBtn: "+ เพิ่มระดับ",
+    removeTier: "ลบระดับ",
+    enterQuota: "กรอกจำนวน",
+    enterRounds: "กรอกจำนวนรอบ",
+    enterRewardName: "กรอกชื่อรางวัล",
+    unlockRewards: "กรอก จำนวนที่รับ ก่อนเพื่อปลดล็อครางวัล",
+    rankRange: "อันดับ",
+
+    // Create Event Form - Event Status
+    eventStatusTitle: "สถานะกิจกรรม",
+    publicVisibility: "เปิดเผยต่อสาธารณะ",
+    activeOpen: "เปิดใช้งาน",
+    statusLive: "พร้อมรับผู้เข้าร่วม",
+    statusLiveDesc: "กิจกรรมเปิดให้ลงทะเบียนและแสดงต่อสาธารณะ",
+    statusDraftLabel: "ฉบับร่าง",
+    statusDraftDesc: "กิจกรรมยังไม่เปิดให้ลงทะเบียน",
+
+    // Verify Proof
+    proofInfo: "ข้อมูลหลักฐาน",
+    submittedAt: "ส่งเมื่อ",
+    stravaLink: "ลิงก์ Strava",
+    actualDistance: "ระยะทางจริง",
+    noStravaLink: "ไม่มีลิงก์",
+    pendingSubmissions: "รอตรวจสอบ",
+
+    // Logs
+    totalActions: "การกระทำทั้งหมด",
+    todayActions: "วันนี้",
+    recentActivity: "กิจกรรมล่าสุด",
+  },
+  en: {
+    // Modal - Approve/Reject Submission
+    approveSubmission: "Approve Submission",
+    approveSubmissionDesc: "Are you sure you want to verify this proof?",
+    approve: "Approve",
+    cancel: "Cancel",
+    statusChangesTo: "Status changes to",
+    completed: "COMPLETED",
+    distance: "Distance",
+    systemAutoAssigns: "System auto-assigns rewards",
+    yesApprove: "Yes, Approve",
+    rejectSubmission: "Reject Submission",
+    rejectSubmissionDesc: "Please select a reason for rejection:",
+    unclearImage: "Unclear Image",
+    unclearImageDesc: "Photo is blurry, dark, or data is unreadable.",
+    incorrectData: "Incorrect Data",
+    incorrectDataDesc: "Distance or time does not match requirements.",
+    duplicate: "Duplicate",
+    duplicateDesc: "This proof has already been submitted.",
+    otherReason: "Other Reason",
+    otherReasonDesc: "Specify a custom reason below.",
+    confirmReject: "Confirm Reject",
+    
+    // Navigation & Header
+    organizer: "ORGANIZER",
+    events: "Events",
+    createEvent: "Create Event",
+    verifyProof: "Verify Proof",
+    activityLogs: "Activity Logs",
+    rewards: "Rewards",
+    settings: "Settings",
+    logout: "Logout",
+    navigation: "NAVIGATION",
+
+    // Event List
+    eventList: "Event List",
+    searchEvents: "Search events...",
+    allMonths: "All Months",
+    allYears: "All Years",
+    noEventsFound: "No events found",
+    participants: "Participants",
+    slots: "Slots",
+    active: "Active",
+    inactive: "Inactive",
+    published: "Published",
+    draft: "Draft",
+    closed: "Closed",
+    edit: "Edit",
+    delete: "Delete",
+    view: "View",
+    noDescription: "No description",
+    holidaysOff: "Days off",
+    noResults: "No results found",
+    viewDetails: "View Details",
+
+    // Create/Edit Event
+    createNewEvent: "Create New Event",
+    editEvent: "Edit Event",
+    eventName: "Event Name",
+    description: "Description",
+    location: "Location",
+    startDate: "Start Date",
+    endDate: "End Date",
+    startTime: "Start Time",
+    endTime: "End Time",
+    capacity: "Capacity",
+    day: "Day",
+    month: "Month",
+    year: "Year",
+    holidays: "Holidays",
+    excludeWeekends: "Exclude Weekends",
+    specificDates: "Specific Dates",
+    noHolidays: "No Holidays",
+    save: "Save",
+    update: "Update",
+    create: "Create",
+    uploadImage: "Upload Image",
+    removeImage: "Remove Image",
+    isPublic: "Published",
+    isActive: "Active",
+    required: "Required",
+    publish: "Publish",
+
+    // Event Type
+    eventTypeTitle: "Event Type",
+    singleDay: "Single Day",
+    multiDay: "Multi Day",
+    singleDayDesc: "One-day event with single check-in",
+    multiDayDesc: "Multi-day event with multiple check-ins allowed",
+    maxCheckinsPerUser: "Max Check-ins Per User",
+    allowDailyCheckin: "Allow Daily Check-in",
+    checkinTimes: "times",
+
+    // Rewards
+    rewardTiers: "Reward Tiers",
+    addTier: "Add Tier",
+    tierName: "Tier Name",
+    quota: "Quota",
+    requirement: "Requirement",
+    rounds: "rounds",
+
+    // Verify Proof
+    proofSubmissions: "Proof Submissions",
+    reject: "Reject",
+    pending: "Pending",
+    approved: "Approved",
+    rejected: "Rejected",
+    verifyCode: "Verify Code",
+    unlock: "Unlock",
+    enterCode: "Enter Code",
+    scanQR: "Scan QR",
+    verifyBtn: "Verify",
+    clearBtn: "Clear",
+    autoCheckIn: "Auto Check-in",
+    cameraAccess: "Camera Access",
+    startCamera: "Start Camera",
+    stopCamera: "Stop Camera",
+    scanning: "Scanning...",
+
+    // Logs
+    logs: "Logs",
+    action: "Action",
+    status: "Status",
+    timestamp: "Timestamp",
+    user: "User",
+    viewLogs: "View Logs",
+    activityHistory: "Activity History",
+    noLogs: "No logs",
+    exportLogs: "Export Logs",
+    filterByAction: "Filter by Action",
+    filterByStatus: "Filter by Status",
+    actionJoined: "Joined",
+    actionCheckedIn: "Checked In",
+    actionCompleted: "Completed",
+    actionCancelled: "Cancelled",
+    actionRejected: "Rejected",
+    joinCode: "Join Code",
+    joinedAt: "Joined",
+    checkedInAt: "Checked In",
+    completedAt: "Completed",
+    cancelledAt: "Cancelled",
+    proofSubmittedAt: "Proof Submitted",
+    lastUpdated: "Last updated",
+    viewProofImage: "View Proof Image",
+    cancellationReason: "Cancellation Reason",
+
+    // Rewards
+    viewRewards: "View Rewards",
+    rewardManagement: "Reward Management",
+    noRewards: "No rewards",
+    rewardStatus: "Reward Status",
+    claimed: "Claimed",
+    unclaimed: "Unclaimed",
+    totalRewards: "Total Rewards",
+    sendNotification: "Send Notification",
+    notificationSent: "Notification sent successfully",
+
+    // Verify Code Page
+    participantCheckIn: "Participant Check-in",
+    participantCheckOut: "Participant Check-out",
+    verifyParticipantCode: "Verify participant's code to complete check-in",
+    verifyParticipantCodeOut: "Verify participant's code to complete check-out after event",
+    pinCode: "PIN Code",
+    checkIn: "CHECK IN",
+    checkOut: "CHECK OUT",
+    enterDigitCode: "Enter 5-digit code",
+    autoCheckInEnabled: "Auto check-in enabled",
+    autoCheckOutEnabled: "Auto check-out enabled",
+    pressCheckIn: "Press CHECK IN to verify",
+    pressCheckOut: "Press CHECK OUT to verify",
+    checkOutSuccess: "Check-out Successful",
+    autoProcess: "Auto",
+
+    // Unlock Page
+    unlockAccount: "Unlock Account",
+    enterEmailToRestore: "Enter the user's email address to restore their access",
+    userEmailAddress: "User Email Address",
+    enterEmailPlaceholder: "Enter email address",
+
+    // Verify Proof Page
+    verifyProofTitle: "Verify Proof",
+    apply: "Apply",
+    reset: "Reset",
+    inProgress: "In Progress",
+    notStarted: "Not Started",
+    progress: "Progress",
+
+    // Reward Page
+    globalRank: "Global Rank",
+    tierRank: "Tier Rank",
+    progressTo: "Progress to",
+    times: "times",
+    nextTier: "Next",
+    more: "more",
+    showing: "Showing",
+    of: "of",
+    users: "users",
+    allTiers: "All Tiers",
+    sortBy: "Sort by",
+    globalBestFirst: "Global Best First",
+    globalLowestFirst: "Global Lowest First",
+    tierBestFirst: "Tier Best First",
+    tierLowestFirst: "Tier Lowest First",
+    bestFirst: "Best → Lowest",
+    lowestFirst: "Lowest → Best",
+    sendMessage: "Send Message",
+
+    // Common
+    loading: "Loading...",
+    error: "Error",
+    success: "Success",
+    confirm: "Confirm",
+    close: "Close",
+    search: "Search",
+    filter: "Filter",
+    export: "Export",
+    refresh: "Refresh",
+    back: "Back",
+    next: "Next",
+    previous: "Previous",
+    total: "Total",
+    select: "Select",
+    all: "All",
+    backToEvents: "Back to Events",
+    selectEvent: "Select Event",
+    searchByName: "Search by name, email, or Nisit ID...",
+    batch: "Batch",
+    stdId: "Std ID",
+    fromDate: "From Date",
+    toDate: "To Date",
+    dateTime: "Date & Time",
+    basicInfo: "Basic Information",
+    schedule: "Schedule",
+    eventSettings: "Event Settings",
+
+    // Messages
+    eventCreated: "Event created successfully!",
+    eventUpdated: "Event updated successfully!",
+    eventDeleted: "Event deleted successfully!",
+    fillAllFields: "Please fill in all required fields",
+    invalidDateRange: "Invalid date range",
+    confirmDelete: "Confirm delete?",
+    cannotUndo: "This action cannot be undone",
+    deleteEventTitle: "Delete Event?",
+    deleteEventText: "Are you sure you want to delete this event?",
+    yesDelete: "Yes, Delete",
+    deleted: "Deleted!",
+    eventDeletedSuccess: "Event has been deleted successfully",
+
+    // Profile/Settings
+    profile: "Profile",
+    accountSettings: "Account Settings",
+    manageProfile: "Manage your profile information and preferences",
+    personalInfo: "Personal Information",
+    academicInfo: "Academic Information",
+    departmentInfo: "Department Information",
+    title: "Title",
+    firstName: "First Name",
+    lastName: "Last Name",
+    email: "Email",
+    emailAddress: "Email Address",
+    studentId: "Student ID",
+    faculty: "Faculty",
+    major: "Major",
+    department: "Department",
+    saveChanges: "Save Changes",
+    selectTitle: "Select Title",
+    selectFaculty: "Select Faculty",
+    selectMajor: "Select Major",
+    selectDepartment: "Select Department",
+    enterFirstName: "Enter first name",
+    enterLastName: "Enter last name",
+    enterEmail: "Enter email",
+    settingsUpdated: "Settings updated successfully!",
+
+    // Language
+    language: "Language",
+    thai: "ไทย",
+    english: "English",
+    switchToEnglish: "Switch to English",
+    switchToThai: "เปลี่ยนเป็นภาษาไทย",
+
+    // Security
+    security: "Security",
+    password: "Password",
+    changePassword: "Change Password",
+
+    // Create Event Form - Date & Time
+    dateAndTime: "Date & Time",
+    startDateLabel: "Start Date",
+    endDateLabel: "End Date",
+    startTimeLabel: "Start Time",
+    endTimeLabel: "End Time",
+    capacityLabel: "Capacity",
+    distanceLabel: "Distance (km)",
+    dayPlaceholder: "Day",
+    monthPlaceholder: "Month",
+    yearPlaceholder: "Year",
+    selectTime: "Select time",
+    invalidDateRangeMsg: "Start date must not be later than end date",
+    dateRangeValid: "Date range is valid",
+
+    // Create Event Form - Holidays
+    holidaysAndExclusions: "Holidays & Exclusions",
+    noHolidaysOption: "No Holidays",
+    excludeWeekendsOption: "Exclude Weekends",
+    specificDatesOption: "Specific Dates",
+    selectHolidayOption: "Please select a holiday option",
+    holidaysSelected: "Holidays Selected",
+    clickToSelect: "Click dates to select/deselect",
+
+    // Create Event Form - Rewards
+    rewardsDistribution: "Rewards Distribution",
+    allocated: "Allocated",
+    remainingSlots: "remaining",
+    exceededBy: "Exceeded by",
+    tierLabel: "Tier",
+    quotaLabel: "Quota",
+    requirementLabel: "Requirement (rounds)",
+    rewardNameLabel: "Reward Name",
+    addTierBtn: "+ Add Tier",
+    removeTier: "Remove Tier",
+    enterQuota: "Enter quota",
+    enterRounds: "Enter rounds",
+    enterRewardName: "Enter reward name",
+    unlockRewards: "Enter Capacity first to unlock rewards",
+    rankRange: "Rank",
+
+    // Create Event Form - Event Status
+    eventStatusTitle: "Event Status",
+    publicVisibility: "Public Visibility",
+    activeOpen: "Active (Open)",
+    statusLive: "Ready for Participants",
+    statusLiveDesc: "Event is open for registration and visible to public",
+    statusDraftLabel: "Draft",
+    statusDraftDesc: "Event is not yet open for registration",
+
+    // Verify Proof
+    proofInfo: "Proof Information",
+    submittedAt: "Submitted at",
+    stravaLink: "Strava Link",
+    actualDistance: "Actual Distance",
+    noStravaLink: "No link",
+    pendingSubmissions: "Pending",
+
+    // Logs
+    totalActions: "Total Actions",
+    todayActions: "Today",
+    recentActivity: "Recent Activity",
+  },
+};
+
+// Translation keys type
+export type TranslationKey = keyof typeof translations.th;
+
+// Current language store
+export const currentLanguage = writable<Language>("th");
+
+// Derived store for current translations
+export const lang = derived(currentLanguage, ($currentLanguage) => {
+  return translations[$currentLanguage];
+});
+
+// Translation function
+export function t(key: TranslationKey, language?: Language): string {
+  const currentLang = language || get(currentLanguage);
+  return translations[currentLang][key] || translations.en[key] || key;
+}
+
+// Toggle language function
+export function toggleLanguage(): void {
+  currentLanguage.update((lang) => (lang === "th" ? "en" : "th"));
+}
+
+// Set language function
+export function setLanguage(lang: Language): void {
+  currentLanguage.set(lang);
+}
+
+// Translate status helper
+export function translateStatus(status: string, language?: Language): string {
+  const currentLang = language || get(currentLanguage);
+  const trans = translations[currentLang];
+  
+  switch (status) {
+    case "Active":
+      return trans.active;
+    case "Draft":
+      return trans.draft;
+    case "Closed":
+      return trans.closed;
+    default:
+      return status;
+  }
+}
