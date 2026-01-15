@@ -305,12 +305,12 @@
 
         <div class="date-filters">
           <div class="date-input">
-            <label>{langValue === 'th' ? 'จาก' : 'From'}</label>
-            <input type="date" bind:value={dateFrom} />
+            <label for="date-from">{langValue === 'th' ? 'จาก' : 'From'}</label>
+            <input id="date-from" type="date" bind:value={dateFrom} />
           </div>
           <div class="date-input">
-            <label>{langValue === 'th' ? 'ถึง' : 'To'}</label>
-            <input type="date" bind:value={dateTo} />
+            <label for="date-to">{langValue === 'th' ? 'ถึง' : 'To'}</label>
+            <input id="date-to" type="date" bind:value={dateTo} />
           </div>
         </div>
 
@@ -421,6 +421,7 @@
               class="page-btn" 
               on:click={() => goToPage(currentPage - 1)} 
               disabled={currentPage === 1}
+              aria-label="{langValue === 'th' ? 'หน้าก่อน' : 'Previous page'}"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -441,6 +442,7 @@
               class="page-btn" 
               on:click={() => goToPage(currentPage + 1)} 
               disabled={currentPage === totalPages}
+              aria-label="{langValue === 'th' ? 'หน้าถัดไป' : 'Next page'}"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -741,11 +743,229 @@
 
   @media (max-width: 768px) {
     .logs-table-container {
-      overflow-x: auto;
+      display: none;
     }
 
-    .logs-table {
-      min-width: 700px;
+    .filters-bar {
+      flex-direction: column;
     }
+
+    .date-filters {
+      width: 100%;
+    }
+
+    .export-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  /* Stats Bar */
+  .stats-bar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .stat-item {
+    flex: 1;
+    min-width: 120px;
+    padding: 1rem;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(100, 116, 139, 0.2);
+    border-radius: 12px;
+    text-align: center;
+  }
+
+  .stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-value.stat-joined { color: #60a5fa; }
+  .stat-value.stat-checkedin { color: #34d399; }
+  .stat-value.stat-completed { color: #10b981; }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Date Filters */
+  .date-filters {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .date-input {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .date-input label {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+  }
+
+  .date-input input {
+    padding: 0.6rem 0.75rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    border-radius: 8px;
+    color: #f8fafc;
+    font-size: 0.85rem;
+  }
+
+  .date-input input:focus {
+    outline: none;
+    border-color: #10b981;
+  }
+
+  /* Export Button */
+  .export-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .export-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  }
+
+  .export-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .export-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Mobile Cards */
+  .logs-cards {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .logs-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+  }
+
+  .log-card {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(100, 116, 139, 0.2);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.3);
+    border-bottom: 1px solid rgba(100, 116, 139, 0.1);
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  .card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(100, 116, 139, 0.1);
+  }
+
+  .card-row:last-child {
+    border-bottom: none;
+  }
+
+  .card-label {
+    color: #94a3b8;
+    font-size: 0.85rem;
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    margin-top: 1rem;
+  }
+
+  .page-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    border-radius: 8px;
+    color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .page-btn:hover:not(:disabled) {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+  }
+
+  .page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .page-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 1rem;
+    color: #94a3b8;
+    font-size: 0.9rem;
+  }
+
+  .page-select {
+    padding: 0.4rem 0.6rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    border-radius: 6px;
+    color: #f8fafc;
+    font-size: 0.9rem;
+  }
+
+  .filter-note {
+    color: #64748b;
+    font-style: italic;
+    margin-left: 0.5rem;
   }
 </style>

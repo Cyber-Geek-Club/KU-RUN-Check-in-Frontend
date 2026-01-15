@@ -167,7 +167,7 @@
   $: breadcrumb = getBreadcrumb(currentPath);
 
   function getBreadcrumb(path: string): { label: string; href: string }[] {
-    const crumbs = [{ label: t.organizer, href: ROUTES.organizer.events }];
+    const crumbs: { label: string; href: string }[] = [{ label: t.organizer, href: ROUTES.organizer.events }];
     
     if (path.includes('/events') && !path.includes('/event-')) {
       crumbs.push({ label: t.events, href: ROUTES.organizer.events });

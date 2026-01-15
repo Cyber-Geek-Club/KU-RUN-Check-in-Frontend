@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import Swal from 'sweetalert2';
@@ -18,6 +18,18 @@
   let selectedEventId: number | null = null;
   let submissions: ProofSubmission[] = [];
   let filteredSubmissions: ProofSubmission[] = [];
+  
+  // Bulk selection
+  let selectedIds: Set<number> = new Set();
+  let selectAll = false;
+  
+  // Currently focused submission (for keyboard navigation)
+  let focusedIndex = 0;
+  
+  // Image viewer
+  let showImageViewer = false;
+  let currentImageUrl = '';
+  let currentImageSubmission: ProofSubmission | null = null;
   
   // Filters
   let searchQuery = '';
@@ -40,7 +52,208 @@
         await loadSubmissions();
       }
     }
+    
+    // Add keyboard listeners
+    window.addEventListener('keydown', handleKeydown);
   });
+
+  onDestroy(() => {
+    window.removeEventListener('keydown', handleKeydown);
+  });
+
+  function handleKeydown(e: KeyboardEvent) {
+    // Don't handle if typing in an input
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    
+    if (showImageViewer) {
+      // Image viewer shortcuts
+      if (e.key === 'Escape') {
+        closeImageViewer();
+      } else if (e.key === 'a' || e.key === 'A') {
+        if (currentImageSubmission) handleApprove(currentImageSubmission);
+      } else if (e.key === 'r' || e.key === 'R') {
+        if (currentImageSubmission) handleReject(currentImageSubmission);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        navigateImage(e.key === 'ArrowRight' ? 1 : -1);
+      }
+      return;
+    }
+
+    // List navigation shortcuts
+    if (filteredSubmissions.length === 0) return;
+    
+    switch (e.key) {
+      case 'ArrowUp':
+      case 'k':
+        e.preventDefault();
+        focusedIndex = Math.max(0, focusedIndex - 1);
+        scrollToFocused();
+        break;
+      case 'ArrowDown':
+      case 'j':
+        e.preventDefault();
+        focusedIndex = Math.min(filteredSubmissions.length - 1, focusedIndex + 1);
+        scrollToFocused();
+        break;
+      case 'Enter':
+      case 'v':
+        if (filteredSubmissions[focusedIndex]?.proofImage) {
+          viewProofImage(filteredSubmissions[focusedIndex]);
+        }
+        break;
+      case 'a':
+        handleApprove(filteredSubmissions[focusedIndex]);
+        break;
+      case 'r':
+        handleReject(filteredSubmissions[focusedIndex]);
+        break;
+      case ' ':
+        e.preventDefault();
+        toggleSelection(filteredSubmissions[focusedIndex].id);
+        break;
+    }
+  }
+
+  function scrollToFocused() {
+    const card = document.querySelector(`[data-index="${focusedIndex}"]`);
+    card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function navigateImage(direction: number) {
+    const currentIndex = filteredSubmissions.findIndex(s => s.id === currentImageSubmission?.id);
+    if (currentIndex === -1) return;
+    
+    let newIndex = currentIndex + direction;
+    // Find next/prev submission with an image
+    while (newIndex >= 0 && newIndex < filteredSubmissions.length) {
+      if (filteredSubmissions[newIndex].proofImage) {
+        viewProofImage(filteredSubmissions[newIndex]);
+        focusedIndex = newIndex;
+        return;
+      }
+      newIndex += direction;
+    }
+  }
+
+  function toggleSelection(id: number) {
+    if (selectedIds.has(id)) {
+      selectedIds.delete(id);
+    } else {
+      selectedIds.add(id);
+    }
+    selectedIds = selectedIds; // trigger reactivity
+    updateSelectAll();
+  }
+
+  function updateSelectAll() {
+    selectAll = selectedIds.size === filteredSubmissions.length && filteredSubmissions.length > 0;
+  }
+
+  function handleSelectAll() {
+    if (selectAll) {
+      selectedIds = new Set();
+    } else {
+      selectedIds = new Set(filteredSubmissions.map(s => s.id));
+    }
+    selectAll = !selectAll;
+  }
+
+  async function bulkApprove() {
+    if (selectedIds.size === 0) return;
+    
+    const result = await Swal.fire({
+      title: langValue === 'th' ? 'อนุมัติทั้งหมด?' : 'Approve All?',
+      text: langValue === 'th' 
+        ? `คุณต้องการอนุมัติ ${selectedIds.size} รายการที่เลือกหรือไม่?`
+        : `Do you want to approve ${selectedIds.size} selected submissions?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: t.yesApprove,
+      cancelButtonText: t.cancel,
+    });
+
+    if (result.isConfirmed) {
+      isLoading = true;
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const id of selectedIds) {
+        try {
+          await approveSubmission(id);
+          successCount++;
+        } catch (error) {
+          failCount++;
+        }
+      }
+      
+      selectedIds = new Set();
+      await loadSubmissions();
+      
+      Swal.fire({
+        icon: failCount === 0 ? 'success' : 'warning',
+        title: t.success,
+        text: langValue === 'th' 
+          ? `อนุมัติสำเร็จ ${successCount} รายการ${failCount > 0 ? `, ล้มเหลว ${failCount} รายการ` : ''}`
+          : `Approved ${successCount} submissions${failCount > 0 ? `, ${failCount} failed` : ''}`,
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    }
+  }
+
+  async function bulkReject() {
+    if (selectedIds.size === 0) return;
+    
+    const { value: reason } = await Swal.fire({
+      title: langValue === 'th' ? 'ปฏิเสธทั้งหมด?' : 'Reject All?',
+      html: langValue === 'th' 
+        ? `<p>คุณต้องการปฏิเสธ ${selectedIds.size} รายการที่เลือกหรือไม่?</p>`
+        : `<p>Do you want to reject ${selectedIds.size} selected submissions?</p>`,
+      input: 'select',
+      inputOptions: {
+        'unclear_image': t.unclearImage,
+        'incorrect_data': t.incorrectData,
+        'duplicate': t.duplicate,
+        'other': t.otherReason,
+      },
+      inputPlaceholder: t.select,
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: t.confirmReject,
+      cancelButtonText: t.cancel,
+    });
+
+    if (reason) {
+      isLoading = true;
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const id of selectedIds) {
+        try {
+          await rejectSubmission(id, reason);
+          successCount++;
+        } catch (error) {
+          failCount++;
+        }
+      }
+      
+      selectedIds = new Set();
+      await loadSubmissions();
+      
+      Swal.fire({
+        icon: failCount === 0 ? 'success' : 'warning',
+        title: t.success,
+        text: langValue === 'th' 
+          ? `ปฏิเสธสำเร็จ ${successCount} รายการ${failCount > 0 ? `, ล้มเหลว ${failCount} รายการ` : ''}`
+          : `Rejected ${successCount} submissions${failCount > 0 ? `, ${failCount} failed` : ''}`,
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    }
+  }
 
   function checkAuth() {
     const token = typeof localStorage !== 'undefined' 
@@ -228,14 +441,16 @@
 
   function viewProofImage(submission: ProofSubmission) {
     if (submission.proofImage) {
-      Swal.fire({
-        imageUrl: processImageUrl(submission.proofImage),
-        imageAlt: 'Proof Image',
-        showConfirmButton: false,
-        showCloseButton: true,
-        width: 'auto',
-      });
+      currentImageUrl = processImageUrl(submission.proofImage);
+      currentImageSubmission = submission;
+      showImageViewer = true;
     }
+  }
+
+  function closeImageViewer() {
+    showImageViewer = false;
+    currentImageUrl = '';
+    currentImageSubmission = null;
   }
 </script>
 
@@ -265,7 +480,16 @@
     </div>
 
     {#if selectedEventId}
-      <!-- Filters -->
+      <!-- Keyboard Shortcuts Hint -->
+      <div class="keyboard-hints">
+        <span class="hint"><kbd>↑</kbd><kbd>↓</kbd> {langValue === 'th' ? 'นำทาง' : 'Navigate'}</span>
+        <span class="hint"><kbd>A</kbd> {t.approve}</span>
+        <span class="hint"><kbd>R</kbd> {t.reject}</span>
+        <span class="hint"><kbd>V</kbd> {langValue === 'th' ? 'ดูรูป' : 'View'}</span>
+        <span class="hint"><kbd>Space</kbd> {langValue === 'th' ? 'เลือก' : 'Select'}</span>
+      </div>
+
+      <!-- Filters & Bulk Actions -->
       <div class="filters-bar">
         <div class="search-box">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -284,6 +508,32 @@
         </div>
       </div>
 
+      <!-- Bulk Actions Toolbar -->
+      {#if selectedIds.size > 0}
+        <div class="bulk-actions-bar">
+          <div class="selection-info">
+            <input type="checkbox" checked={selectAll} on:change={handleSelectAll} id="select-all" />
+            <label for="select-all">
+              {selectedIds.size} {langValue === 'th' ? 'รายการที่เลือก' : 'selected'}
+            </label>
+          </div>
+          <div class="bulk-buttons">
+            <button class="bulk-btn bulk-approve" on:click={bulkApprove}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              {langValue === 'th' ? 'อนุมัติทั้งหมด' : 'Approve All'}
+            </button>
+            <button class="bulk-btn bulk-reject" on:click={bulkReject}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              {langValue === 'th' ? 'ปฏิเสธทั้งหมด' : 'Reject All'}
+            </button>
+          </div>
+        </div>
+      {/if}
+
       <!-- Submissions List -->
       {#if isLoading}
         <div class="loading-state">
@@ -300,8 +550,25 @@
         </div>
       {:else}
         <div class="submissions-grid">
-          {#each filteredSubmissions as submission (submission.id)}
-            <div class="submission-card">
+          {#each filteredSubmissions as submission, index (submission.id)}
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+            <div 
+              class="submission-card" 
+              class:focused={focusedIndex === index}
+              class:selected={selectedIds.has(submission.id)}
+              data-index={index}
+              on:click={() => focusedIndex = index}
+            >
+              <!-- Selection Checkbox -->
+              <div class="card-select">
+                <input 
+                  type="checkbox" 
+                  checked={selectedIds.has(submission.id)} 
+                  on:change={() => toggleSelection(submission.id)}
+                  on:click|stopPropagation
+                />
+              </div>
+
               <!-- User Info -->
               <div class="user-section">
                 <div class="avatar">
@@ -382,6 +649,67 @@
       </div>
     {/if}
   </div>
+
+  <!-- Image Viewer Modal -->
+  {#if showImageViewer && currentImageSubmission}
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+    <div class="image-viewer-overlay" on:click={closeImageViewer}>
+      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+      <div class="image-viewer-content" on:click|stopPropagation>
+        <!-- Header -->
+        <div class="viewer-header">
+          <div class="viewer-user-info">
+            <span class="viewer-name">{currentImageSubmission.runnerName}</span>
+            <span class="viewer-email">{currentImageSubmission.email}</span>
+          </div>
+          <button class="viewer-close" on:click={closeImageViewer} aria-label="Close image viewer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Image -->
+        <div class="viewer-image-container">
+          <button class="nav-btn nav-prev" on:click={() => navigateImage(-1)} title="Previous (←)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <img src={currentImageUrl} alt="Proof" class="viewer-image" />
+          <button class="nav-btn nav-next" on:click={() => navigateImage(1)} title="Next (→)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Footer with actions -->
+        <div class="viewer-footer">
+          <div class="viewer-hints">
+            <span><kbd>←</kbd><kbd>→</kbd> {langValue === 'th' ? 'เลื่อนรูป' : 'Navigate'}</span>
+            <span><kbd>A</kbd> {t.approve}</span>
+            <span><kbd>R</kbd> {t.reject}</span>
+            <span><kbd>Esc</kbd> {langValue === 'th' ? 'ปิด' : 'Close'}</span>
+          </div>
+          <div class="viewer-actions">
+            <button class="btn-approve" on:click={() => currentImageSubmission && handleApprove(currentImageSubmission)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              {t.approve}
+            </button>
+            <button class="btn-reject" on:click={() => currentImageSubmission && handleReject(currentImageSubmission)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              {t.reject}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {/if}
 </OrganizerLayout>
 
 <style>
@@ -760,5 +1088,292 @@
     .submissions-grid {
       grid-template-columns: 1fr;
     }
+
+    .keyboard-hints {
+      display: none;
+    }
+
+    .bulk-actions-bar {
+      flex-direction: column;
+      gap: 1rem;
+    }
+  }
+
+  /* Keyboard Hints */
+  .keyboard-hints {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 10px;
+    flex-wrap: wrap;
+  }
+
+  .hint {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+
+  kbd {
+    display: inline-block;
+    padding: 0.2rem 0.4rem;
+    background: rgba(100, 116, 139, 0.3);
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #f8fafc;
+  }
+
+  /* Bulk Actions Bar */
+  .bulk-actions-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 12px;
+  }
+
+  .selection-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #f8fafc;
+  }
+
+  .selection-info input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #10b981;
+  }
+
+  .bulk-buttons {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .bulk-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .bulk-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .bulk-approve {
+    background: #10b981;
+    color: white;
+  }
+
+  .bulk-approve:hover {
+    background: #059669;
+  }
+
+  .bulk-reject {
+    background: #ef4444;
+    color: white;
+  }
+
+  .bulk-reject:hover {
+    background: #dc2626;
+  }
+
+  /* Card Selection */
+  .card-select {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 1;
+  }
+
+  .card-select input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: #10b981;
+    cursor: pointer;
+  }
+
+  .submission-card {
+    position: relative;
+  }
+
+  .submission-card.focused {
+    border-color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+  }
+
+  .submission-card.selected {
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  /* Image Viewer Modal */
+  .image-viewer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  }
+
+  .image-viewer-content {
+    display: flex;
+    flex-direction: column;
+    max-width: 95vw;
+    max-height: 95vh;
+    background: #1e293b;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .viewer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: rgba(15, 23, 42, 0.8);
+    border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+  }
+
+  .viewer-user-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .viewer-name {
+    font-weight: 600;
+    color: #f8fafc;
+  }
+
+  .viewer-email {
+    font-size: 0.85rem;
+    color: #94a3b8;
+  }
+
+  .viewer-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(100, 116, 139, 0.2);
+    border: none;
+    border-radius: 50%;
+    color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .viewer-close:hover {
+    background: rgba(239, 68, 68, 0.3);
+  }
+
+  .viewer-close svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .viewer-image-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 300px;
+    max-height: 60vh;
+    overflow: hidden;
+    background: #0f172a;
+  }
+
+  .viewer-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .nav-btn {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 1;
+  }
+
+  .nav-btn:hover {
+    background: rgba(16, 185, 129, 0.5);
+  }
+
+  .nav-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .nav-prev {
+    left: 1rem;
+  }
+
+  .nav-next {
+    right: 1rem;
+  }
+
+  .viewer-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: rgba(15, 23, 42, 0.8);
+    border-top: 1px solid rgba(100, 116, 139, 0.2);
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .viewer-hints {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .viewer-hints span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+
+  .viewer-actions {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .viewer-actions .btn-approve,
+  .viewer-actions .btn-reject {
+    padding: 0.75rem 1.5rem;
   }
 </style>
