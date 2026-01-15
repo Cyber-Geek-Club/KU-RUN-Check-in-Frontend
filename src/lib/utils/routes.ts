@@ -28,13 +28,14 @@ export const ROUTES = {
   },
   organizer: {
     home: '/organizer',
-    createEvent: '/organizer/create-event-new',
+    events: '/organizer/events',
+    createEvent: '/organizer/create-event',
     eventLog: '/organizer/event-log',
     eventVerify: '/organizer/event-verify',
     monthlyReward: '/organizer/monthly-reward',
     unlockUser: '/organizer/unlock-user',
-    uploadProof: '/organizer/upload-proof',
-    settings: '/organizer/setting-account',
+    verifyProof: '/organizer/verify-proof',
+    settings: '/organizer/settings',
   },
 } as const;
 
