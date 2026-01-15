@@ -226,12 +226,13 @@
   let currentParticipationId: number | null = null;
   let distanceInput = 0;
   let stravaVerified = false; // Track if user clicked verify button
+  let lastVerifiedLink = ""; // Track last verified Strava link
 
-  // ✅ Reset verification when link changes
-  $: if (sendingLink) {
-    // Reset when user types/modifies the link
-    const trimmed = sendingLink.trim();
-    if (trimmed && distanceInput > 0) {
+  // ✅ Reset verification when link changes (only if link actually changed)
+  $: {
+    const trimmed = sendingLink?.trim() || "";
+    // Only reset if link has meaningfully changed from verified version
+    if (stravaVerified && lastVerifiedLink && trimmed !== lastVerifiedLink) {
       stravaVerified = false;
       distanceInput = 0;
     }
