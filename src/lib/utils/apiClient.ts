@@ -44,9 +44,8 @@ export async function apiRequest(
     try {
         response = await fetch(url, fetchOptions);
     } catch (error) {
-        // Network error or fetch failed
+        // Network error or fetch failed - don't force logout, let caller handle
         console.error('❌ API Request failed:', error);
-        auth.forceLogoutAndRedirect();
         throw error;
     }
 
@@ -96,11 +95,16 @@ export async function apiRequest(
                 auth.forceLogoutAndRedirect();
                 throw new Error('Session expired. Please login again.');
             }
-        } else if (status >= 400) {
-            // Any other error status (400, 403, 404, 500, etc.) - force logout
-            console.error(`❌ API Error ${status}: ${response.statusText}`);
+        } else if (status === 403) {
+            // 403 Forbidden - force logout (no permission)
+            console.error(`❌ API Error 403: Forbidden`);
             auth.forceLogoutAndRedirect();
-            throw new Error(`Request failed with status ${status}`);
+            throw new Error('Access denied. Please login again.');
+        } else if (status >= 400) {
+            // Other error status (400, 404, 500, etc.) - don't force logout
+            // Let the caller handle these errors appropriately
+            console.warn(`⚠️ API Error ${status}: ${response.statusText}`);
+            // Just return the error response without forcing logout
         }
     }
 

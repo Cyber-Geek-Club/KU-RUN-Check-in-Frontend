@@ -93,31 +93,39 @@
     async (error: AxiosError) => {
       const config = error.config as any;
 
-      // ✅ Handle ANY error status - Force logout and clear everything
+      // ✅ Handle error status - แยกตามประเภท
       if (error.response?.status) {
         const status = error.response.status;
-        console.error(`❌ API Error ${status} - Force logout and redirect`);
         
-        // Clear ALL storage and cookies
-        if (typeof localStorage !== 'undefined') {
-          localStorage.clear();
-        }
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.clear();
-        }
-        if (typeof document !== 'undefined') {
-          document.cookie.split(";").forEach((c) => {
-            document.cookie = c
-              .replace(/^ +/, "")
-              .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-          });
+        // 🔒 401/403 = Authentication/Authorization error - Force logout
+        if (status === 401 || status === 403) {
+          console.error(`❌ API Error ${status} - Force logout and redirect`);
+          
+          // Clear ALL storage and cookies
+          if (typeof localStorage !== 'undefined') {
+            localStorage.clear();
+          }
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.clear();
+          }
+          if (typeof document !== 'undefined') {
+            document.cookie.split(";").forEach((c) => {
+              document.cookie = c
+                .replace(/^ +/, "")
+                .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+            });
+          }
+          
+          // Force redirect to login
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth/login';
+          }
+          
+          return Promise.reject(error);
         }
         
-        // Force redirect to login
-        if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login';
-        }
-        
+        // ⚠️ 400, 404, 500, etc. = Business logic error - ไม่ logout, ส่ง error ให้ caller จัดการ
+        console.warn(`⚠️ API Error ${status}: ${error.response?.statusText || 'Unknown'}`);
         return Promise.reject(error);
       }
 
@@ -136,18 +144,9 @@
         return api(config);
       }
 
-      // Network error without response - also force logout
-      console.error('❌ Network error - Force logout and redirect');
-      if (typeof localStorage !== 'undefined') {
-        localStorage.clear();
-      }
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.clear();
-      }
-      if (typeof window !== 'undefined') {
-        window.location.href = '/auth/login';
-      }
-
+      // Network error without response - log but don't force logout
+      // Let the caller handle the error appropriately
+      console.error('❌ Network error:', error.message || 'Unknown network error');
       return Promise.reject(error);
     }
   );
@@ -1109,7 +1108,55 @@
       
       // STEP 2: ดึงรายชื่อ Unique Users
       // ✅ ใช้ API ใหม่: GET /api/reward-leaderboards/events/{eventId}/users
-      const uniqueUsersData = await fetchUniqueParticipants(eventId);
+      // ถ้า API ใหม่ไม่พร้อม จะ fallback ไปใช้ entries API
+      let uniqueUsersData = await fetchUniqueParticipants(eventId);
+      
+      // 🔄 Fallback: ถ้า API ใหม่ไม่มี users และมี configId ให้ใช้ entries API แทน
+      if ((!uniqueUsersData || !uniqueUsersData.users || uniqueUsersData.users.length === 0) && configId) {
+        if (isDev) console.log(`[Leaderboard] Fallback to entries API for config ${configId}`);
+        
+        try {
+          const entriesRes = await api.get(`/api/reward-leaderboards/configs/${configId}/entries`, {
+            params: { qualified_only: false, limit: 1000 }
+          });
+          
+          const entriesData = Array.isArray(entriesRes.data) ? entriesRes.data : (entriesRes.data?.data || []);
+          
+          if (entriesData.length > 0) {
+            // Convert entries to unique users format
+            uniqueUsersData = {
+              total_users: entriesData.length,
+              event_id: eventId,
+              event_name: rewardData.selectedEvent?.title || '',
+              users: entriesData.map((entry: any) => ({
+                user_id: entry.user_id,
+                user_full_name: entry.user_full_name || 'Unknown',
+                user_email: entry.user_email || '',
+                event_id: eventId,
+                event_name: rewardData.selectedEvent?.title || '',
+                total_participations: entry.total_completions || 0,
+                completed_participations: entry.total_completions || 0,
+                checked_in_count: entry.total_completions || 0,
+                proof_submitted_count: entry.total_completions || 0,
+                rejected_count: 0,
+                cancelled_count: 0,
+                total_distance_km: null,
+                first_participation_at: null,
+                last_participation_at: entry.qualified_at || null,
+                leaderboard_config_id: configId,
+                leaderboard_rank: entry.rank || null,
+                leaderboard_qualified: !!entry.qualified_at,
+                leaderboard_reward_name: entry.reward_name || null,
+                tier_progress: null
+              }))
+            };
+            
+            if (isDev) console.log(`[Leaderboard] Loaded ${entriesData.length} users from entries API (fallback)`);
+          }
+        } catch (entriesError: any) {
+          if (isDev) console.warn(`[Leaderboard] Entries fallback failed:`, entriesError.message);
+        }
+      }
       
       if (uniqueUsersData && uniqueUsersData.users && uniqueUsersData.users.length > 0) {
         // Get tier colors
