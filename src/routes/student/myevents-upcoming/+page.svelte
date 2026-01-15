@@ -71,12 +71,12 @@
           // Modal
           modal_step1: "ขั้นตอนที่ 1: ข้อมูลการวิ่ง",
           modal_step1_sub: "กรอกข้อมูลจาก Strava ของคุณ",
-          modal_link_label: "ลิงก์กิจกรรม Strava (จำเป็น)",
+          modal_link_label: "ลิงก์กิจกรรม Strava *",
           modal_dist_label: "ระยะทาง (กิโลเมตร)",
           modal_dist_warn: "*ระบบจะล็อคการแก้ไข กรุณากดปุ่ม 'ตรวจสอบ' เพื่อดึงข้อมูลจริง",
-          modal_step2: "ขั้นตอนที่ 2: หลักฐานรูปภาพ",
-          modal_step2_sub: "อัปโหลดภาพแคปหน้าจอผลการวิ่ง",
-          modal_upload_txt: "แตะเพื่ออัปโหลดรูปภาพ",
+          modal_step2: "ขั้นตอนที่ 2: หลักฐานรูปภาพ *",
+          modal_step2_sub: "อัปโหลดภาพแคปหน้าจอผลการวิ่ง (บังคับ)",
+          modal_upload_txt: "📸 แตะเพื่ออัปโหลดรูปภาพ (จำเป็น)",
           modal_rejected: "⚠️ รูปภาพถูกปฏิเสธ:",
           modal_verifying_title: "อยู่ระหว่างตรวจสอบ",
           modal_verifying_desc: "ระบบได้รับข้อมูลแล้ว กำลังรอเจ้าหน้าที่ตรวจสอบความถูกต้องครับ",
@@ -152,12 +152,12 @@
           // Modal
           modal_step1: "Step 1: Activity Data",
           modal_step1_sub: "Enter your Strava activity link",
-          modal_link_label: "Strava Activity Link (Required)",
+          modal_link_label: "Strava Activity Link *",
           modal_dist_label: "Distance (KM)",
           modal_dist_warn: "*Input is locked. Please click 'Verify Link' to fetch data.",
-          modal_step2: "Step 2: Proof Image",
-          modal_step2_sub: "Upload a screenshot of your run result",
-          modal_upload_txt: "📸 Tap to upload image",
+          modal_step2: "Step 2: Proof Image *",
+          modal_step2_sub: "Upload a screenshot of your run result (Required)",
+          modal_upload_txt: "📸 Tap to upload image (Required)",
           modal_rejected: "⚠️ Image Rejected:",
           modal_verifying_title: "Verification Pending",
           modal_verifying_desc: "We are verifying your submission. Please wait.",
@@ -1441,6 +1441,15 @@ async function handleCheckInConfirm() {
           Swal.fire(t[lang].alert_warning, t[lang].alert_verify_first, "warning");
           return;
       }
+      // ✅ เพิ่ม validation: ต้องมีรูปภาพก่อนส่ง
+      if (!proofFile && !selectedEvent?.proof_image_url) {
+          Swal.fire(
+              t[lang].alert_warning,
+              lang === 'th' ? 'กรุณาอัปโหลดรูปภาพหลักฐาน' : 'Please upload proof image',
+              "warning"
+          );
+          return;
+      }
 
       if (selectedEvent) {
           selectedEvent.status = 'proof_submitted';
@@ -2163,9 +2172,11 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                     {/if}
 
                     <div class="input-group">
-                        <label for="link">Strava Activity Link</label>
+                        <label for="link">
+                            Strava Activity Link <span style="color: #ef4444; font-weight: bold;">*</span>
+                        </label>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <input type="text" id="link" bind:value={sendingLink} placeholder="https://strava.app.link/... หรือ strava.com/activities/..." style="flex: 1;" />
+                            <input type="text" id="link" bind:value={sendingLink} placeholder="https://strava.app.link/... หรือ strava.com/activities/..." style="flex: 1;" required />
                             <button type="button" class="verify-strava-btn" on:click={checkStravaLink}>
                                 🔍 {t[lang].btn_verify_link}
                             </button>
@@ -2183,7 +2194,9 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                     </div>
 
                     <div class="upload-area" style="margin-top: 15px;">
-                        <p style="display: block; margin-bottom: 5px; font-weight: 600;">{lang === 'th' ? 'รูปภาพหลักฐาน' : 'Proof Image'}</p>
+                        <p style="display: block; margin-bottom: 5px; font-weight: 600;">
+                            {lang === 'th' ? 'รูปภาพหลักฐาน' : 'Proof Image'} <span style="color: #ef4444; font-weight: bold;">*</span>
+                        </p>
                         {#if !proofImage}
                             <label class="upload-label" style="border: 2px dashed #ccc; padding: 20px; text-align: center; display: block; cursor: pointer; border-radius: 8px;">
                                 <input id="proofImageInput" type="file" accept="image/*" on:change={handleImageUpload} hidden />
