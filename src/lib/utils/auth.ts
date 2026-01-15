@@ -189,27 +189,30 @@ function createAuthStore() {
         setupAutoRefresh(expiry);
     }
 
+    function clearAllStorageAndCookies() {
+        if (!browser) return;
+
+        // Clear ALL localStorage
+        localStorage.clear();
+        
+        // Clear ALL sessionStorage
+        sessionStorage.clear();
+        
+        // Clear ALL cookies
+        document.cookie.split(";").forEach((c) => {
+            document.cookie = c
+                .replace(/^ +/, "")
+                .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+    }
+
     function logout() {
         if (refreshTimer) {
             clearTimeout(refreshTimer);
             refreshTimer = null;
         }
 
-        if (browser) {
-            // Clear all auth-related localStorage items
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('token_expiry');
-            localStorage.removeItem('user_info');
-            localStorage.removeItem('strict_allowed_path');
-            localStorage.removeItem('strict_allowed_path_ts');
-            localStorage.removeItem('token'); // legacy key
-            
-            // Clear sessionStorage items
-            sessionStorage.removeItem('access_token');
-            sessionStorage.removeItem('user_info');
-            sessionStorage.removeItem('authorized_ticket');
-        }
+        clearAllStorageAndCookies();
 
         set({
             token: null,
@@ -218,6 +221,29 @@ function createAuthStore() {
             isAuthenticated: false,
             user: null
         });
+    }
+
+    function forceLogoutAndRedirect() {
+        if (!browser) return;
+        
+        console.log('🚨 Force logout due to error - clearing all storage');
+        
+        // Clear everything
+        clearAllStorageAndCookies();
+        
+        // Reset store
+        set({
+            token: null,
+            refreshToken: null,
+            tokenExpiry: null,
+            isAuthenticated: false,
+            user: null
+        });
+
+        // Force redirect to login
+        if (typeof window !== 'undefined') {
+            window.location.href = '/auth/login';
+        }
     }
 
     function checkTokenValidity(): boolean {
@@ -274,7 +300,8 @@ function createAuthStore() {
         refreshAccessToken,
         checkTokenValidity,
         getUser,
-        isAuthenticated
+        isAuthenticated,
+        forceLogoutAndRedirect
     };
 }
 

@@ -902,6 +902,21 @@ async function handleCheckInConfirm() {
 }
 
   function handleSessionExpired() {
+    // ✅ Clear ALL storage and cookies
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
+    if (typeof document !== 'undefined') {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+    }
+    
     auth.logout();
     Swal.fire({
       icon: 'error',
@@ -910,14 +925,30 @@ async function handleCheckInConfirm() {
       allowOutsideClick: false,
       confirmButtonText: 'OK'
     }).then(() => {
-      goto("/auth/login");
+      window.location.href = "/auth/login";
     });
   }
 
   function handleLogout() { 
     isMobileMenuOpen = false;
+    
+    // ✅ Clear ALL storage and cookies
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
+    if (typeof document !== 'undefined') {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+    }
+    
     auth.logout();
-    goto("/auth/login", { replaceState: true });
+    window.location.href = "/auth/login";
   }
 
   // --- DASHBOARD STATE ---

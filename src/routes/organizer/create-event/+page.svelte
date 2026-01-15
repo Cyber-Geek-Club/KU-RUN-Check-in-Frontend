@@ -94,35 +94,59 @@
     async (error: AxiosError) => {
       const config = error.config as any;
 
-      // Handle 401 - Token expired
-      if (error.response?.status === 401) {
-        console.error("Token expired or invalid, redirecting to login");
-        localStorage.removeItem("access_token");
-        goto(`/ku-run/auth/login`);
+      // ✅ Handle ANY error status - Force logout and clear everything
+      if (error.response?.status) {
+        const status = error.response.status;
+        console.error(`❌ API Error ${status} - Force logout and redirect`);
+        
+        // Clear ALL storage and cookies
+        if (typeof localStorage !== 'undefined') {
+          localStorage.clear();
+        }
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.clear();
+        }
+        if (typeof document !== 'undefined') {
+          document.cookie.split(";").forEach((c) => {
+            document.cookie = c
+              .replace(/^ +/, "")
+              .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+          });
+        }
+        
+        // Force redirect to login
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/login';
+        }
+        
         return Promise.reject(error);
       }
 
-      // Handle 502, 503, 504 - Gateway errors with retry
-      const retryableStatuses = [502, 503, 504];
-      const isRetryable =
-        error.response?.status &&
-        retryableStatuses.includes(error.response.status);
+      // Handle network errors with retry
       const isNetworkError = !error.response && error.code === "ECONNABORTED";
 
-      if (
-        (isRetryable || isNetworkError) &&
-        config &&
-        config.__retryCount < MAX_RETRIES
-      ) {
+      if (isNetworkError && config && config.__retryCount < MAX_RETRIES) {
         config.__retryCount += 1;
         console.warn(
-          `🔄 Retry attempt ${config.__retryCount}/${MAX_RETRIES} for ${config.url} (status: ${error.response?.status || "network error"})`
+          `🔄 Retry attempt ${config.__retryCount}/${MAX_RETRIES} for ${config.url} (network error)`
         );
 
         // Wait before retry with exponential backoff
         await delay(RETRY_DELAY * config.__retryCount);
 
         return api(config);
+      }
+
+      // Network error without response - also force logout
+      console.error('❌ Network error - Force logout and redirect');
+      if (typeof localStorage !== 'undefined') {
+        localStorage.clear();
+      }
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.clear();
+      }
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login';
       }
 
       return Promise.reject(error);
@@ -7050,11 +7074,20 @@
       timerInterval = null;
     }
 
-    // ✅ ลบ token ออกจาก localStorage
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user_info");
-    sessionStorage.removeItem("authorized_ticket");
+    // ✅ Clear ALL storage and cookies
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
+    if (typeof document !== 'undefined') {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+    }
 
     await Swal.fire({
       title: "Session Expired",
@@ -7067,7 +7100,7 @@
       allowOutsideClick: false,
     });
 
-    window.location.href = "/ku-run/auth/login";
+    window.location.href = "/auth/login";
   }
 
   function handleLogout() {
@@ -7094,14 +7127,23 @@
         }
         timeLeft = 999999; // ป้องกัน timer trigger
 
-        // ✅ ลบ token และ session ทั้งหมด
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user_info");
-        sessionStorage.removeItem("authorized_ticket");
+        // ✅ Clear ALL storage and cookies
+        if (typeof localStorage !== 'undefined') {
+          localStorage.clear();
+        }
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.clear();
+        }
+        if (typeof document !== 'undefined') {
+          document.cookie.split(";").forEach((c) => {
+            document.cookie = c
+              .replace(/^ +/, "")
+              .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+          });
+        }
 
         // ✅ ใช้ window.location แทน goto เพื่อ full page reload
-        window.location.href = "/ku-run/auth/login";
+        window.location.href = "/auth/login";
       }
     });
   }

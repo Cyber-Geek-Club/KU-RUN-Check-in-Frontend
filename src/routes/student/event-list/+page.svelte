@@ -1031,11 +1031,27 @@
   async function handleSessionExpired() {
     if (sessionExpiredAlertShown) return;
     sessionExpiredAlertShown = true;
+    
+    // ✅ Clear ALL storage and cookies
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
+    if (typeof document !== 'undefined') {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+    }
+    
     auth.logout();
     if (timerInterval) clearInterval(timerInterval);
     if (pollTimeout) { clearTimeout(pollTimeout); pollTimeout = null; }
     await Swal.fire({ icon: 'error', title: 'Session Expired', text: 'Expired', timer: 3000, showConfirmButton: false, allowOutsideClick: false });
-    goto("/auth/login");
+    window.location.href = "/auth/login";
   }
 
   function formatDate(startStr: string, endStr: string, currentLang: string) {
@@ -1139,8 +1155,24 @@
 
   function handleLogout() {
     isMobileMenuOpen = false;
+    
+    // ✅ Clear ALL storage and cookies
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
+    if (typeof document !== 'undefined') {
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+    }
+    
     auth.logout();
-    goto("/auth/login", { replaceState: true });
+    window.location.href = "/auth/login";
   }
 
   // Debounce search to reduce frequent recomputation

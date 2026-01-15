@@ -39,37 +39,68 @@ export async function apiRequest(
 
     // Make the request
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
-    let response = await fetch(url, fetchOptions);
+    let response: Response;
+    
+    try {
+        response = await fetch(url, fetchOptions);
+    } catch (error) {
+        // Network error or fetch failed
+        console.error('❌ API Request failed:', error);
+        auth.forceLogoutAndRedirect();
+        throw error;
+    }
 
-    // If 401 and we have a refresh token, try to refresh
-    if (response.status === 401 && !skipRefresh && browser) {
-        const refreshToken = localStorage.getItem('refresh_token');
+    // Check for error status codes
+    if (!response.ok) {
+        const status = response.status;
+        
+        // If 401, try token refresh first
+        if (status === 401 && !skipRefresh && browser) {
+            const refreshToken = localStorage.getItem('refresh_token');
 
-        if (refreshToken) {
-            console.log('Got 401, attempting token refresh...');
+            if (refreshToken) {
+                console.log('Got 401, attempting token refresh...');
 
-            // Try to refresh the token
-            const refreshSuccess = await auth.refreshAccessToken();
+                // Try to refresh the token
+                const refreshSuccess = await auth.refreshAccessToken();
 
-            if (refreshSuccess) {
-                // Retry the original request with new token
-                const newToken = localStorage.getItem('access_token');
-                if (newToken) {
-                    headers.set('Authorization', `Bearer ${newToken}`);
-                    fetchOptions.headers = headers;
-                    response = await fetch(url, fetchOptions);
+                if (refreshSuccess) {
+                    // Retry the original request with new token
+                    const newToken = localStorage.getItem('access_token');
+                    if (newToken) {
+                        headers.set('Authorization', `Bearer ${newToken}`);
+                        fetchOptions.headers = headers;
+                        try {
+                            response = await fetch(url, fetchOptions);
+                            // If still error after refresh, force logout
+                            if (!response.ok) {
+                                console.error(`❌ Error ${response.status} after token refresh`);
+                                auth.forceLogoutAndRedirect();
+                            }
+                            return response;
+                        } catch (retryError) {
+                            console.error('❌ Retry request failed:', retryError);
+                            auth.forceLogoutAndRedirect();
+                            throw retryError;
+                        }
+                    }
+                } else {
+                    // Refresh failed, force logout
+                    console.error('❌ Token refresh failed');
+                    auth.forceLogoutAndRedirect();
+                    throw new Error('Session expired. Please login again.');
                 }
             } else {
-                // Refresh failed, redirect to login
-                auth.logout();
-                goto('/auth/login');
+                // No refresh token, force logout
+                console.error('❌ No refresh token available');
+                auth.forceLogoutAndRedirect();
                 throw new Error('Session expired. Please login again.');
             }
-        } else {
-            // No refresh token, logout
-            auth.logout();
-            goto('/auth/login');
-            throw new Error('Session expired. Please login again.');
+        } else if (status >= 400) {
+            // Any other error status (400, 403, 404, 500, etc.) - force logout
+            console.error(`❌ API Error ${status}: ${response.statusText}`);
+            auth.forceLogoutAndRedirect();
+            throw new Error(`Request failed with status ${status}`);
         }
     }
 
