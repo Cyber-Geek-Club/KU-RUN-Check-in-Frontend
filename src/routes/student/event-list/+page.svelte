@@ -1324,13 +1324,13 @@
   </header>
 
   {#if isMobileMenuOpen}
-    <div class="mobile-overlay" role="button" tabindex="0" aria-label="Close menu" on:click={() => (isMobileMenuOpen = false)} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { isMobileMenuOpen = false; } }} transition:fade={{ duration: 200 }}></div>
+    <div class="mobile-overlay" role="button" tabindex="0" aria-label="Close menu" onclick={() => (isMobileMenuOpen = false)} onkeydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { isMobileMenuOpen = false; } }} transition:fade={{ duration: 200 }}></div>
     <div class="mobile-drawer" transition:slide={{ axis: 'x', duration: 300 }}>
-      <div class="drawer-header"><span class="brand-name" style="font-size: 1.4rem;">MENU</span><button class="close-btn" on:click={() => (isMobileMenuOpen = false)}>&times;</button></div>
+      <div class="drawer-header"><span class="brand-name" style="font-size: 1.4rem;">MENU</span><button class="close-btn" onclick={() => (isMobileMenuOpen = false)}>&times;</button></div>
       <div class="drawer-search"><input type="text" placeholder="Search..." class="drawer-search-input" bind:value={searchQuery} /></div>
       <div class="drawer-content">
         {#each menuItems as item}
-          <button class="drawer-item" class:active={currentView === item.id} on:click={() => selectView(item.id, item.path)}>
+          <button class="drawer-item" class:active={currentView === item.id} onclick={() => selectView(item.id, item.path)}>
             <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 10px;">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={item.svg}></path>
             </svg>
@@ -1346,12 +1346,12 @@
             <span>Language</span>
           </div>
           <div class="lang-toggle-pill">
-            <button class:active={lang === 'th'} on:click={() => setLang('th')}>TH</button>
-            <button class:active={lang === 'en'} on:click={() => setLang('en')}>EN</button>
+            <button class:active={lang === 'th'} onclick={() => setLang('th')}>TH</button>
+            <button class:active={lang === 'en'} onclick={() => setLang('en')}>EN</button>
           </div>
         </div>
       </div>
-      <button class="drawer-item logout-special" on:click={handleLogout}>Logout</button>
+      <button class="drawer-item logout-special" onclick={handleLogout}>Logout</button>
     </div>
   {/if}
 
