@@ -1458,6 +1458,7 @@ async function handleCheckInConfirm() {
               if (result.success && result.distance_km) {
                   distanceInput = Number(result.distance_km) || 0;
                   stravaVerified = true; // Mark as verified
+                  lastVerifiedLink = trimmedLink; // Save verified link
                   Swal.fire({
                       icon: 'success',
                       title: lang === 'th' ? 'ดึงข้อมูลสำเร็จ!' : 'Data Retrieved!',
@@ -1474,6 +1475,7 @@ async function handleCheckInConfirm() {
                   // API returned but distance is 0
                   distanceInput = Number(result.distance_km) || 0;
                   stravaVerified = true; // Mark as verified
+                  lastVerifiedLink = trimmedLink; // Save verified link
                   Swal.fire({
                       icon: 'info',
                       title: lang === 'th' ? 'พบข้อมูล' : 'Data Found',
@@ -1528,6 +1530,7 @@ async function handleCheckInConfirm() {
       if (result.isConfirmed && result.value) {
           distanceInput = Number(result.value);
           stravaVerified = true; // Mark as verified
+          lastVerifiedLink = sendingLink?.trim() || ""; // Save verified link
           Swal.fire({
               icon: 'success',
               title: 'OK',

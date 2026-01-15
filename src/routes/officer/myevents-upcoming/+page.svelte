@@ -226,12 +226,13 @@
   let currentParticipationId: number | null = null;
   let distanceInput = 0;
   let stravaVerified = false; // Track if user clicked verify button
+  let lastVerifiedLink = ""; // Track last verified Strava link
 
-  // ✅ Reset verification when link changes
-  $: if (sendingLink) {
-    // Reset when user types/modifies the link
-    const trimmed = sendingLink.trim();
-    if (trimmed && distanceInput > 0) {
+  // ✅ Reset verification when link changes (only if link actually changed)
+  $: {
+    const trimmed = sendingLink?.trim() || "";
+    // Only reset if link has meaningfully changed from verified version
+    if (stravaVerified && lastVerifiedLink && trimmed !== lastVerifiedLink) {
       stravaVerified = false;
       distanceInput = 0;
     }
@@ -1457,6 +1458,7 @@ async function handleCheckInConfirm() {
               if (result.success && result.distance_km) {
                   distanceInput = Number(result.distance_km) || 0;
                   stravaVerified = true; // ✅ Mark as verified
+                  lastVerifiedLink = trimmedLink; // Save verified link
                   Swal.fire({
                       icon: 'success',
                       title: lang === 'th' ? 'ดึงข้อมูลสำเร็จ!' : 'Data Retrieved!',
@@ -1473,6 +1475,7 @@ async function handleCheckInConfirm() {
                   // API returned but distance is 0
                   distanceInput = Number(result.distance_km) || 0;
                   stravaVerified = true; // ✅ Mark as verified
+                  lastVerifiedLink = trimmedLink; // Save verified link
                   Swal.fire({
                       icon: 'info',
                       title: lang === 'th' ? 'พบข้อมูล' : 'Data Found',
@@ -1527,6 +1530,7 @@ async function handleCheckInConfirm() {
       if (result.isConfirmed && result.value) {
           distanceInput = Number(result.value);
           stravaVerified = true; // ✅ Mark as verified
+          lastVerifiedLink = sendingLink?.trim() || ""; // Save verified link
           Swal.fire({
               icon: 'success',
               title: 'OK',
