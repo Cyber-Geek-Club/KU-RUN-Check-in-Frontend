@@ -158,9 +158,9 @@ export async function deleteEvent(eventId: number): Promise<void> {
 // Fetch event logs/participations
 export async function fetchEventLogs(eventId: number): Promise<Log[]> {
   try {
-    const response = await api.get(`/api/participations/event/${eventId}`);
+    const response = await api.get(`/api/events/${eventId}/participants`);
     const data = response.data;
-    return Array.isArray(data) ? data : (data.participations || data.data || []);
+    return Array.isArray(data) ? data : (data.participants || data.data || []);
   } catch (error) {
     console.error('Error fetching logs:', error);
     throw error;
