@@ -6,29 +6,52 @@ import { ROUTES } from './routes';
  * Navigate to event list for the current role
  */
 export function navigateToEventList(role: UserRole) {
-  return goto(ROUTES[role].eventList);
+  if (role === 'student') {
+    return goto(ROUTES.student.eventList);
+  } else if (role === 'officer') {
+    return goto(ROUTES.officer.eventList);
+  } else {
+    return goto(ROUTES.organizer.eventList);
+  }
 }
 
 /**
  * Navigate to my events for the current role
  */
 export function navigateToMyEvents(role: UserRole) {
-  return goto(ROUTES[role].myEvents);
+  if (role === 'student') {
+    return goto(ROUTES.student.myEvents);
+  } else if (role === 'officer') {
+    return goto(ROUTES.officer.myEvents);
+  } else {
+    return goto(ROUTES.organizer.myEvents);
+  }
 }
 
 /**
  * Navigate to settings for the current role
  */
 export function navigateToSettings(role: UserRole) {
-  return goto(ROUTES[role].settings);
+  if (role === 'student') {
+    return goto(ROUTES.student.settings);
+  } else if (role === 'officer') {
+    return goto(ROUTES.officer.settings);
+  } else {
+    return goto(ROUTES.organizer.settings);
+  }
 }
 
 /**
  * Navigate to home for the current role
  */
 export function navigateToHome(role: UserRole) {
-  const routes = ROUTES[role];
-  return goto(routes.eventList || routes.home);
+  if (role === 'student') {
+    return goto(ROUTES.student.eventList);
+  } else if (role === 'officer') {
+    return goto(ROUTES.officer.eventList);
+  } else {
+    return goto(ROUTES.organizer.eventList);
+  }
 }
 
 /**
@@ -49,7 +72,7 @@ export function navigateAfterAuth(role: string) {
     case 'officer':
       return goto(ROUTES[normalizedRole].eventList);
     case 'organizer':
-      return goto(ROUTES.organizer.eventLog);
+      return goto(ROUTES.organizer.eventLog || ROUTES.organizer.home);
     default:
       return goto('/');
   }

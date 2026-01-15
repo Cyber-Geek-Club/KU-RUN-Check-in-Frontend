@@ -29,6 +29,14 @@ export const ROUTES = {
   organizer: {
     home: '/organizer',
     createEvent: '/organizer/create-event',
+    eventList: '/organizer/events',
+    events: '/organizer/events',
+    eventLog: '/organizer/event-log',
+    settings: '/organizer/settings',
+    monthlyReward: '/organizer/monthly-reward',
+    verifyProof: '/organizer/verify-proof',
+    unlockUser: '/organizer/unlock-user',
+    myEvents: '/organizer/events',
   },
 } as const;
 
@@ -43,7 +51,13 @@ export function getRoutesForRole(role: UserRole) {
  * Get home path for a specific role
  */
 export function getHomePath(role: UserRole): string {
-  return ROUTES[role].eventList || ROUTES[role].home;
+  if (role === 'student') {
+    return ROUTES.student.eventList;
+  } else if (role === 'officer') {
+    return ROUTES.officer.eventList;
+  } else {
+    return ROUTES.organizer.eventList;
+  }
 }
 
 /**

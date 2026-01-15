@@ -1,1 +1,0 @@
-export { default as component } from "../../../../src/routes/student/event-list/+page.svelte";
