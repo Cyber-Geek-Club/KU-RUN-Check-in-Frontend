@@ -79,7 +79,7 @@
         const r = role?.toLowerCase() || '';
         if (r === 'student') return '/student/event-list';
         if (r === 'officer') return '/officer/event-list';
-        if (r === 'organizer') return '/organizer/events';
+        if (r === 'organizer') return '/organizer/create-event';
         return '/auth/login';
     }
 
