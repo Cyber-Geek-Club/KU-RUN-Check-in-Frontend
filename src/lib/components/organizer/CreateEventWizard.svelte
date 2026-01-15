@@ -213,9 +213,11 @@
 
 <style>
   .wizard-container {
+    width: 100%;
     max-width: 1000px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    box-sizing: border-box;
     background: linear-gradient(165deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
     border-radius: 24px;
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -271,6 +273,7 @@
     align-items: center;
     margin-bottom: 3rem;
     position: relative;
+    gap: 0.75rem;
   }
 
   .step-indicator {
@@ -282,8 +285,8 @@
     border: none;
     cursor: pointer;
     position: relative;
-    flex: 1;
-    max-width: 150px;
+    flex: 1 1 0;
+    max-width: 160px;
     transition: all 0.3s ease;
   }
 
@@ -363,7 +366,7 @@
 
   .step-connector {
     height: 2px;
-    flex: 1;
+    flex: 1 1 40px;
     background: rgba(100, 116, 139, 0.2);
     margin: 0 -10px;
     margin-bottom: 2rem;
@@ -493,6 +496,7 @@
 
     .step-indicator {
       min-width: 80px;
+      max-width: none;
     }
 
     .step-icon {
@@ -516,6 +520,40 @@
 
     .btn {
       flex: 1;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .step-indicators {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+
+    .step-indicator {
+      flex: none;
+      max-width: none;
+      align-items: flex-start;
+      padding: 0.75rem 1rem;
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(100, 116, 139, 0.25);
+    }
+
+    .step-indicator.active {
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .step-number {
+      right: 12px;
+    }
+
+    .step-connector {
+      display: none;
+    }
+
+    .wizard-footer {
+      gap: 1.5rem;
     }
   }
 </style>
