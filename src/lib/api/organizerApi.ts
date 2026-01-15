@@ -1,7 +1,7 @@
 // ==========================================
 // 🔧 ORGANIZER API CLIENT
 // ==========================================
-import axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { goto } from '$app/navigation';
 import type { AppEvent, Log, ProofSubmission, RewardUser } from '$lib/stores/organizerStore';
 
@@ -26,7 +26,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Request interceptor - เพิ่ม token อัตโนมัติ
 api.interceptors.request.use(
-  (config: AxiosRequestConfig & { __retryCount?: number }) => {
+  (config: InternalAxiosRequestConfig & { __retryCount?: number }) => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
     if (token) {
       config.headers = config.headers || {};
