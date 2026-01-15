@@ -12,7 +12,6 @@
 
   // --- CONFIG ---
   const BASE_URL = API_BASE_URL;
-  import holidaysJson from '$lib/data/holidays.json';
 
   // --- STATE: LAYOUT ---
   let isMobileMenuOpen = false;
@@ -311,12 +310,8 @@
             return;
         }
 
+        // ✅ Holidays map is now built from event data itself (not from static file)
         holidaysMap = {};
-        if (Array.isArray(holidaysJson)) {
-              holidaysJson.forEach((h: any) => {
-                  if (h && h.eventId) holidaysMap[h.eventId] = h;
-              });
-        }
 
         const [resPart, resAllEvents] = await Promise.all([
              fetch(`${BASE_URL}/api/participations/user/${userId}`, {

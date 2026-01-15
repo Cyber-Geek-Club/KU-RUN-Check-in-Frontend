@@ -36,7 +36,6 @@
     /\/$/,
     ""
   );
-  const HOLIDAY_FILE = "/internal/holidays.json";
 
   // ==========================================
   // 🔧 AXIOS INSTANCE CONFIGURATION
@@ -4557,23 +4556,28 @@
   }
 
   // ฟังก์ชันดึงวันหยุดจากไฟล์ JSON มาเก็บไว้
-  // ฟังก์ชันดึงวันหยุดจากไฟล์ JSON มาเก็บไว้
+  // ✅ ฟังก์ชันดึงวันหยุดจาก API ของแต่ละ Event
   async function fetchHolidaysFromFile() {
     try {
-      const res = await fetch("/ku-run/internal/holidays");
+      // ไม่ต้องดึงจากไฟล์แล้ว - จะดึงจาก API ของแต่ละ event แทน
+      // allHolidaysData จะถูกสร้างขึ้นเมื่อสร้าง/แก้ไข event
+      allHolidaysData = [];
+      console.log("📝 Using event-specific holidays from API");
+      return;
+    } catch (e) {
+      console.error("Load holidays failed", e);
+      allHolidaysData = [];
+    }
+  }
 
-      // ถ้าไม่เจอไฟล์ (404) ให้ใช้ array ว่าง
-      if (res.status === 404) {
-        console.log("📝 Holidays file not found, using empty array");
-        allHolidaysData = [];
-        return;
-      }
+  // ✅ ฟังก์ชันดึง holidays ของ event เฉพาะ
+  async function fetchEventHolidays(eventId: number) {
+    try {
+      const res = await api.get(`/api/events/${eventId}/holidays`);
 
-      // ถ้า server error (500) ให้ใช้ array ว่าง
       if (!res.ok) {
-        console.warn("⚠️ Server error loading holidays, using empty array");
-        allHolidaysData = [];
-        return;
+        console.warn(`⚠️ Failed to fetch holidays for event ${eventId}`);
+        return [];
       }
 
       const text = await res.text();
@@ -5381,13 +5385,10 @@
 
   let allSavedHolidays = [];
 
+  // ✅ ไม่ต้อง loadHolidays จากไฟล์แล้ว - ใช้ API ของแต่ละ event
   async function loadHolidays() {
-    try {
-      const res = await fetch("/ku-run/internal/holidays");
-      allSavedHolidays = await res.json();
-    } catch (e) {
-      console.error("Load holidays failed", e);
-    }
+    // Deprecated - holidays are now per-event via API
+    console.log("📝 Holidays are now loaded per-event from API");
   }
 
   interface RewardForm {
@@ -5845,29 +5846,39 @@
 
       const data: any = await res.json();
 
-      // ขึ้นอยู่กับว่า holidays API อยู่ที่ไหน
-      const resHolidays = await fetch("/ku-run/internal/holidays");
-      if (resHolidays.ok) {
-        allHolidaysData = await resHolidays.json();
-      }
-
+      // ✅ ไม่ต้องดึง holidays จากไฟล์ JSON แล้ว - จะดึงจาก API ของแต่ละ event เมื่อต้องการ
       console.log("📥 Refreshed events from API:", data);
 
-      // แปลงข้อมูลจาก API ให้ตรงกับ AppEvent interface
-      events = data.map((item: any) => {
-        const startDate = new Date(item.event_date);
-        const endDate = new Date(item.event_end_date);
-        
-        // ✅ แปลง UTC เป็นเวลากรุงเทพ (+7 ชั่วโมง)
-        const bangkokOffset = 7 * 60 * 60 * 1000;
-        const startBangkok = new Date(startDate.getTime() + bangkokOffset);
-        const endBangkok = new Date(endDate.getTime() + bangkokOffset);
-        
-        const isPublished = item.is_published === true;
-        const isActive = item.is_active === true;
-        const imageUrl = processImageUrl(item.banner_image_url);
+      // ✅ แปลงข้อมูลจาก API ให้ตรงกับ AppEvent interface
+      // และดึง holidays สำหรับแต่ละ event (parallel)
+      const eventsWithHolidays = await Promise.all(
+        data.map(async (item: any) => {
+          const startDate = new Date(item.event_date);
+          const endDate = new Date(item.event_end_date);
+          
+          // ✅ แปลง UTC เป็นเวลากรุงเทพ (+7 ชั่วโมง)
+          const bangkokOffset = 7 * 60 * 60 * 1000;
+          const startBangkok = new Date(startDate.getTime() + bangkokOffset);
+          const endBangkok = new Date(endDate.getTime() + bangkokOffset);
+          
+          const isPublished = item.is_published === true;
+          const isActive = item.is_active === true;
+          const imageUrl = processImageUrl(item.banner_image_url);
 
-        return {
+          // ✅ ดึง holidays จาก API สำหรับ event นี้
+          let eventHolidays: string[] = [];
+          try {
+            const holidaysRes = await api.get(`/api/events/${item.id}/holidays`);
+            if (holidaysRes.ok) {
+              const holidaysData = await holidaysRes.json();
+              // API คืน array ของ {holiday_date, holiday_name, ...}
+              eventHolidays = holidaysData.map((h: any) => h.holiday_date);
+            }
+          } catch (err) {
+            console.warn(`⚠️ Failed to fetch holidays for event ${item.id}:`, err);
+          }
+
+          return {
           id: item.id,
           title: item.title,
           description: item.description,
@@ -5909,10 +5920,13 @@
           // Other
           image: imageUrl,
           rewards: item.rewards || [],
-          holidays: item.holidays || [],
+          holidays: eventHolidays,
           excludeWeekends: item.exclude_weekends || false,
         };
-      });
+        })
+      );
+
+      events = eventsWithHolidays;
 
       console.log("✅ Events refreshed:", events.length);
     } catch (err) {
@@ -6480,26 +6494,24 @@
         }
 
         // -----------------------------------------------------------
-        // 🚀 STEP 2: ลบข้อมูล Holiday/Reward จากไฟล์ JSON
+        // 🚀 STEP 2: ลบข้อมูล Holidays ของ Event (CASCADE จะลบอัตโนมัติ)
         // -----------------------------------------------------------
         try {
-          const deleteHolidayRes = await fetch("/ku-run/internal/holidays", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ eventId: id }),
-          });
+          // ✅ ใช้ API DELETE /api/events/{event_id}/holidays - ลบทั้งหมด
+          const deleteHolidayRes = await api.delete(
+            `/api/events/${id}/holidays`
+          );
 
-          if (!deleteHolidayRes.ok) {
+          if (!deleteHolidayRes.ok && deleteHolidayRes.status !== 404) {
             console.warn(
-              "⚠️ Failed to delete holiday config, but continuing..."
+              "⚠️ Failed to delete holidays, but continuing..."
             );
           } else {
-            const deleteResult = await deleteHolidayRes.json();
-            console.log("✅ Holiday config deleted:", deleteResult);
+            console.log("✅ Event holidays deleted (or none existed)");
           }
         } catch (holidayErr) {
           console.warn("⚠️ Holiday deletion error:", holidayErr);
-          // ไม่ throw error เพราะ event ลบแล้ว ไม่อยากให้ user เห็น error
+          // ไม่ throw error เพราะ event ลบแล้ว และ CASCADE ก็จะลบอัตโนมัติ
         }
 
         // -----------------------------------------------------------
@@ -8088,6 +8100,23 @@
     }
 
     // =========================================================
+    // 5. 🎉 ดึงข้อมูล Holidays
+    // =========================================================
+    let holidaysData: string[] = [];
+    try {
+      const holidaysRes = await api.get(`/api/events/${apiData.id}/holidays`);
+      if (holidaysRes.ok) {
+        const holidaysJson = await holidaysRes.json();
+        // API คืน array ของ {holiday_date, holiday_name, ...}
+        holidaysData = holidaysJson.map((h: any) => h.holiday_date);
+        console.log("✅ Loaded holidays for edit:", holidaysData);
+      }
+    } catch (err) {
+      console.warn("⚠️ Failed to fetch holidays for edit:", err);
+      holidaysData = [];
+    }
+
+    // =========================================================
     // 5. 🔥 Mapping ข้อมูลลง ce_formData (Full Update)
     // =========================================================
     ce_formData = {
@@ -8123,10 +8152,10 @@
       maxCheckinsPerUser: apiData.max_checkins_per_user || 1,
         
       // --- Holidays ---
-      holidays:  apiData.holidays || [],
+      holidays:  holidaysData,
       excludeWeekends: apiData.exclude_weekends || false,
-      holidayType: apiData.exclude_weekends ? "none" : (apiData.holidays && apiData.holidays.length > 0) ? "specific" : "none",
-      specificDates: apiData.holidays || [],
+      holidayType: apiData.exclude_weekends ? "none" : (holidaysData && holidaysData.length > 0) ? "specific" : "none",
+      specificDates: holidaysData,
       tempHoliday:  ""
     };
 
