@@ -29,8 +29,8 @@
   lang.subscribe(v => t = v);
   
   // Available years and months
-  $: availableYears = [...new Set(events.map(e => e.year))].filter(Boolean).sort().reverse();
-  $: availableMonths = [...new Set(events.map(e => e.month))].filter(Boolean).sort();
+  $: availableYears = [...new Set(events.map(e => e.year).filter(y => y))].sort().reverse();
+  $: availableMonths = [...new Set(events.map(e => e.month).filter(m => m))].sort();
   
   const monthNames: Record<string, { th: string; en: string }> = {
     '01': { th: 'มกราคม', en: 'January' },
