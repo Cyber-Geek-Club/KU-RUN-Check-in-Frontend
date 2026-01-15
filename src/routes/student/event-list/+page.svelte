@@ -1291,7 +1291,7 @@
         <div class="brand"><span class="brand-name">STUDENT</span></div>
         <nav class="nav-menu desktop-only">
           {#each menuItems as item}
-            <button class="menu-btn" class:active={currentView === item.id} on:click={() => selectView(item.id, item.path)}>
+            <button class="menu-btn" class:active={currentView === item.id} onclick={() => selectView(item.id, item.path)}>
               <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={item.svg}></path></svg>
               <span class="btn-label">{item.label}</span>
             </button>
