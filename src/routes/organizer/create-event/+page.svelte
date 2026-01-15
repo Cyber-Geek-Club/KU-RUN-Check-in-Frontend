@@ -1044,7 +1044,30 @@
   // 🏆 Leaderboard Logic (ฉบับแก้ไขตาม API Documentation)
   // =========================================================
 
-  // ✅ FIX: ฟังก์ชันดึงข้อมูล Leaderboard Config และ Entries
+  // ✅ NEW: ฟังก์ชันดึงรายชื่อ Unique Users (ไม่ซ้ำ) สำหรับ Multi-Day Events
+  // API: GET /api/reward-leaderboards/events/{eventId}/users
+  async function fetchUniqueParticipants(eventId: number): Promise<UniqueUsersResponse | null> {
+    try {
+      const res = await api.get(`/api/reward-leaderboards/events/${eventId}/users`, {
+        params: { skip: 0, limit: 1000 }
+      });
+      
+      const data = res.data;
+      if (isDev) {
+        console.log(`[UniqueParticipants] Loaded ${data.total_users} unique users for event ${eventId}`);
+      }
+      return data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        if (isDev) console.log(`[UniqueParticipants] No users found for event ${eventId}`);
+      } else {
+        console.error("[UniqueParticipants] Fetch Error:", error.message);
+      }
+      return null;
+    }
+  }
+
+  // ✅ FIX: ฟังก์ชันดึงข้อมูล Leaderboard Config และ Unique Users
   async function fetchLeaderboard(eventId: number) {
     if (!eventId) return;
     
@@ -1053,84 +1076,117 @@
       
       // STEP 1: ดึง Config ของ Event
       // API: GET /api/reward-leaderboards/configs/event/{eventId}
-      const configRes = await api.get(`/api/reward-leaderboards/configs/event/${eventId}`);
+      let configData: any = null;
+      let configId: number | undefined = undefined;
       
-      // ✅ FIX: API คืน object โดยตรง ไม่ใช่ { data: {...} }
-      const configData = configRes.data;
-      
-      if (!configData || !configData.id) {
-        rewardData.users = [];
-        rewardData.leaderboardFinalized = false;
+      try {
+        const configRes = await api.get(`/api/reward-leaderboards/configs/event/${eventId}`);
+        configData = configRes.data;
+        
+        if (configData && configData.id) {
+          configId = configData.id;
+          rewardData.currentConfigId = configId;
+          
+          // อัพเดท selectedEvent.rewardConfigId
+          if (rewardData.selectedEvent) {
+            rewardData.selectedEvent = {
+              ...rewardData.selectedEvent,
+              rewardConfigId: configId,
+              finalized_at: configData.finalized_at
+            };
+          }
+          
+          // Check finalized state
+          rewardData.leaderboardFinalized = configData.is_finalized || !!configData.finalized_at;
+        }
+      } catch (configError: any) {
+        if (configError.response?.status !== 404) {
+          console.warn("[Leaderboard] Config fetch error:", configError.message);
+        }
         rewardData.currentConfigId = undefined;
-        return;
+        rewardData.leaderboardFinalized = false;
       }
       
-      // ✅ เก็บ configId ไว้ใน rewardData และ selectedEvent
-      const configId = configData.id;
-      rewardData.currentConfigId = configId;
+      // STEP 2: ดึงรายชื่อ Unique Users
+      // ✅ ใช้ API ใหม่: GET /api/reward-leaderboards/events/{eventId}/users
+      const uniqueUsersData = await fetchUniqueParticipants(eventId);
       
-      // ✅ FIX: อัพเดท selectedEvent.rewardConfigId ด้วย เพื่อให้ตัวแปรตรงกัน
-      if (rewardData.selectedEvent) {
-        rewardData.selectedEvent = {
-          ...rewardData.selectedEvent,
-          rewardConfigId: configId,
-          finalized_at: configData.finalized_at
-        };
-      }
-      
-      // STEP 2: ดึงรายชื่อผู้เข้าร่วม (Entries)
-      // API: GET /api/reward-leaderboards/configs/{configId}/entries
-      const entriesRes = await api.get(`/api/reward-leaderboards/configs/${configId}/entries`, {
-        params: { qualified_only: true, limit: 1000 }
-      });
-      
-      // ✅ FIX: API คืน array โดยตรง
-      const entriesData = Array.isArray(entriesRes.data) ? entriesRes.data : (entriesRes.data?.data || []);
-      
-      // Map entries เป็น RewardUser format
-      rewardData.users = entriesData.map((entry: any, index: number) => ({
-        id: `user_${entry.user_id}`,
-        odySd: entry.user_id?.toString() || "",
-        name: entry.user_full_name || "Unknown",
-        email: entry.user_email || "",
-        globalRank: entry.rank || index + 1,
-        tierRank: entry.rank || index + 1,
-        tier: entry.reward_name || "No Tier",
-        totalCompletions: entry.total_completions || 0,
-        completedDate: entry.qualified_at,
-        rewardedAt: entry.rewarded_at,
-        joinCode: "",
-        status: entry.reward_id ? "completed" : (entry.qualified_at ? "in_progress" : "no_tier"),
-        userId: entry.user_id,
-        rewardId: entry.reward_id,
-        rewardTier: entry.reward_tier,
-        rewardName: entry.reward_name,
-        rewardDescription: entry.reward_description
-      }));
-      
-      // STEP 3: Check finalized state
-      rewardData.leaderboardFinalized = configData.is_finalized || !!configData.finalized_at;
-      
-      if (isDev) {
-        console.log(`[Leaderboard] Config ID: ${configId}`);
-        console.log(`[Leaderboard] Loaded ${rewardData.users.length} qualified users`);
-        console.log(`[Leaderboard] Finalized: ${rewardData.leaderboardFinalized}`);
-        console.log(`[Leaderboard] Total qualified: ${configData.total_qualified}`);
-        console.log(`[Leaderboard] Total rewarded: ${configData.total_rewarded}`);
+      if (uniqueUsersData && uniqueUsersData.users && uniqueUsersData.users.length > 0) {
+        // Get tier colors
+        const tierColorsList = [
+          "#FFD700", "#C0C0C0", "#CD7F32", "#8B5CF6", "#3B82F6",
+          "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#84CC16"
+        ];
+        
+        // Map unique users เป็น RewardUser format
+        rewardData.users = uniqueUsersData.users.map((user: UserEventStatus, index: number) => {
+          // Determine status based on leaderboard_qualified
+          let status: "completed" | "in_progress" | "no_tier" = "no_tier";
+          if (user.leaderboard_qualified) {
+            status = "completed";
+          } else if (user.completed_participations > 0) {
+            status = "in_progress";
+          }
+          
+          // Get tier color based on rank
+          const tierColor = user.leaderboard_rank 
+            ? tierColorsList[(user.leaderboard_rank - 1) % tierColorsList.length]
+            : "#64748b";
+          
+          return {
+            id: `user_${user.user_id}`,
+            odySd: user.user_id?.toString() || "",
+            name: user.user_full_name || "Unknown",
+            email: user.user_email || "",
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.user_id}`,
+            globalRank: user.leaderboard_rank || index + 1,
+            tierRank: user.leaderboard_rank || index + 1,
+            tier: user.leaderboard_reward_name || "No Tier",
+            tierColor,
+            completedCount: user.completed_participations || 0,
+            totalParticipations: user.total_participations || 0,
+            completedParticipations: user.completed_participations || 0,
+            requiredCount: configData?.required_completions || 1,
+            nextTierCount: configData?.required_completions || 1,
+            completedAt: user.last_participation_at || "",
+            joinCode: "",
+            status,
+            userId: user.user_id,
+            totalDistanceKm: user.total_distance_km || undefined,
+            leaderboardQualified: user.leaderboard_qualified,
+            rewardName: user.leaderboard_reward_name || undefined,
+            firstParticipationAt: user.first_participation_at || undefined,
+            lastParticipationAt: user.last_participation_at || undefined
+          };
+        });
+        
+        // Sort by rank (qualified first, then by completions)
+        rewardData.users.sort((a, b) => {
+          // Qualified users first
+          if (a.leaderboardQualified && !b.leaderboardQualified) return -1;
+          if (!a.leaderboardQualified && b.leaderboardQualified) return 1;
+          // Then by rank
+          if (a.globalRank !== b.globalRank) return a.globalRank - b.globalRank;
+          // Then by completions (descending)
+          return (b.completedCount || 0) - (a.completedCount || 0);
+        });
+        
+        if (isDev) {
+          console.log(`[Leaderboard] Total unique users: ${uniqueUsersData.total_users}`);
+          console.log(`[Leaderboard] Loaded ${rewardData.users.length} users (no duplicates)`);
+          console.log(`[Leaderboard] Config ID: ${configId}`);
+          console.log(`[Leaderboard] Finalized: ${rewardData.leaderboardFinalized}`);
+        }
+      } else {
+        // Fallback: ไม่มี unique users data
+        rewardData.users = [];
+        if (isDev) console.log(`[Leaderboard] No users found for event ${eventId}`);
       }
       
     } catch (error: any) {
-      if (error.response?.status === 404) {
-        // Event ยังไม่มี leaderboard config - ไม่ใช่ error
-        if (isDev) console.log(`[Leaderboard] No config found for event ${eventId}`);
-        rewardData.users = [];
-        rewardData.leaderboardFinalized = false;
-        rewardData.currentConfigId = undefined;
-      } else {
-        console.error("[Leaderboard] Fetch Error:", error.message);
-        rewardData.users = [];
-        rewardData.leaderboardFinalized = false;
-      }
+      console.error("[Leaderboard] Fetch Error:", error.message);
+      rewardData.users = [];
+      rewardData.leaderboardFinalized = false;
     } finally {
       rewardData.loading = false;
     }
@@ -2195,7 +2251,9 @@
     tierRank: number; // ลำดับใน Tier (0 ถ้ายังไม่มี tier)
     tier: string; // ชื่อ Tier หรือ "No Tier" ถ้ายังไม่ถึง
     tierColor: string;
-    completedCount: number; // จำนวนที่ทำได้
+    completedCount: number; // จำนวนที่ทำได้ (total_participations หรือ completed_participations)
+    totalParticipations?: number; // จำนวนวันที่เข้าร่วมทั้งหมด
+    completedParticipations?: number; // จำนวนวันที่ทำสำเร็จ
     requiredCount: number; // เป้าหมายของ Tier ปัจจุบัน (หรือ Tier ต่ำสุดถ้ายังไม่มี)
     nextTierCount: number; // จำนวนที่ต้องทำเพื่อขึ้น Tier ถัดไป
     completedAt: string; // เวลาที่ทำสำเร็จ (ISO string, ละเอียดถึง millisecond)
@@ -2206,10 +2264,45 @@
     participationId?: number; // participation id (ถ้ามี) เพื่อใช้ดึง proof/image
     stravaLink?: string;
     distance?: number;
+    totalDistanceKm?: number; // ระยะทางรวม
     proofImage?: string | null;
     rewardId?: number; // reward_id ที่ได้รับ
     rewardTier?: number; // tier number
+    rewardName?: string; // ชื่อรางวัล
     rewardDescription?: string; // คำอธิบายรางวัล
+    leaderboardQualified?: boolean; // ผ่านคุณสมบัติหรือยัง
+    firstParticipationAt?: string; // วันแรกที่เข้าร่วม
+    lastParticipationAt?: string; // วันล่าสุดที่เข้าร่วม
+  }
+
+  // ✅ Interface สำหรับ API Response: GET /api/reward-leaderboards/events/{eventId}/users
+  interface UserEventStatus {
+    user_id: number;
+    user_full_name: string;
+    user_email: string;
+    event_id: number;
+    event_name: string;
+    total_participations: number;
+    completed_participations: number;
+    checked_in_count: number;
+    proof_submitted_count: number;
+    rejected_count: number;
+    cancelled_count: number;
+    total_distance_km: number | null;
+    first_participation_at: string | null;
+    last_participation_at: string | null;
+    leaderboard_config_id: number | null;
+    leaderboard_rank: number | null;
+    leaderboard_qualified: boolean;
+    leaderboard_reward_name: string | null;
+    tier_progress: any[] | null;
+  }
+
+  interface UniqueUsersResponse {
+    total_users: number;
+    event_id: number;
+    event_name: string;
+    users: UserEventStatus[];
   }
 
   interface RewardData {
@@ -14226,7 +14319,7 @@
                   return reqB - reqA;
                 })}
                 <div class="stats-dashboard-single-row">
-                  <!-- All -->
+                  <!-- All (Unique Users) -->
                   <button
                     class="stat-card-compact clickable"
                     class:active={rewardData.selectedTier === "All"}
@@ -14258,7 +14351,7 @@
                       <div class="stat-value-compact">
                         {rewardData.users.length}
                       </div>
-                      <div class="stat-label-compact">All</div>
+                      <div class="stat-label-compact">{currentLang === 'th' ? 'ทั้งหมด (ไม่ซ้ำ)' : 'All (Unique)'}</div>
                     </div>
                   </button>
 
@@ -15044,55 +15137,90 @@
                               style="padding: 0.5rem; background: rgba(15, 23, 42, 0.5); border-radius: 8px;"
                             >
                               <div style="font-size: 0.7rem; color: #64748b;">
-                                {lang.globalRank}
+                                {currentLang === 'th' ? 'เข้าร่วม (วัน)' : 'Participations'}
                               </div>
                               <div
                                 style="font-size: 0.9rem; color: #f8fafc; font-weight: 600;"
                               >
-                                #{user.globalRank}
+                                {user.totalParticipations || user.completedCount || 0} {currentLang === 'th' ? 'วัน' : 'days'}
                               </div>
                             </div>
                             <div
                               style="padding: 0.5rem; background: rgba(15, 23, 42, 0.5); border-radius: 8px;"
                             >
                               <div style="font-size: 0.7rem; color: #64748b;">
-                                {lang.tierRank}
+                                {currentLang === 'th' ? 'สำเร็จ' : 'Completed'}
+                              </div>
+                              <div
+                                style="font-size: 0.9rem; color: #10b981; font-weight: 600;"
+                              >
+                                {user.completedParticipations || user.completedCount || 0} {currentLang === 'th' ? 'วัน' : 'days'}
+                              </div>
+                            </div>
+                            <div
+                              style="padding: 0.5rem; background: rgba(15, 23, 42, 0.5); border-radius: 8px;"
+                            >
+                              <div style="font-size: 0.7rem; color: #64748b;">
+                                {currentLang === 'th' ? 'ระยะทางรวม' : 'Total Distance'}
+                              </div>
+                              <div
+                                style="font-size: 0.9rem; color: #3b82f6; font-weight: 600;"
+                              >
+                                {#if user.totalDistanceKm}
+                                  {user.totalDistanceKm.toFixed(2)} km
+                                {:else}
+                                  —
+                                {/if}
+                              </div>
+                            </div>
+                            <div
+                              style="padding: 0.5rem; background: rgba(15, 23, 42, 0.5); border-radius: 8px;"
+                            >
+                              <div style="font-size: 0.7rem; color: #64748b;">
+                                {currentLang === 'th' ? 'อันดับ' : 'Rank'}
                               </div>
                               <div
                                 style="font-size: 0.9rem; color: {tierInfo.color}; font-weight: 600;"
                               >
-                                {#if user.tierRank > 0}#{user.tierRank}
-                                  {tierInfo.name}{:else}—{/if}
+                                {#if user.globalRank}#{user.globalRank}{:else}—{/if}
                               </div>
                             </div>
                             <div
                               style="padding: 0.5rem; background: rgba(15, 23, 42, 0.5); border-radius: 8px;"
                             >
                               <div style="font-size: 0.7rem; color: #64748b;">
-                                {lang.completed}
+                                {currentLang === 'th' ? 'วันแรกที่เข้าร่วม' : 'First Join'}
                               </div>
                               <div
                                 style="font-size: 0.9rem; color: #f8fafc; font-weight: 600;"
                               >
-                                {user.completedCount} {lang.times}
-                              </div>
-                            </div>
-                            <div
-                              style="padding: 0.5rem; background: rgba(15, 23, 42, 0.5); border-radius: 8px;"
-                            >
-                              <div style="font-size: 0.7rem; color: #64748b;">
-                                {lang.completedAt}
-                              </div>
-                              <div
-                                style="font-size: 0.9rem; color: #f8fafc; font-weight: 600;"
-                              >
-                                {#if user.completedAt}
+                                {#if user.firstParticipationAt}
                                   {new Date(
-                                    user.completedAt
+                                    user.firstParticipationAt
                                   ).toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-GB', {
                                     day: "2-digit",
                                     month: "short",
-                                    year: "numeric",
+                                  })}
+                                {:else}
+                                  —
+                                {/if}
+                              </div>
+                            </div>
+                            <div
+                              style="padding: 0.5rem; background: rgba(15, 23, 42, 0.5); border-radius: 8px;"
+                            >
+                              <div style="font-size: 0.7rem; color: #64748b;">
+                                {currentLang === 'th' ? 'วันล่าสุด' : 'Last Active'}
+                              </div>
+                              <div
+                                style="font-size: 0.9rem; color: #f8fafc; font-weight: 600;"
+                              >
+                                {#if user.lastParticipationAt}
+                                  {new Date(
+                                    user.lastParticipationAt
+                                  ).toLocaleDateString(currentLang === 'th' ? 'th-TH' : 'en-GB', {
+                                    day: "2-digit",
+                                    month: "short",
                                   })}
                                 {:else}
                                   —
