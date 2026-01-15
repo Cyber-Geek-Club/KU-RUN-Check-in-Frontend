@@ -28,14 +28,7 @@ export const ROUTES = {
   },
   organizer: {
     home: '/organizer',
-    events: '/organizer/events',
     createEvent: '/organizer/create-event',
-    eventLog: '/organizer/event-log',
-    eventVerify: '/organizer/event-verify',
-    monthlyReward: '/organizer/monthly-reward',
-    unlockUser: '/organizer/unlock-user',
-    verifyProof: '/organizer/verify-proof',
-    settings: '/organizer/settings',
   },
 } as const;
 

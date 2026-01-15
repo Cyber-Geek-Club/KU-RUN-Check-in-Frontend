@@ -3,9 +3,9 @@
   import { goto } from '$app/navigation';
   import { ROUTES } from '$lib/utils/routes';
   
-  // Redirect to events page on load
+  // Redirect to create-event page on load
   onMount(() => {
-    goto(ROUTES.organizer.events);
+    goto(ROUTES.organizer.createEvent);
   });
 </script>
 
