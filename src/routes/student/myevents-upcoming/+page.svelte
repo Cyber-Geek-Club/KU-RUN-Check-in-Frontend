@@ -1538,28 +1538,43 @@ async function handleCheckInConfirm() {
   }
 
   function goToStep3_Proof() {
+      // ✅ บังคับ: ต้องมี Strava Link
       if (!sendingLink || sendingLink.trim() === "") {
           Swal.fire(t[lang].alert_warning, t[lang].alert_link_required, "warning");
           return;
       }
-      // ✅ บังคับให้กดปุ่มตรวจสอบก่อน
+      
+      // ✅ บังคับ: ต้องกดปุ่มตรวจสอบ Strava Link
       if (!stravaVerified) {
           Swal.fire(
               t[lang].alert_warning,
-              lang === 'th' ? 'กรุณากดปุ่ม "🔍 ตรวจสอบลิงก์" ก่อนดำเนินการต่อ' : 'Please click "🔍 Verify Link" button before proceeding',
+              lang === 'th' ? 'กรุณากดปุ่ม "🔍 ตรวจสอบลิงก์" เพื่อยืนยันว่า Link Strava ถูกต้อง' : 'Please click "🔍 Verify Link" to confirm your Strava link is valid',
               "warning"
           );
           return;
       }
+      
+      // ✅ บังคับ: ต้องมี Link ที่ valid
+      if (!isValidStravaLink(sendingLink.trim())) {
+          Swal.fire(
+              t[lang].alert_error,
+              t[lang].alert_link_invalid,
+              "error"
+          );
+          return;
+      }
+      
+      // ✅ ต้องมีระยะทางมากกว่า 0
       if (distanceInput <= 0) { 
           Swal.fire(t[lang].alert_warning, t[lang].alert_verify_first, "warning");
           return;
       }
-      // ✅ เพิ่ม validation: ต้องมีรูปภาพก่อนส่ง
+      
+      // ✅ บังคับ: ต้องมีรูปภาพหลักฐาน
       if (!proofFile && !selectedEvent?.proof_image_url) {
           Swal.fire(
               t[lang].alert_warning,
-              lang === 'th' ? 'กรุณาอัปโหลดรูปภาพหลักฐาน' : 'Please upload proof image',
+              lang === 'th' ? 'กรุณาอัปโหลดรูปภาพหลักฐาน (บังคับ)' : 'Please upload proof image (Required)',
               "warning"
           );
           return;
@@ -1585,15 +1600,39 @@ async function submitProofAction() {
           return;
       }
 
-      // 2. Validate Strava Link (Required)
+      // 2. ✅ บังคับ: ต้องมี Strava Link
       if (!sendingLink || sendingLink.trim() === "") {
           Swal.fire(t[lang].alert_warning, t[lang].alert_link_required, "warning");
           return;
       }
 
-      // 3. Validate Image
+      // 3. ✅ บังคับ: ต้องเป็น Strava Link ที่ถูกต้อง
+      if (!isValidStravaLink(sendingLink.trim())) {
+          Swal.fire(
+              t[lang].alert_error,
+              t[lang].alert_link_invalid,
+              "error"
+          );
+          return;
+      }
+
+      // 4. ✅ บังคับ: ต้องกดปุ่มตรวจสอบ Strava แล้ว
+      if (!stravaVerified) {
+          Swal.fire(
+              t[lang].alert_warning,
+              lang === 'th' ? 'กรุณากดปุ่ม "🔍 ตรวจสอบลิงก์" เพื่อยืนยัน Strava Link ก่อนส่งหลักฐาน' : 'Please click "🔍 Verify Link" to confirm your Strava link before submitting',
+              "warning"
+          );
+          return;
+      }
+
+      // 5. ✅ บังคับ: ต้องมีรูปภาพหลักฐาน
       if (!proofFile && !selectedEvent.proof_image_url) {
-          Swal.fire(t[lang].alert_warning, t[lang].alert_image_required, "warning");
+          Swal.fire(
+              t[lang].alert_warning,
+              lang === 'th' ? 'กรุณาอัปโหลดรูปภาพหลักฐาน (บังคับ)' : 'Please upload proof image (Required)',
+              "warning"
+          );
           return;
       }
 
