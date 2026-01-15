@@ -4685,7 +4685,6 @@
         slots: item.max_participants,
         totalSlots: item.max_participants,
         usedSlots: item.participant_count || 0,
-        registered: item.participant_count || 0,
         distanceKm: item.distance_km || 0,
         
         // ✅ สำคัญ: เก็บค่าเข้าตัวแปรที่ใช้ใน ce_formData
@@ -4706,6 +4705,7 @@
 
     events = [...events];
     fetchPendingCountsForEvents();
+    fetchUniqueParticipantCounts(); // ดึงจำนวนผู้เข้าร่วมที่ไม่ซ้ำ
   } catch (err: any) {
     console.error("Error fetching events:", err);
   }
@@ -4766,6 +4766,73 @@
 
     // Force reactivity update
     events = [...events];
+  }
+
+  // ===== OPTIMIZED: Fetch unique participant counts for all events =====
+  async function fetchUniqueParticipantCounts() {
+    const token = localStorage.getItem("access_token");
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    // Fetch unique counts in parallel (batch of 5)
+    const BATCH_SIZE = 5;
+    const eventsCopy = [...events];
+    
+    for (let i = 0; i < eventsCopy.length; i += BATCH_SIZE) {
+      const batch = eventsCopy.slice(i, i + BATCH_SIZE);
+      
+      const results = await Promise.allSettled(
+        batch.map(async (event) => {
+          try {
+            const res = await fetch(
+              `${API_BASE_URL}/api/events/${event.id}/participants`,
+              { headers }
+            );
+
+            if (!res.ok) {
+              return { eventId: event.id, uniqueCount: event.usedSlots || 0 };
+            }
+
+            const data = await res.json();
+            let participants: any[] = [];
+            if (Array.isArray(data)) {
+              participants = data;
+            } else if (data?.participants) {
+              participants = data.participants;
+            } else if (data?.data) {
+              participants = data.data;
+            }
+
+            // Deduplicate by user_id
+            const uniqueUserIds = new Set<number>();
+            participants.forEach((p: any) => {
+              const userId = p.user_id || p.id;
+              if (userId) uniqueUserIds.add(userId);
+            });
+
+            return { eventId: event.id, uniqueCount: uniqueUserIds.size };
+          } catch (err) {
+            console.warn(`Failed to fetch unique count for event ${event.id}:`, err);
+            return { eventId: event.id, uniqueCount: event.usedSlots || 0 };
+          }
+        })
+      );
+
+      // Update events with results
+      results.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const { eventId, uniqueCount } = result.value;
+          const eventIndex = events.findIndex((e) => e.id === eventId);
+          if (eventIndex !== -1) {
+            events[eventIndex].usedSlots = uniqueCount;
+          }
+        }
+      });
+    }
+
+    // Force reactivity update
+    events = [...events];
+    console.log("✅ Unique participant counts updated for all events");
   }
 
   // ฟังก์ชันแปลงวันที่ (รับค่า lang มาด้วย เพื่อให้รู้ว่าต้องเปลี่ยนภาษา)
@@ -6172,7 +6239,6 @@
           slots: item.max_participants,
           totalSlots: item.max_participants,
           usedSlots: item.participant_count || 0,
-          registered: item.participant_count || 0,
           distanceKm: item.distance_km || 0,
 
           // Status - ✅ FIXED: ใช้ logic เดียวกับ getEventStatus
@@ -6199,6 +6265,7 @@
       );
 
       events = eventsWithHolidays;
+      fetchUniqueParticipantCounts(); // ดึงจำนวนผู้เข้าร่วมที่ไม่ซ้ำ
 
       console.log("✅ Events refreshed:", events.length);
     } catch (err) {

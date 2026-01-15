@@ -365,6 +365,9 @@
             });
         }
 
+        // Fetch unique participant counts
+        await fetchUniqueParticipantCounts();
+
         processData();
 
     } catch (e: any) {
@@ -395,6 +398,66 @@
         });
     } finally {
         loading = false;
+    }
+  }
+
+  // ===== Fetch unique participant counts for all events =====
+  async function fetchUniqueParticipantCounts() {
+    const token = getToken();
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const eventIds = Object.keys(eventsMap).map(Number);
+    const BATCH_SIZE = 5;
+    
+    for (let i = 0; i < eventIds.length; i += BATCH_SIZE) {
+      const batch = eventIds.slice(i, i + BATCH_SIZE);
+      
+      const results = await Promise.allSettled(
+        batch.map(async (eventId) => {
+          try {
+            const res = await fetch(
+              `${BASE_URL}/api/events/${eventId}/participants`,
+              { headers }
+            );
+
+            if (!res.ok) {
+              return { eventId, uniqueCount: eventsMap[eventId]?.participant_count || 0 };
+            }
+
+            const data = await res.json();
+            let participants: any[] = [];
+            if (Array.isArray(data)) {
+              participants = data;
+            } else if (data?.participants) {
+              participants = data.participants;
+            } else if (data?.data) {
+              participants = data.data;
+            }
+
+            // Deduplicate by user_id
+            const uniqueUserIds = new Set<number>();
+            participants.forEach((p: any) => {
+              const userId = p.user_id || p.id;
+              if (userId) uniqueUserIds.add(userId);
+            });
+
+            return { eventId, uniqueCount: uniqueUserIds.size };
+          } catch (err) {
+            return { eventId, uniqueCount: eventsMap[eventId]?.participant_count || 0 };
+          }
+        })
+      );
+
+      // Update eventsMap with results
+      results.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const { eventId, uniqueCount } = result.value;
+          if (eventsMap[eventId]) {
+            eventsMap[eventId].participant_count = uniqueCount;
+          }
+        }
+      });
     }
   }
 

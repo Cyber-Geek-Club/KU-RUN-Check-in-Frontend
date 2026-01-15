@@ -364,11 +364,77 @@
 
       events = newEvents;
       await updateUserStatus();
+      fetchUniqueParticipantCounts(); // ดึงจำนวนผู้เข้าร่วมที่ไม่ซ้ำ
     } catch (error: any) {
       console.error("Error loading events:", error);
     } finally {
       isLoading = false;
     }
+  }
+
+  // ===== Fetch unique participant counts for all events =====
+  async function fetchUniqueParticipantCounts() {
+    const token = getToken();
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    // Fetch unique counts in parallel (batch of 5)
+    const BATCH_SIZE = 5;
+    const eventsCopy = [...events];
+    
+    for (let i = 0; i < eventsCopy.length; i += BATCH_SIZE) {
+      const batch = eventsCopy.slice(i, i + BATCH_SIZE);
+      
+      const results = await Promise.allSettled(
+        batch.map(async (event) => {
+          try {
+            const res = await fetch(
+              `${BASE_URL}/api/events/${event.id}/participants`,
+              { headers }
+            );
+
+            if (!res.ok) {
+              return { eventId: event.id, uniqueCount: event.participant_count || 0 };
+            }
+
+            const data = await res.json();
+            let participants: any[] = [];
+            if (Array.isArray(data)) {
+              participants = data;
+            } else if (data?.participants) {
+              participants = data.participants;
+            } else if (data?.data) {
+              participants = data.data;
+            }
+
+            // Deduplicate by user_id
+            const uniqueUserIds = new Set<number>();
+            participants.forEach((p: any) => {
+              const userId = p.user_id || p.id;
+              if (userId) uniqueUserIds.add(userId);
+            });
+
+            return { eventId: event.id, uniqueCount: uniqueUserIds.size };
+          } catch (err) {
+            return { eventId: event.id, uniqueCount: event.participant_count || 0 };
+          }
+        })
+      );
+
+      // Update events with results
+      results.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const { eventId, uniqueCount } = result.value;
+          const eventIndex = events.findIndex((e) => e.id === eventId);
+          if (eventIndex !== -1) {
+            events[eventIndex].participant_count = uniqueCount;
+          }
+        }
+      });
+    }
+
+    // Force reactivity update
+    events = [...events];
   }
 
   async function updateUserStatus() {
