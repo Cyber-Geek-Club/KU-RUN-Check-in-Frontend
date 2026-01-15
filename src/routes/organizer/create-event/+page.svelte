@@ -9380,7 +9380,27 @@
           console.log("🔍 [DEBUG] All field names:", Object.keys(participants[0]));
         }
         
-        logsData.logs = participants.map((p: any, idx: number): Log => {
+        // ✅ DEDUPLICATE: Group by user_id to remove duplicates
+        const uniqueParticipantsMap = new Map<number, any>();
+        participants.forEach((p: any) => {
+          const userId = p.user_id;
+          if (!uniqueParticipantsMap.has(userId)) {
+            uniqueParticipantsMap.set(userId, p);
+          } else {
+            // Keep the most recent participation (by joined_at or completed_at)
+            const existing = uniqueParticipantsMap.get(userId)!;
+            const existingDate = new Date(existing.completed_at || existing.joined_at || 0);
+            const newDate = new Date(p.completed_at || p.joined_at || 0);
+            if (newDate > existingDate) {
+              uniqueParticipantsMap.set(userId, p);
+            }
+          }
+        });
+        
+        const uniqueParticipants = Array.from(uniqueParticipantsMap.values());
+        console.log(`✅ Deduplicated: ${participants.length} → ${uniqueParticipants.length} unique users`);
+        
+        logsData.logs = uniqueParticipants.map((p: any, idx: number): Log => {
           // ✅ Look up participation details for this user (includes proof_image_url)
           const userParticipation = userParticipationsMap.get(p.user_id);
           const participationId = userParticipation?.id || p.participation_id || p.id;
