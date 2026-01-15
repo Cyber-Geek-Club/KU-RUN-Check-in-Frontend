@@ -29,8 +29,8 @@
   lang.subscribe(v => t = v);
   
   // Available years and months
-  $: availableYears = [...new Set(events.map(e => e.year).filter(y => y))].sort().reverse();
-  $: availableMonths = [...new Set(events.map(e => e.month).filter(m => m))].sort();
+  $: availableYears = [...new Set(events.map(e => e.year).filter((y): y is string => !!y))].sort().reverse();
+  $: availableMonths = [...new Set(events.map(e => e.month).filter((m): m is string => !!m))].sort();
   
   const monthNames: Record<string, { th: string; en: string }> = {
     '01': { th: 'มกราคม', en: 'January' },
@@ -299,17 +299,17 @@
               </div>
 
               <div class="card-actions">
-                <a href="{ROUTES.organizer.eventLog}?event={event.id}" class="btn-action">
+                <a href="{ROUTES.organizer.eventLog}?event={event.id}" class="btn-action" title="{t.activityLogs}">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </a>
-                <a href="{ROUTES.organizer.verifyProof}?event={event.id}" class="btn-action">
+                <a href="{ROUTES.organizer.verifyProof}?event={event.id}" class="btn-action" title="{t.verifyProof}">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </a>
-                <button class="btn-action btn-delete" on:click={() => handleDelete(event)}>
+                <button class="btn-action btn-delete" on:click={() => handleDelete(event)} title="{t.deleteEventTitle}">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
@@ -569,6 +569,7 @@
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
