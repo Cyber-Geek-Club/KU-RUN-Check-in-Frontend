@@ -1312,13 +1312,13 @@
         </div>
 
         <div class="lang-switch desktop-only">
-          <button class:active={lang === 'th'} on:click={() => setLang('th')}>TH</button>
+          <button class:active={lang === 'th'} onclick={() => setLang('th')}>TH</button>
           <span class="sep">|</span>
-          <button class:active={lang === 'en'} on:click={() => setLang('en')}>EN</button>
+          <button class:active={lang === 'en'} onclick={() => setLang('en')}>EN</button>
         </div>
 
-        <button class="logout-btn desktop-only" aria-label="Logout" on:click={handleLogout}><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
-        <button class="mobile-toggle mobile-only" aria-label="Toggle menu" on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 9h16M4 15h16"></path></svg></button>
+        <button class="logout-btn desktop-only" aria-label="Logout" onclick={handleLogout}><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
+        <button class="mobile-toggle mobile-only" aria-label="Toggle menu" onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 9h16M4 15h16"></path></svg></button>
       </div>
     </div>
   </header>

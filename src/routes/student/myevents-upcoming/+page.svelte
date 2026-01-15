@@ -2937,10 +2937,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
       background: rgba(59, 130, 246, 0.1);
       border-color: rgba(59, 130, 246, 0.3);
   }
-  .gold-stat {
-      background: rgba(251, 191, 36, 0.1);
-      border-color: rgba(251, 191, 36, 0.3);
-  }
   .stat-icon {
       font-size: 1.8rem;
   }
@@ -2955,7 +2951,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
       font-weight: 700;
   }
   .blue-stat .stat-label { color: #60a5fa; }
-  .gold-stat .stat-label { color: #fbbf24; }
   
   .stat-value {
       font-size: 1.2rem;
@@ -2966,11 +2961,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
       font-size: 0.8rem;
       font-weight: 500;
       opacity: 0.7;
-  }
-  .rank-text {
-      font-size: 1.5rem;
-      color: #fbbf24;
-      text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
   }
 
   .holiday-section {
