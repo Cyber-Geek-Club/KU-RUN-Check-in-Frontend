@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { ROUTES } from '$lib/utils/routes';
+  import Swal from 'sweetalert2';
   import { 
     currentLang, 
     lang, 
@@ -20,6 +21,11 @@
   // Get current translations
   let t: typeof import('$lib/stores/organizerStore').translations.th;
   lang.subscribe(v => t = v);
+
+  // User dropdown state
+  let showUserDropdown = false;
+  let userName = '';
+  let userEmail = '';
 
   // Menu items
   $: menuItems = [
@@ -106,15 +112,84 @@
     timerInterval = setInterval(() => {
       const remaining = getTokenTimeLeft();
       tokenTimeLeft.set(remaining);
+      
+      // Warning at 2 minutes
+      if (remaining === 120) {
+        Swal.fire({
+          icon: 'warning',
+          title: langValue === 'th' ? 'เซสชันใกล้หมดอายุ' : 'Session Expiring Soon',
+          text: langValue === 'th' ? 'เซสชันจะหมดอายุใน 2 นาที' : 'Your session will expire in 2 minutes',
+          confirmButtonText: langValue === 'th' ? 'ตกลง' : 'OK',
+          confirmButtonColor: '#10b981',
+        });
+      }
+      
       if (remaining <= 0) {
         handleLogout();
       }
     }, 1000);
+
+    // Load user info
+    if (typeof localStorage !== 'undefined') {
+      const userInfo = localStorage.getItem('user_info');
+      if (userInfo) {
+        try {
+          const info = JSON.parse(userInfo);
+          userName = info.first_name || info.name || 'User';
+          userEmail = info.email || '';
+        } catch (e) {
+          console.error('Error parsing user info:', e);
+        }
+      }
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', handleClickOutside);
   });
 
   onDestroy(() => {
     if (timerInterval) clearInterval(timerInterval);
+    document.removeEventListener('click', handleClickOutside);
   });
+
+  function handleClickOutside(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (!target.closest('.user-dropdown-container')) {
+      showUserDropdown = false;
+    }
+  }
+
+  function toggleUserDropdown() {
+    showUserDropdown = !showUserDropdown;
+  }
+
+  // Get breadcrumb from current path
+  $: breadcrumb = getBreadcrumb(currentPath);
+
+  function getBreadcrumb(path: string): { label: string; href: string }[] {
+    const crumbs = [{ label: t.organizer, href: ROUTES.organizer.events }];
+    
+    if (path.includes('/events') && !path.includes('/event-')) {
+      crumbs.push({ label: t.events, href: ROUTES.organizer.events });
+    } else if (path.includes('/create-event')) {
+      crumbs.push({ label: t.events, href: ROUTES.organizer.events });
+      crumbs.push({ label: t.createEvent, href: ROUTES.organizer.createEvent });
+    } else if (path.includes('/event-log')) {
+      crumbs.push({ label: t.activityLogs, href: ROUTES.organizer.eventLog });
+    } else if (path.includes('/event-verify')) {
+      crumbs.push({ label: t.verifyCode, href: ROUTES.organizer.eventVerify });
+    } else if (path.includes('/verify-proof')) {
+      crumbs.push({ label: t.verifyProof, href: ROUTES.organizer.verifyProof });
+    } else if (path.includes('/unlock-user')) {
+      crumbs.push({ label: t.unlock, href: ROUTES.organizer.unlockUser });
+    } else if (path.includes('/monthly-reward')) {
+      crumbs.push({ label: t.rewards, href: ROUTES.organizer.monthlyReward });
+    } else if (path.includes('/settings')) {
+      crumbs.push({ label: t.settings, href: ROUTES.organizer.settings });
+    }
+    
+    return crumbs;
+  }
 </script>
 
 <div class="app-container">
@@ -162,24 +237,46 @@
           <span class="lang-option" class:active={langValue === 'en'}>EN</span>
         </button>
 
-        <div class="token-timer" class:warning={timeLeft < 60}>
+        <div class="token-timer" class:warning={timeLeft < 60} title={langValue === 'th' ? 'เวลาเซสชันที่เหลือ' : 'Session time remaining'}>
+          <svg class="timer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           {formatTime(timeLeft)}
         </div>
 
-        <button
-          class="logout-icon-btn desktop-only"
-          on:click={handleLogout}
-          aria-label="Logout"
-        >
-          <svg class="line-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-            ></path>
-          </svg>
-        </button>
+        <!-- User Dropdown -->
+        <div class="user-dropdown-container desktop-only">
+          <button class="user-avatar-btn" on:click={toggleUserDropdown}>
+            <div class="user-avatar">
+              {userName.charAt(0).toUpperCase()}
+            </div>
+            <svg class="dropdown-arrow" class:open={showUserDropdown} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {#if showUserDropdown}
+            <div class="user-dropdown">
+              <div class="dropdown-header">
+                <span class="dropdown-name">{userName}</span>
+                <span class="dropdown-email">{userEmail}</span>
+              </div>
+              <div class="dropdown-divider"></div>
+              <a href={ROUTES.organizer.settings} class="dropdown-item" on:click={() => showUserDropdown = false}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                </svg>
+                {t.settings}
+              </a>
+              <button class="dropdown-item logout" on:click={handleLogout}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                {t.logout}
+              </button>
+            </div>
+          {/if}
+        </div>
 
         <!-- Mobile menu button -->
         <div class="mobile-controls mobile-only">
@@ -249,6 +346,23 @@
   {/if}
 
   <main class="page-content">
+    <!-- Breadcrumb -->
+    {#if breadcrumb.length > 1}
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        {#each breadcrumb as crumb, i}
+          {#if i > 0}
+            <svg class="breadcrumb-separator" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          {/if}
+          {#if i === breadcrumb.length - 1}
+            <span class="breadcrumb-current">{crumb.label}</span>
+          {:else}
+            <a href={crumb.href} class="breadcrumb-link">{crumb.label}</a>
+          {/if}
+        {/each}
+      </nav>
+    {/if}
     <slot />
   </main>
 </div>
@@ -395,6 +509,9 @@
   }
 
   .token-timer {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
     padding: 0.375rem 0.75rem;
     background: rgba(16, 185, 129, 0.1);
     border: 1px solid rgba(16, 185, 129, 0.2);
@@ -403,6 +520,11 @@
     font-size: 0.875rem;
     font-weight: 600;
     font-family: 'JetBrains Mono', monospace;
+  }
+
+  .timer-icon {
+    width: 14px;
+    height: 14px;
   }
 
   .token-timer.warning {
@@ -415,6 +537,128 @@
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
+  }
+
+  /* User Dropdown */
+  .user-dropdown-container {
+    position: relative;
+  }
+
+  .user-avatar-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s;
+  }
+
+  .user-avatar-btn:hover {
+    background: rgba(100, 116, 139, 0.15);
+  }
+
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    font-size: 1rem;
+  }
+
+  .dropdown-arrow {
+    width: 16px;
+    height: 16px;
+    color: #94a3b8;
+    transition: transform 0.2s;
+  }
+
+  .dropdown-arrow.open {
+    transform: rotate(180deg);
+  }
+
+  .user-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    width: 220px;
+    background: rgba(30, 41, 59, 0.98);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    z-index: 200;
+    overflow: hidden;
+    animation: dropdownFade 0.2s ease;
+  }
+
+  @keyframes dropdownFade {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .dropdown-header {
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.5);
+  }
+
+  .dropdown-name {
+    display: block;
+    font-weight: 600;
+    color: #f8fafc;
+    font-size: 0.95rem;
+  }
+
+  .dropdown-email {
+    display: block;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 0.25rem;
+  }
+
+  .dropdown-divider {
+    height: 1px;
+    background: rgba(100, 116, 139, 0.2);
+  }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: transparent;
+    border: none;
+    color: #cbd5e1;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    text-align: left;
+  }
+
+  .dropdown-item:hover {
+    background: rgba(100, 116, 139, 0.15);
+    color: #f8fafc;
+  }
+
+  .dropdown-item.logout {
+    color: #f87171;
+  }
+
+  .dropdown-item.logout:hover {
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  .dropdown-item svg {
+    width: 18px;
+    height: 18px;
   }
 
   .logout-icon-btn {
@@ -599,6 +843,39 @@
     max-width: 1600px;
     margin: 0 auto;
     width: 100%;
+  }
+
+  /* Breadcrumb */
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding: 0.75rem 1rem;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 10px;
+    font-size: 0.875rem;
+  }
+
+  .breadcrumb-link {
+    color: #94a3b8;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .breadcrumb-link:hover {
+    color: #10b981;
+  }
+
+  .breadcrumb-separator {
+    width: 14px;
+    height: 14px;
+    color: #64748b;
+  }
+
+  .breadcrumb-current {
+    color: #f8fafc;
+    font-weight: 500;
   }
 
   @media (min-width: 768px) {

@@ -19,9 +19,17 @@
   let logs: Log[] = [];
   let filteredLogs: Log[] = [];
   
+  // Pagination
+  let currentPage = 1;
+  let itemsPerPage = 20;
+  $: totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+  $: paginatedLogs = filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  
   // Filters
   let searchQuery = '';
   let statusFilter = 'all';
+  let dateFrom = '';
+  let dateTo = '';
   
   // Get current language
   let langValue: 'th' | 'en';
@@ -114,11 +122,73 @@
       result = result.filter(log => log.action === statusFilter);
     }
     
+    // Date filter
+    if (dateFrom) {
+      const fromDate = new Date(dateFrom);
+      result = result.filter(log => new Date(log.created_at) >= fromDate);
+    }
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      result = result.filter(log => new Date(log.created_at) <= toDate);
+    }
+    
     filteredLogs = result;
+    currentPage = 1; // Reset to first page when filters change
   }
 
-  $: if (searchQuery !== undefined || statusFilter) {
+  $: if (searchQuery !== undefined || statusFilter || dateFrom || dateTo) {
     applyFilters();
+  }
+
+  function goToPage(page: number) {
+    if (page >= 1 && page <= totalPages) {
+      currentPage = page;
+    }
+  }
+
+  function exportToCSV() {
+    if (filteredLogs.length === 0) return;
+    
+    const selectedEvent = events.find(e => e.id === selectedEventId);
+    const eventName = selectedEvent?.title || 'logs';
+    
+    const headers = [
+      langValue === 'th' ? 'ชื่อ' : 'Name',
+      langValue === 'th' ? 'อีเมล' : 'Email',
+      langValue === 'th' ? 'รหัสนิสิต' : 'Student ID',
+      langValue === 'th' ? 'รหัสเข้าร่วม' : 'Join Code',
+      langValue === 'th' ? 'สถานะ' : 'Status',
+      langValue === 'th' ? 'วันที่' : 'Date'
+    ];
+    
+    const rows = filteredLogs.map(log => [
+      log.user_name || '',
+      log.user_email || '',
+      log.nisit_id || '',
+      log.join_code || '',
+      getActionLabel(log.action),
+      formatDateTime(log.created_at)
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${eventName}_logs_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    
+    Swal.fire({
+      icon: 'success',
+      title: t.success,
+      text: langValue === 'th' ? 'ส่งออกข้อมูลสำเร็จ' : 'Export successful',
+      timer: 2000,
+      showConfirmButton: false,
+    });
   }
 
   async function handleEventChange() {
@@ -191,6 +261,26 @@
     </div>
 
     {#if selectedEventId}
+      <!-- Stats Summary -->
+      <div class="stats-bar">
+        <div class="stat-item">
+          <span class="stat-value">{logs.length}</span>
+          <span class="stat-label">{langValue === 'th' ? 'ทั้งหมด' : 'Total'}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value stat-joined">{logs.filter(l => l.action === 'joined').length}</span>
+          <span class="stat-label">{t.actionJoined}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value stat-checkedin">{logs.filter(l => l.action === 'checked_in').length}</span>
+          <span class="stat-label">{t.actionCheckedIn}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value stat-completed">{logs.filter(l => l.action === 'completed').length}</span>
+          <span class="stat-label">{t.actionCompleted}</span>
+        </div>
+      </div>
+
       <!-- Filters -->
       <div class="filters-bar">
         <div class="search-box">
@@ -212,6 +302,24 @@
           <option value="cancelled">{t.actionCancelled}</option>
           <option value="rejected">{t.actionRejected}</option>
         </select>
+
+        <div class="date-filters">
+          <div class="date-input">
+            <label>{langValue === 'th' ? 'จาก' : 'From'}</label>
+            <input type="date" bind:value={dateFrom} />
+          </div>
+          <div class="date-input">
+            <label>{langValue === 'th' ? 'ถึง' : 'To'}</label>
+            <input type="date" bind:value={dateTo} />
+          </div>
+        </div>
+
+        <button class="export-btn" on:click={exportToCSV} disabled={filteredLogs.length === 0}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          {langValue === 'th' ? 'ส่งออก CSV' : 'Export CSV'}
+        </button>
       </div>
 
       <!-- Logs Table -->
@@ -241,7 +349,7 @@
               </tr>
             </thead>
             <tbody>
-              {#each filteredLogs as log (log.id)}
+              {#each paginatedLogs as log (log.id)}
                 <tr>
                   <td>
                     <div class="user-info">
@@ -265,8 +373,97 @@
           </table>
         </div>
 
+        <!-- Mobile Cards View -->
+        <div class="logs-cards">
+          {#each paginatedLogs as log (log.id)}
+            <div class="log-card">
+              <div class="card-header">
+                <div class="user-info">
+                  <span class="user-name">{log.user_name}</span>
+                  <span class="user-email">{log.user_email}</span>
+                </div>
+                <span class="action-badge {getActionClass(log.action)}">
+                  {getActionLabel(log.action)}
+                </span>
+              </div>
+              <div class="card-body">
+                <div class="card-row">
+                  <span class="card-label">{t.stdId}:</span>
+                  <span>{log.nisit_id || '-'}</span>
+                </div>
+                <div class="card-row">
+                  <span class="card-label">{t.joinCode}:</span>
+                  <code class="join-code">{log.join_code || '-'}</code>
+                </div>
+                <div class="card-row">
+                  <span class="card-label">{t.timestamp}:</span>
+                  <span class="timestamp">{formatDateTime(log.created_at)}</span>
+                </div>
+              </div>
+            </div>
+          {/each}
+        </div>
+
+        <!-- Pagination -->
+        {#if totalPages > 1}
+          <div class="pagination">
+            <button 
+              class="page-btn" 
+              on:click={() => goToPage(1)} 
+              disabled={currentPage === 1}
+              title={langValue === 'th' ? 'หน้าแรก' : 'First page'}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+            </button>
+            <button 
+              class="page-btn" 
+              on:click={() => goToPage(currentPage - 1)} 
+              disabled={currentPage === 1}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            
+            <div class="page-info">
+              <span>{langValue === 'th' ? 'หน้า' : 'Page'}</span>
+              <select bind:value={currentPage} class="page-select">
+                {#each Array(totalPages) as _, i}
+                  <option value={i + 1}>{i + 1}</option>
+                {/each}
+              </select>
+              <span>{langValue === 'th' ? 'จาก' : 'of'} {totalPages}</span>
+            </div>
+
+            <button 
+              class="page-btn" 
+              on:click={() => goToPage(currentPage + 1)} 
+              disabled={currentPage === totalPages}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <button 
+              class="page-btn" 
+              on:click={() => goToPage(totalPages)} 
+              disabled={currentPage === totalPages}
+              title={langValue === 'th' ? 'หน้าสุดท้าย' : 'Last page'}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        {/if}
+
         <div class="table-footer">
-          <span>{t.showing} {filteredLogs.length} {t.of} {logs.length} {t.users}</span>
+          <span>{t.showing} {paginatedLogs.length} {t.of} {filteredLogs.length} {t.users}</span>
+          {#if filteredLogs.length !== logs.length}
+            <span class="filter-note">({langValue === 'th' ? 'กรองจาก' : 'filtered from'} {logs.length})</span>
+          {/if}
         </div>
       {/if}
     {:else}
