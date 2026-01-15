@@ -112,26 +112,26 @@ export interface SnapshotEntry {
     id?: number;
     entry_id: string;
     snapshot_id?: number;
-    participation_id?: number;
+    participation_id?: number | null;
     user_id: number;
     user_name: string;
-    user_email: string;
+    user_email: string | null;
     action: 'joined' | 'checked_in' | 'cancelled' | 'rejected' | 'pending' | 'completed';
     status?: 'joined' | 'checked_in' | 'cancelled' | 'rejected' | 'pending' | 'completed';
     created_at?: string;
-    joined_at?: string;
-    checked_in_at?: string;
-    completed_at?: string;
-    metadata?: Record<string, any>;
+    joined_at?: string | null;
+    checked_in_at?: string | null;
+    completed_at?: string | null;
+    metadata?: Record<string, any> | null;
 }
 
 export interface Snapshot {
-    id?: number;
+    id: number;
     snapshot_id: string;
     snapshot_time: string;
     entry_count: number;
     event_id?: number;
-    description?: string;
+    description?: string | null;
 }
 
 export interface SnapshotsResponse {
@@ -153,16 +153,26 @@ export interface SnapshotEntriesResponse {
     snapshot_time: string;
 }
 
+export interface SnapshotCreateResponse {
+    id: number;
+    snapshot_id: string;
+    event_id: number;
+    snapshot_time: string;
+    entry_count: number;
+    created_by: number | null;
+    description: string | null;
+}
+
 /**
  * Get list of participant snapshots for an event
  */
 export async function getParticipantSnapshots(
     eventId: number,
     page: number = 1,
-    perPage: number = 10
+    pageSize: number = 20
 ): Promise<SnapshotsResponse> {
     const response = await api.get(
-        `/api/events/${eventId}/participants/history?page=${page}&per_page=${perPage}`
+        `/api/events/${eventId}/participants/history?page=${page}&page_size=${pageSize}`
     );
     
     if (!response.ok) {
@@ -179,10 +189,10 @@ export async function getSnapshotEntries(
     eventId: number,
     snapshotId: string,
     page: number = 1,
-    perPage: number = 50
+    pageSize: number = 50
 ): Promise<SnapshotEntriesResponse> {
     const response = await api.get(
-        `/api/events/${eventId}/participants/history/${snapshotId}/entries?page=${page}&per_page=${perPage}`
+        `/api/events/${eventId}/participants/history/${snapshotId}/entries?page=${page}&page_size=${pageSize}`
     );
     
     if (!response.ok) {
@@ -198,7 +208,7 @@ export async function getSnapshotEntries(
 export async function createParticipantSnapshot(
     eventId: number,
     description?: string
-): Promise<{ snapshot_id: string; snapshot_time: string; entry_count: number }> {
+): Promise<SnapshotCreateResponse> {
     const url = description
         ? `/api/events/${eventId}/participants/snapshots?description=${encodeURIComponent(description)}`
         : `/api/events/${eventId}/participants/snapshots`;

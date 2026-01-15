@@ -132,7 +132,7 @@
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return entry.user_name.toLowerCase().includes(query) ||
-           entry.user_email.toLowerCase().includes(query);
+           (entry.user_email ? entry.user_email.toLowerCase().includes(query) : false);
   });
 
   onMount(() => {
@@ -158,6 +158,7 @@
       // Handle API response structure per documentation
       snapshots = response.snapshots || [];
       snapshotsTotal = response.total || 0;
+      perPage = response.page_size || perPage;
       snapshotsTotalPages = response.total_pages || Math.ceil(snapshotsTotal / perPage);
       
       console.log(`✅ Loaded ${snapshots.length} snapshots (total: ${snapshotsTotal})`);
@@ -203,6 +204,7 @@
       // Handle API response structure per documentation  
       entries = response.entries || [];
       entriesTotal = response.total_entries || response.total || 0;
+      entriesPerPage = response.page_size || entriesPerPage;
       entriesTotalPages = response.total_pages || Math.ceil(entriesTotal / entriesPerPage);
       
       console.log(`✅ Loaded ${entries.length} entries (total: ${entriesTotal})`);
@@ -325,7 +327,7 @@
     const rows = entries.map(entry => [
       entry.user_id,
       entry.user_name,
-      entry.user_email,
+      entry.user_email || '',
       entry.status || entry.action,
       formatDateTime(entry.joined_at),
       formatDateTime(entry.checked_in_at)
@@ -487,7 +489,7 @@
                   <tr>
                     <td>{entry.user_id}</td>
                     <td>{entry.user_name}</td>
-                    <td class="email">{entry.user_email}</td>
+                    <td class="email">{entry.user_email || '-'}</td>
                     <td>
                       <span 
                         class="status-badge"
