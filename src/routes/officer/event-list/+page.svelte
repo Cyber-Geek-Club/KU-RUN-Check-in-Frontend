@@ -163,7 +163,8 @@
       daily_checkin: "เช็คอินรายวัน",
       checkin_progress: "ความคืบหน้า",
       days_remaining: "วันที่เหลือ",
-      day_unit: "วัน"
+      day_unit: "วัน",
+      participants: "ผู้เข้าร่วม"
     },
     en: {
       search_placeholder: "Search...",
@@ -211,7 +212,8 @@
       daily_checkin: "Daily Check-in",
       checkin_progress: "Progress",
       days_remaining: "Days Left",
-      day_unit: "days"
+      day_unit: "days",
+      participants: "Participants"
     }
   };
 
@@ -1405,7 +1407,7 @@
                       </div>
                       <div class="count-badge">
                         <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                        {event.participant_count}/{event.max_participants}
+                        {event.participant_count}/{event.max_participants} {t[lang].participants}
                       </div>
                     </div>
                   </div>
