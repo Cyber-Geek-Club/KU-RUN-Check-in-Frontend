@@ -223,6 +223,17 @@
   let sendingLink = "";
   let currentParticipationId: number | null = null;
   let distanceInput = 0;
+  let stravaVerified = false; // Track if user clicked verify button
+
+  // ✅ Reset verification when link changes
+  $: if (sendingLink) {
+    // Reset when user types/modifies the link
+    const trimmed = sendingLink.trim();
+    if (trimmed && distanceInput > 0) {
+      stravaVerified = false;
+      distanceInput = 0;
+    }
+  }
 
   // --- CANCEL MODAL STATE ---
   let showCancelModal = false;
@@ -1443,6 +1454,7 @@ async function handleCheckInConfirm() {
               
               if (result.success && result.distance_km) {
                   distanceInput = Number(result.distance_km) || 0;
+                  stravaVerified = true; // ✅ Mark as verified
                   Swal.fire({
                       icon: 'success',
                       title: lang === 'th' ? 'ดึงข้อมูลสำเร็จ!' : 'Data Retrieved!',
@@ -1458,6 +1470,7 @@ async function handleCheckInConfirm() {
               } else if (result.distance_km === 0 || result.distance_km) {
                   // API returned but distance is 0
                   distanceInput = Number(result.distance_km) || 0;
+                  stravaVerified = true; // ✅ Mark as verified
                   Swal.fire({
                       icon: 'info',
                       title: lang === 'th' ? 'พบข้อมูล' : 'Data Found',
@@ -1511,6 +1524,7 @@ async function handleCheckInConfirm() {
 
       if (result.isConfirmed && result.value) {
           distanceInput = Number(result.value);
+          stravaVerified = true; // ✅ Mark as verified
           Swal.fire({
               icon: 'success',
               title: 'OK',
@@ -1524,6 +1538,15 @@ async function handleCheckInConfirm() {
   function goToStep3_Proof() {
       if (!sendingLink || sendingLink.trim() === "") {
           Swal.fire(t[lang].alert_warning, t[lang].alert_link_required, "warning");
+          return;
+      }
+      // ✅ บังคับให้กดปุ่มตรวจสอบก่อน
+      if (!stravaVerified) {
+          Swal.fire(
+              t[lang].alert_warning,
+              lang === 'th' ? 'กรุณากดปุ่ม "🔍 ตรวจสอบลิงก์" ก่อนดำเนินการต่อ' : 'Please click "🔍 Verify Link" button before proceeding',
+              "warning"
+          );
           return;
       }
       if (distanceInput <= 0) { 
