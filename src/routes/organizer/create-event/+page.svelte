@@ -1018,48 +1018,96 @@
   }
 
   // =========================================================
-  // 🏆 Leaderboard Logic (ฉบับแก้ไขสมบูรณ์)
+  // 🏆 Leaderboard Logic (ฉบับแก้ไขตาม API Documentation)
   // =========================================================
 
-  // ฟังก์ชันดึงข้อมูล Leaderboard (แก้ให้ไม่แดงเมื่อหาไม่เจอ)
-  // ฟังก์ชันดึงข้อมูล Leaderboard (ปรับปรุง: ถ้า 404 ให้สร้างข้อมูลปลอมโชว์)
+  // ✅ FIX: ฟังก์ชันดึงข้อมูล Leaderboard Config และ Entries
   async function fetchLeaderboard(eventId: number) {
     if (!eventId) return;
+    
     try {
       rewardData.loading = true;
-      // STEP 1: หา Config ID
+      
+      // STEP 1: ดึง Config ของ Event
+      // API: GET /api/reward-leaderboards/configs/event/{eventId}
       const configRes = await api.get(`/api/reward-leaderboards/configs/event/${eventId}`);
-      const configId = configRes.data.id;
-      if (!configId) {
+      
+      // ✅ FIX: API คืน object โดยตรง ไม่ใช่ { data: {...} }
+      const configData = configRes.data;
+      
+      if (!configData || !configData.id) {
         rewardData.users = [];
         rewardData.leaderboardFinalized = false;
+        rewardData.currentConfigId = undefined;
         return;
       }
+      
+      // ✅ เก็บ configId ไว้ใน rewardData และ selectedEvent
+      const configId = configData.id;
       rewardData.currentConfigId = configId;
-      // STEP 2: ดึงรายชื่อ
-      const entriesRes = await api.get(`/api/reward-leaderboards/configs/${configId}/entries`, {
-        params: { qualified_only: true }
-      });
-      rewardData.users = entriesRes.data.map((entry: any, index: number) => ({
-        ...entry,
-        rank: index + 1,
-        name: entry.user_name,
-        completedDate: entry.qualified_at,
-        rewardName: entry.reward_name,
-      }));
-      // STEP 3: Check finalized state
-      rewardData.leaderboardFinalized = !!configRes.data.finalized_at;
-      if (rewardData.leaderboardFinalized && rewardData.selectedEvent) {
+      
+      // ✅ FIX: อัพเดท selectedEvent.rewardConfigId ด้วย เพื่อให้ตัวแปรตรงกัน
+      if (rewardData.selectedEvent) {
         rewardData.selectedEvent = {
           ...rewardData.selectedEvent,
-          finalized_at: configRes.data.finalized_at
+          rewardConfigId: configId,
+          finalized_at: configData.finalized_at
         };
       }
-      console.log(`[DEBUG] โหลดข้อมูลเสร็จสิ้น ${rewardData.users.length} รายการ`);
+      
+      // STEP 2: ดึงรายชื่อผู้เข้าร่วม (Entries)
+      // API: GET /api/reward-leaderboards/configs/{configId}/entries
+      const entriesRes = await api.get(`/api/reward-leaderboards/configs/${configId}/entries`, {
+        params: { qualified_only: true, limit: 1000 }
+      });
+      
+      // ✅ FIX: API คืน array โดยตรง
+      const entriesData = Array.isArray(entriesRes.data) ? entriesRes.data : (entriesRes.data?.data || []);
+      
+      // Map entries เป็น RewardUser format
+      rewardData.users = entriesData.map((entry: any, index: number) => ({
+        id: `user_${entry.user_id}`,
+        odySd: entry.user_id?.toString() || "",
+        name: entry.user_full_name || "Unknown",
+        email: entry.user_email || "",
+        globalRank: entry.rank || index + 1,
+        tierRank: entry.rank || index + 1,
+        tier: entry.reward_name || "No Tier",
+        totalCompletions: entry.total_completions || 0,
+        completedDate: entry.qualified_at,
+        rewardedAt: entry.rewarded_at,
+        joinCode: "",
+        status: entry.reward_id ? "completed" : (entry.qualified_at ? "in_progress" : "no_tier"),
+        userId: entry.user_id,
+        rewardId: entry.reward_id,
+        rewardTier: entry.reward_tier,
+        rewardName: entry.reward_name,
+        rewardDescription: entry.reward_description
+      }));
+      
+      // STEP 3: Check finalized state
+      rewardData.leaderboardFinalized = configData.is_finalized || !!configData.finalized_at;
+      
+      if (isDev) {
+        console.log(`[Leaderboard] Config ID: ${configId}`);
+        console.log(`[Leaderboard] Loaded ${rewardData.users.length} qualified users`);
+        console.log(`[Leaderboard] Finalized: ${rewardData.leaderboardFinalized}`);
+        console.log(`[Leaderboard] Total qualified: ${configData.total_qualified}`);
+        console.log(`[Leaderboard] Total rewarded: ${configData.total_rewarded}`);
+      }
+      
     } catch (error: any) {
-      console.error("Fetch Error:", error.message);
-      rewardData.users = [];
-      rewardData.leaderboardFinalized = false;
+      if (error.response?.status === 404) {
+        // Event ยังไม่มี leaderboard config - ไม่ใช่ error
+        if (isDev) console.log(`[Leaderboard] No config found for event ${eventId}`);
+        rewardData.users = [];
+        rewardData.leaderboardFinalized = false;
+        rewardData.currentConfigId = undefined;
+      } else {
+        console.error("[Leaderboard] Fetch Error:", error.message);
+        rewardData.users = [];
+        rewardData.leaderboardFinalized = false;
+      }
     } finally {
       rewardData.loading = false;
     }
@@ -1072,32 +1120,72 @@
   // This ensures the organizer can trigger calculation even before entries are loaded.
   $: showCalculateRanksButton = !!rewardData.selectedEvent && !rewardData.leaderboardFinalized;
 
-  // Function to calculate ranks
+  // ✅ FIX: Function to calculate ranks - ตาม API Documentation
+  // API: POST /api/reward-leaderboards/configs/{configId}/calculate-ranks
   async function handleCalculateRanks() {
+    // ✅ FIX: ใช้ตัวแปรเดียวกัน + fallback
     const configId = rewardData.currentConfigId || rewardData.selectedEvent?.rewardConfigId;
+    
     if (!configId) {
-      Swal.fire("ไม่พบ ID", "กรุณาโหลดข้อมูล Event ใหม่", "error");
+      Swal.fire({
+        icon: "error",
+        title: "ไม่พบ Config ID",
+        text: "กรุณาเลือก Event ใหม่หรือรอให้โหลดข้อมูลเสร็จ",
+        background: "#1e293b",
+        color: "#fff"
+      });
       return;
     }
+    
     rewardData.loading = true;
+    
     try {
-      const response = await api.post(`/api/reward-leaderboards/configs/${configId}/calculate-ranks`, { config_id: configId });
+      // ✅ API ต้องการแค่ POST ไม่มี body
+      const response = await api.post(`/api/reward-leaderboards/configs/${configId}/calculate-ranks`);
+      
+      // ✅ FIX: Check ranked_count จาก response
+      const result = response.data;
+      
+      if (result.ranked_count === 0) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'ยังไม่มีผู้ผ่านคุณสมบัติ',
+          text: 'กรุณารอให้ผู้เข้าร่วมทำครบตามจำนวนที่กำหนด',
+          background: "#1e293b",
+          color: "#fff"
+        });
+        return;
+      }
+      
       await Swal.fire({
         icon: 'success',
         title: 'คำนวณอันดับสำเร็จ!',
-        text: 'ระบบได้คำนวณอันดับและจัดกลุ่มรางวัลเรียบร้อย',
-        timer: 2000
+        text: `จัดอันดับสำเร็จ ${result.ranked_count} คน`,
+        timer: 2000,
+        background: "#1e293b",
+        color: "#fff"
       });
+      
+      // รีโหลดข้อมูล leaderboard
       if (rewardData.selectedEvent && typeof rewardData.selectedEvent.id === 'number') {
-        fetchLeaderboard(rewardData.selectedEvent.id);
+        await fetchLeaderboard(rewardData.selectedEvent.id);
       }
+      
     } catch (err) {
       const error = err as any;
       console.error("🔥 Calculate Ranks Error:", error);
+      
+      let errorMsg = 'เกิดข้อผิดพลาด';
+      if (error.response?.status === 400) {
+        errorMsg = error.response?.data?.detail || 'ยังไม่มีผู้ผ่านคุณสมบัติ';
+      } else if (error.response?.status === 404) {
+        errorMsg = 'ไม่พบ Config ID';
+      }
+      
       Swal.fire({
         icon: 'error',
         title: 'คำนวณอันดับไม่สำเร็จ',
-        text: error.response?.data?.detail || error.message || 'เกิดข้อผิดพลาด',
+        text: errorMsg,
         background: "#1e293b",
         color: "#fff"
       });
@@ -1109,71 +1197,94 @@
   // UI helper: show message if no users
   $: showNoUsersMsg = rewardData.users && rewardData.users.length === 0 && !rewardData.loading;
 
-
-
-
-
-  // ฟังก์ชันกดปุ่ม "แจกรางวัล" (Finalize)
+  // ✅ FIX: ฟังก์ชันกดปุ่ม "แจกรางวัล" (Finalize) - ตาม API Documentation
+  // API: POST /api/reward-leaderboards/configs/{configId}/finalize
   async function handleFinalizeRewards() {
+    // ✅ FIX: ใช้ตัวแปรเดียวกัน + fallback
     const configId = rewardData.currentConfigId || rewardData.selectedEvent?.rewardConfigId;
+    
     if (!configId) {
-        Swal.fire("ไม่พบ ID", "กรุณาโหลดข้อมูล Event ใหม่", "error");
-        return;
+      Swal.fire({
+        icon: "error",
+        title: "ไม่พบ Config ID",
+        text: "กรุณาเลือก Event ใหม่หรือรอให้โหลดข้อมูลเสร็จ",
+        background: "#1e293b",
+        color: "#fff"
+      });
+      return;
     }
 
     const result = await Swal.fire({
-      title: 'ยืนยันการสรุปผล? ',
-      text: "ระบบจะล็อคอันดับและแจกรางวัล (ต้องมีผู้ผ่านเกณฑ์อย่างน้อย 1 คน)",
+      title: 'ยืนยันการสรุปผล?',
+      html: `
+        <div style="text-align: left; color: #94a3b8;">
+          <p>⚠️ การ Finalize ไม่สามารถย้อนกลับได้!</p>
+          <p>ระบบจะ:</p>
+          <ul style="margin-left: 20px;">
+            <li>ล็อคอันดับถาวร</li>
+            <li>แจกรางวัลตาม Tier ที่กำหนด</li>
+          </ul>
+          <p style="color: #f59e0b; margin-top: 10px;">
+            ต้องมีผู้ผ่านคุณสมบัติอย่างน้อย 1 คน
+          </p>
+        </div>
+      `,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'ตกลง, Finalize',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#6b7280',
       background: "#1e293b",
-      color:  "#fff"
+      color: "#fff"
     });
 
-    if (! result.isConfirmed) return;
+    if (!result.isConfirmed) return;
 
     rewardData.loading = true;
 
     try {
-      // ❌ ลบ config_id ออกจาก body (ส่งผ่าน URL แล้ว)
+      // ✅ FIX: API ต้องการ body มี confirm: true เท่านั้น
       const response = await api.post(
         `/api/reward-leaderboards/configs/${configId}/finalize`,
-        { config_id: configId, confirm: true }  // ✅ body ให้มีแค่นี้
+        { confirm: true }
       );
       
       await Swal.fire({ 
         icon: 'success', 
         title: 'สำเร็จ!', 
-        text: 'แจกรางวัลเรียบร้อย', 
+        text: 'แจกรางวัลเรียบร้อย',
+        background: "#1e293b",
+        color: "#fff",
         timer: 2000 
       });
       
-      location.reload(); 
+      // รีโหลดข้อมูล leaderboard แทนที่จะ reload หน้า
+      if (rewardData.selectedEvent && typeof rewardData.selectedEvent.id === 'number') {
+        await fetchLeaderboard(rewardData.selectedEvent.id);
+      }
 
-    } catch (err:  any) {
+    } catch (err: any) {
       console.error("🔥 Finalize Error:", err);
-      console.error("📋 Response data:", err.response?.data);
-      console.error("📊 Status:", err.response?.status);
       
-      const serverMsg = err.response?.data?.detail || err.response?.data?.message;
       let displayMsg = "เงื่อนไขไม่ถูกต้อง";
+      const serverMsg = err.response?.data?.detail || err.response?.data?.message;
 
       if (err.response?.status === 400) {
-          displayMsg = typeof serverMsg === 'string' 
-            ? serverMsg 
-            : "กิจกรรมยังไม่จบ หรือไม่มีผู้ผ่านเกณฑ์ (0 รายการ)";
+        displayMsg = typeof serverMsg === 'string' 
+          ? serverMsg 
+          : "กิจกรรมยังไม่จบ หรือไม่มีผู้ผ่านคุณสมบัติ";
       } else if (err.response?.status === 401) {
-          displayMsg = "เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่";
+        displayMsg = "เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่";
       } else if (err.response?.status === 403) {
-          displayMsg = "คุณไม่มีสิทธิ์ดำเนินการนี้";
+        displayMsg = "คุณไม่มีสิทธิ์ดำเนินการนี้";
       } else if (err.response?.status === 404) {
-          displayMsg = "ไม่พบ Config ID นี้ (" + configId + ")";
+        displayMsg = `ไม่พบ Config ID: ${configId}`;
       }
 
       Swal.fire({
         icon: 'error',
-        title: 'ดำเนินการไม่สำเร็จ (' + err.response?.status + ')',
+        title: `ดำเนินการไม่สำเร็จ (${err.response?.status || 'Error'})`,
         text: displayMsg,
         background: "#1e293b",
         color: "#fff"
@@ -1181,7 +1292,7 @@
     } finally {
       rewardData.loading = false;
     }
-}
+  }
 
 
 
@@ -4459,8 +4570,10 @@
   async function fetchRewardConfigs() {
     try {
       const res = await api.get("/api/reward-leaderboards/configs");
-      allRewardConfigs = res.data || [];
-      console.log(`✅ Loaded ${allRewardConfigs.length} reward configs`);
+      // ✅ FIX: Check response structure - API อาจคืน { data: [...] } หรือ array โดยตรง
+      const responseData = res.data;
+      allRewardConfigs = Array.isArray(responseData) ? responseData : (responseData?.data || []);
+      if (isDev) console.log(`✅ Loaded ${allRewardConfigs.length} reward configs`);
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : "Unknown error";
       console.log("⚠️ Could not load reward configs:", errorMessage);
