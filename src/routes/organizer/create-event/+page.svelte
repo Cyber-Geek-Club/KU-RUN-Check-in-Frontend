@@ -1135,13 +1135,111 @@
       rewardData.loading = false;
     }
   }
+  // =========================================================
+  // 🎯 Leaderboard Status Helper (ตาม Flow ที่ถูกต้อง)
+  // =========================================================
+  interface LeaderboardStatus {
+    status: 'no_event' | 'no_config' | 'active' | 'ready_to_finalize' | 'finalized';
+    message: string;
+    messageEn: string;
+    color: string;
+    icon: string;
+    canCalculate: boolean;
+    canFinalize: boolean;
+  }
+
+  function getLeaderboardStatus(): LeaderboardStatus {
+    // ไม่มี Event ถูกเลือก
+    if (!rewardData.selectedEvent) {
+      return {
+        status: 'no_event',
+        message: '📋 กรุณาเลือก Event',
+        messageEn: 'Please select an event',
+        color: '#6b7280',
+        icon: 'info',
+        canCalculate: false,
+        canFinalize: false
+      };
+    }
+
+    // Finalized แล้ว
+    if (rewardData.leaderboardFinalized) {
+      return {
+        status: 'finalized',
+        message: '🏆 ประกาศผลแล้ว',
+        messageEn: 'Results Announced',
+        color: '#10b981',
+        icon: 'check',
+        canCalculate: false,
+        canFinalize: false
+      };
+    }
+
+    // ไม่มี Config ID = ยังไม่มี Leaderboard
+    if (!rewardData.currentConfigId) {
+      return {
+        status: 'no_config',
+        message: '⚠️ ยังไม่มี Reward Config',
+        messageEn: 'No Reward Config',
+        color: '#f59e0b',
+        icon: 'warning',
+        canCalculate: false,
+        canFinalize: false
+      };
+    }
+
+    // ตรวจสอบว่ากิจกรรมจบหรือยัง
+    const now = new Date();
+    
+    // Handle endDate - อาจเป็น {day, month, year} หรือ string/Date
+    let endsAt: Date | null = null;
+    const ed = rewardData.selectedEvent.endDate;
+    if (ed) {
+      if (typeof ed === 'string') {
+        endsAt = new Date(ed);
+      } else if (ed instanceof Date) {
+        endsAt = ed;
+      } else if (typeof ed === 'object' && 'year' in ed && 'month' in ed && 'day' in ed) {
+        // Format: {day: "15", month: "01", year: "2026"}
+        endsAt = new Date(`${ed.year}-${ed.month}-${ed.day}`);
+      }
+    }
+
+    // กิจกรรมยังไม่จบ = Active
+    if (endsAt && now < endsAt) {
+      return {
+        status: 'active',
+        message: '⏳ กำลังดำเนินการ',
+        messageEn: 'In Progress',
+        color: '#3b82f6',
+        icon: 'clock',
+        canCalculate: true, // สามารถ calculate ดูอันดับได้
+        canFinalize: false  // ยังไม่สามารถ finalize ได้
+      };
+    }
+
+    // กิจกรรมจบแล้ว = พร้อม Finalize
+    return {
+      status: 'ready_to_finalize',
+      message: '✅ พร้อม Finalize',
+      messageEn: 'Ready to Finalize',
+      color: '#f59e0b',
+      icon: 'warning',
+      canCalculate: true,  // สามารถ calculate ได้
+      canFinalize: true    // สามารถ finalize ได้
+    };
+  }
+
+  // Reactive leaderboard status
+  $: leaderboardStatus = getLeaderboardStatus();
+
   // UI helper: should show finalize button
-  $: showFinalizeButton = !rewardData.leaderboardFinalized && rewardData.users && rewardData.users.length > 0;
+  // แสดงเมื่อ: ยังไม่ finalize + มี users + กิจกรรมจบแล้ว (ready_to_finalize)
+  $: showFinalizeButton = leaderboardStatus.canFinalize && rewardData.users && rewardData.users.length > 0;
 
   // UI helper: should show calculate ranks button
-  // Show calculate button as long as an event is selected and leaderboard is not finalized.
-  // This ensures the organizer can trigger calculation even before entries are loaded.
-  $: showCalculateRanksButton = !!rewardData.selectedEvent && !rewardData.leaderboardFinalized;
+  // แสดงเมื่อ: มี Event + ยังไม่ finalize (ดูอันดับได้ทุกเมื่อ)
+  $: showCalculateRanksButton = leaderboardStatus.canCalculate;
 
   // ✅ FIX: Function to calculate ranks - ตาม API Documentation
   // API: POST /api/reward-leaderboards/configs/{configId}/calculate-ranks
@@ -4574,20 +4672,18 @@
   async function fetchEventHolidays(eventId: number) {
     try {
       const res = await api.get(`/api/events/${eventId}/holidays`);
-
-      if (!res.ok) {
+      
+      // ✅ FIX: Axios response - ใช้ res.data และ res.status
+      if (res.status !== 200) {
         console.warn(`⚠️ Failed to fetch holidays for event ${eventId}`);
         return [];
       }
 
-      const text = await res.text();
-      if (!text) {
-        allHolidaysData = [];
-        return;
-      }
-
-      allHolidaysData = JSON.parse(text);
+      // Axios จะ parse JSON ให้อัตโนมัติ
+      const holidaysArray = Array.isArray(res.data) ? res.data : [];
+      allHolidaysData = holidaysArray;
       console.log(`✅ Loaded ${allHolidaysData.length} holidays`);
+      return holidaysArray;
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : "Unknown error";
       console.log("⚠️ Could not load holidays:", errorMessage);
@@ -5869,8 +5965,9 @@
           let eventHolidays: string[] = [];
           try {
             const holidaysRes = await api.get(`/api/events/${item.id}/holidays`);
-            if (holidaysRes.ok) {
-              const holidaysData = await holidaysRes.json();
+            // ✅ FIX: Axios response - ใช้ res.status และ res.data
+            if (holidaysRes.status === 200) {
+              const holidaysData = Array.isArray(holidaysRes.data) ? holidaysRes.data : [];
               // API คืน array ของ {holiday_date, holiday_name, ...}
               eventHolidays = holidaysData.map((h: any) => h.holiday_date);
             }
@@ -6502,7 +6599,8 @@
             `/api/events/${id}/holidays`
           );
 
-          if (!deleteHolidayRes.ok && deleteHolidayRes.status !== 404) {
+          // ✅ FIX: Axios response - ใช้ status แทน ok
+          if (deleteHolidayRes.status !== 200 && deleteHolidayRes.status !== 204 && deleteHolidayRes.status !== 404) {
             console.warn(
               "⚠️ Failed to delete holidays, but continuing..."
             );
@@ -8105,10 +8203,11 @@
     let holidaysData: string[] = [];
     try {
       const holidaysRes = await api.get(`/api/events/${apiData.id}/holidays`);
-      if (holidaysRes.ok) {
-        const holidaysJson = await holidaysRes.json();
+      // ✅ FIX: Axios response - ใช้ status และ data
+      if (holidaysRes.status === 200) {
+        const holidaysArray = Array.isArray(holidaysRes.data) ? holidaysRes.data : [];
         // API คืน array ของ {holiday_date, holiday_name, ...}
-        holidaysData = holidaysJson.map((h: any) => h.holiday_date);
+        holidaysData = holidaysArray.map((h: any) => h.holiday_date);
         console.log("✅ Loaded holidays for edit:", holidaysData);
       }
     } catch (err) {
@@ -13977,62 +14076,74 @@
                     </button>
                   </div>
 
+                  <!-- 🎯 Leaderboard Status Badge -->
                   {#if rewardData.selectedEvent}
-                    {#if !isEventFinalized(rewardData.selectedEvent)}
-                      <button
-                        class="btn-new-logs"
-                        style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none;"
-                        on:click={handleFinalizeRewards}
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          stroke-width="2"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                          />
+                    <div
+                      class="leaderboard-status-badge"
+                      style="padding: 0.4rem 0.75rem; background: {leaderboardStatus.color}20; color: {leaderboardStatus.color}; border: 1px solid {leaderboardStatus.color}40; border-radius: 8px; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.375rem;"
+                      title={currentLang === 'th' ? leaderboardStatus.message : leaderboardStatus.messageEn}
+                    >
+                      {#if leaderboardStatus.status === 'finalized'}
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Lock & Finalize
-                      </button>
-                    {:else}
-                      <div
-                        style="padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;"
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          stroke-width="2"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
+                      {:else if leaderboardStatus.status === 'active'}
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Finalized
-                      </div>
-                    {/if}
+                      {:else if leaderboardStatus.status === 'ready_to_finalize'}
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      {:else}
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      {/if}
+                      {currentLang === 'th' ? leaderboardStatus.message : leaderboardStatus.messageEn}
+                    </div>
                   {/if}
+
+                  <!-- 🔄 Calculate Ranks Button (ดูอันดับได้ทุกเมื่อที่ยังไม่ finalize) -->
                   {#if showCalculateRanksButton}
                     <button
                       class="btn-new-logs"
                       on:click={handleCalculateRanks}
                       disabled={rewardData.loading}
-                      style="margin-right:0.5rem; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none;"
+                      style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none;"
+                      title={currentLang === 'th' ? 'คำนวณอันดับ (ดูได้ทุกเมื่อ ไม่กระทบข้อมูล)' : 'Calculate Ranks (preview only, no side effects)'}
                     >
                       <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
-                      {currentLang === 'th' ? 'คำนวณอันดับ' : 'Calculate Ranks'}
+                      {currentLang === 'th' ? '🔄 คำนวณอันดับ' : '🔄 Calculate Ranks'}
+                    </button>
+                  {/if}
+
+                  <!-- 🏁 Finalize Button (แสดงเมื่อกิจกรรมจบแล้ว + ยังไม่ finalize) -->
+                  {#if showFinalizeButton}
+                    <button
+                      class="btn-new-logs"
+                      style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; border: none;"
+                      on:click={handleFinalizeRewards}
+                      disabled={rewardData.loading}
+                      title={currentLang === 'th' ? '⚠️ ทำครั้งเดียว ย้อนกลับไม่ได้!' : '⚠️ This action cannot be undone!'}
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
+                      {currentLang === 'th' ? '🏁 Finalize (ทำครั้งเดียว!)' : '🏁 Finalize (Once!)'}
                     </button>
                   {/if}
 
@@ -14070,6 +14181,40 @@
                   </div>
                 </div>
               </div>
+
+              <!-- 📊 Leaderboard Info Box - แสดงคำอธิบาย flow -->
+              {#if rewardData.selectedEvent && !rewardData.leaderboardFinalized}
+                <div 
+                  class="leaderboard-info-box"
+                  style="margin: 0 1rem 1rem; padding: 0.75rem 1rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 8px; font-size: 0.8rem; color: #94a3b8;"
+                >
+                  <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+                    <svg width="16" height="16" fill="none" stroke="#3b82f6" viewBox="0 0 24 24" stroke-width="2" style="flex-shrink: 0; margin-top: 2px;">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <strong style="color: #e2e8f0;">{currentLang === 'th' ? '📊 ข้อมูล Ranking:' : '📊 Ranking Info:'}</strong>
+                      <ul style="margin: 0.25rem 0 0 1rem; padding: 0; list-style: disc;">
+                        <li>
+                          <strong style="color: #3b82f6;">{currentLang === 'th' ? 'คำนวณอันดับ' : 'Calculate Ranks'}:</strong>
+                          {currentLang === 'th' ? 'ดูลำดับปัจจุบันได้ทุกเมื่อ (ไม่กระทบข้อมูล)' : 'Preview current rankings anytime (no side effects)'}
+                        </li>
+                        {#if leaderboardStatus.status === 'active'}
+                          <li style="color: #f59e0b;">
+                            <strong>{currentLang === 'th' ? 'Finalize:' : 'Finalize:'}</strong>
+                            {currentLang === 'th' ? '⏳ รอกิจกรรมจบก่อน (ยังกด Finalize ไม่ได้)' : '⏳ Wait for event to end (Finalize disabled)'}
+                          </li>
+                        {:else}
+                          <li style="color: #dc2626;">
+                            <strong>{currentLang === 'th' ? 'Finalize:' : 'Finalize:'}</strong>
+                            {currentLang === 'th' ? '⚠️ ทำครั้งเดียว ย้อนกลับไม่ได้! (ล็อคอันดับ + แจกรางวัล)' : '⚠️ Cannot be undone! (Lock ranks + distribute rewards)'}
+                          </li>
+                        {/if}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              {/if}
 
               <!-- Tier Cards -->
               {#if rewardData.selectedEvent.rewards && rewardData.selectedEvent.rewards.length > 0}
