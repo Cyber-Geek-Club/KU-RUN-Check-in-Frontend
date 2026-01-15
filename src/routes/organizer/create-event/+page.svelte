@@ -1206,6 +1206,11 @@
 
   let dataIsLoading: boolean = true;
   let savingChanges: boolean = false;
+  
+  // ===== OPTIMIZATION: Initial loading states =====
+  let isInitializing: boolean = true; // Main app initialization
+  let eventsLoading: boolean = true; // Events list loading
+  let configsLoading: boolean = true; // Reward configs loading
 
   let initialProfileData: any = {};
   let hasUnsavedChanges: boolean = false;
@@ -1399,7 +1404,8 @@
     }, 3000);
   }
 
-  onMount(async () => {
+  // ===== OPTIMIZED: Unified initialization with parallel loading =====
+  async function initializeUserProfile(): Promise<void> {
     dataIsLoading = true;
     try {
       authToken = localStorage.getItem("access_token") || "";
@@ -1417,43 +1423,51 @@
       if (!authToken || !currentUserId)
         throw new Error("User not authenticated");
 
-      try {
-        const response = await api.get(`/api/users/${currentUserId}`);
-        const data = response.data;
+      const response = await api.get(`/api/users/${currentUserId}`);
+      const data = response.data;
 
-        if (data.role) userRole = data.role.toLowerCase();
-        else userRole = data.nisit_id || data.nisitId ? "student" : "officer";
+      if (data.role) userRole = data.role.toLowerCase();
+      else userRole = data.nisit_id || data.nisitId ? "student" : "officer";
 
-        userTitle = data.title || "";
-        userFirstName = data.first_name || data.firstName || "";
-        userLastName = data.last_name || data.lastName || "";
-        userEmail = data.email || "";
+      userTitle = data.title || "";
+      userFirstName = data.first_name || data.firstName || "";
+      userLastName = data.last_name || data.lastName || "";
+      userEmail = data.email || "";
 
-        if (userRole === "student") {
-          studentIdNumber = data.nisit_id || data.nisitId || "";
-          userFaculty = (data.faculty || "").toLowerCase();
-          userMajor = (data.major || "").toLowerCase();
-        } else {
-          userDepartment = data.department || "";
-        }
-
-        initialProfileData = {
-          userTitle,
-          userFirstName,
-          userLastName,
-          userFaculty,
-          userMajor,
-          userDepartment,
-        };
-      } catch (err: any) {
-        if (err.response?.status === 401) return goto(`/ku-run/auth/login`);
-        throw new Error("Failed to fetch user data");
+      if (userRole === "student") {
+        studentIdNumber = data.nisit_id || data.nisitId || "";
+        userFaculty = (data.faculty || "").toLowerCase();
+        userMajor = (data.major || "").toLowerCase();
+      } else {
+        userDepartment = data.department || "";
       }
+
+      initialProfileData = {
+        userTitle,
+        userFirstName,
+        userLastName,
+        userFaculty,
+        userMajor,
+        userDepartment,
+      };
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        goto(`/ku-run/auth/login`);
+        return;
+      }
+      throw new Error("Failed to fetch user data");
+    } finally {
+      dataIsLoading = false;
+    }
+  }
+  
+  // First onMount - load user profile (happens first for auth check)
+  onMount(async () => {
+    try {
+      await initializeUserProfile();
     } catch (error) {
       console.error(error);
       displayFeedback("Could not load profile info.", "error");
-    } finally {
-      dataIsLoading = false;
     }
   });
 
@@ -4290,48 +4304,57 @@
   }
 }
 
-  // ฟังก์ชันดึงจำนวน pending submissions สำหรับแต่ละ event
+  // ===== OPTIMIZED: Fetch pending counts in parallel with batching =====
   async function fetchPendingCountsForEvents() {
     const token = localStorage.getItem("access_token");
     const headers: HeadersInit = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    for (const event of events) {
-      try {
-        // ✅ เพิ่ม /ku-run prefix
-        const res = await fetch(
-          `${API_BASE_URL}/api/participations/event/${event.id}/report`,
-          { headers }
-        );
+    // ✅ OPTIMIZATION: Fetch all pending counts in parallel (batch of 5)
+    const BATCH_SIZE = 5;
+    const eventsCopy = [...events];
+    
+    for (let i = 0; i < eventsCopy.length; i += BATCH_SIZE) {
+      const batch = eventsCopy.slice(i, i + BATCH_SIZE);
+      
+      const results = await Promise.allSettled(
+        batch.map(async (event) => {
+          try {
+            const res = await fetch(
+              `${API_BASE_URL}/api/participations/event/${event.id}/report`,
+              { headers }
+            );
 
-        if (res.status === 404) {
-          // ถ้าไม่มีข้อมูล ให้ set pending count = 0
-          const eventIndex = events.findIndex((e) => e.id === event.id);
-          if (eventIndex !== -1) {
-            events[eventIndex].pendingCount = 0;
+            if (res.status === 404) {
+              return { eventId: event.id, pendingCount: 0 };
+            }
+
+            if (res.ok) {
+              const data = await res.json();
+              const subs = Array.isArray(data) ? data : data.data || [];
+              const pendingCount = subs.filter(
+                (s: any) => s.status === "proof_submitted"
+              ).length;
+              return { eventId: event.id, pendingCount };
+            }
+            return { eventId: event.id, pendingCount: 0 };
+          } catch (err) {
+            console.warn(`Failed to fetch pending count for event ${event.id}:`, err);
+            return { eventId: event.id, pendingCount: 0 };
           }
-          continue;
-        }
+        })
+      );
 
-        if (res.ok) {
-          const data = await res.json();
-          const subs = Array.isArray(data) ? data : data.data || [];
-          const pendingCount = subs.filter(
-            (s: any) => s.status === "proof_submitted"
-          ).length;
-
-          // Update event with pending count
-          const eventIndex = events.findIndex((e) => e.id === event.id);
+      // Update events with results
+      results.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const { eventId, pendingCount } = result.value;
+          const eventIndex = events.findIndex((e) => e.id === eventId);
           if (eventIndex !== -1) {
             events[eventIndex].pendingCount = pendingCount;
           }
         }
-      } catch (err) {
-        console.warn(
-          `Failed to fetch pending count for event ${event.id}:`,
-          err
-        );
-      }
+      });
     }
 
     // Force reactivity update
@@ -4461,20 +4484,38 @@
     }
   }
 
+  // ===== OPTIMIZED: Main data loading with parallel fetch =====
   onMount(() => {
+    isInitializing = true;
+    eventsLoading = true;
+    configsLoading = true;
+    
     (async () => {
       try {
-        await Promise.all([fetchHolidaysFromFile(), fetchRewardConfigs()]);
-        console.log(`✅ Loaded ${allHolidaysData?.length || 0} holidays`);
-        console.log(
-          `✅ Loaded ${allRewardConfigs?.length || 0} reward configs`
-        );
+        // ✅ OPTIMIZATION: Load all data in parallel
+        const [holidaysResult, configsResult] = await Promise.allSettled([
+          fetchHolidaysFromFile(),
+          fetchRewardConfigs()
+        ]);
+        
+        configsLoading = false;
+        
+        if (isDev) {
+          console.log(`✅ Loaded ${allHolidaysData?.length || 0} holidays`);
+          console.log(`✅ Loaded ${allRewardConfigs?.length || 0} reward configs`);
+        }
 
+        // ✅ Fetch events after configs loaded (needed for mapping)
         await fetchEvents();
+        eventsLoading = false;
+        
       } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
         console.error("❌ OnMount error:", errorMessage);
+        eventsLoading = false;
+        configsLoading = false;
+      } finally {
+        isInitializing = false;
       }
     })();
 
@@ -7129,15 +7170,28 @@
     }
   }
 
-  onMount(() => {
-    initializeTokenTimer();
-
-    startRewardPolling();
-    startLogsPolling();
-    startVerifyProofPolling();
-
-    // โหลด jsQR library
-  });
+  // ===== OPTIMIZED: Lazy start polling - only after main data loads =====
+  // Polling จะเริ่มหลังจากข้อมูลหลักโหลดเสร็จ เพื่อไม่ให้แย่งทรัพยากร
+  let pollingStarted = false;
+  
+  function startAllPolling() {
+    if (pollingStarted) return;
+    pollingStarted = true;
+    
+    // ✅ เริ่ม polling หลังจาก 2 วินาที เพื่อให้ UI render ก่อน
+    setTimeout(() => {
+      initializeTokenTimer();
+      startRewardPolling();
+      startLogsPolling();
+      startVerifyProofPolling();
+    }, 2000);
+  }
+  
+  // ✅ Reactive: เริ่ม polling เมื่อ initialization เสร็จ
+  $: if (!isInitializing && !eventsLoading && !pollingStarted) {
+    startAllPolling();
+  }
+  
   onDestroy(() => {
     clearInterval(timerInterval);
 
@@ -11129,7 +11183,25 @@
 
       {#if currentView === "list"}
         <div class="grid-section">
-          {#if paginatedEvents.length === 0}
+          <!-- ===== OPTIMIZATION: Skeleton loading while events load ===== -->
+          {#if eventsLoading}
+            <div class="grid">
+              {#each [1, 2, 3, 4, 5, 6] as _}
+                <div class="glass-card skeleton-card">
+                  <div class="card-img-wrapper skeleton-img"></div>
+                  <div class="card-body">
+                    <div class="skeleton-line skeleton-title"></div>
+                    <div class="skeleton-line skeleton-desc"></div>
+                    <div class="skeleton-line skeleton-desc short"></div>
+                    <div class="skeleton-meta">
+                      <div class="skeleton-badge"></div>
+                      <div class="skeleton-badge"></div>
+                    </div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {:else if paginatedEvents.length === 0}
             <div class="empty-state">
               <svg
                 width="48"
@@ -11151,11 +11223,14 @@
               {#each paginatedEvents as event (event.id)}
                 <div class="glass-card">
                   <div class="card-img-wrapper">
+                    <!-- ===== OPTIMIZATION: Lazy loading images ===== -->
                     <img
                       src={event.image ||
                         "https://placehold.co/400x200/1e293b/64748b?text=No+Image"}
                       alt={event.title}
                       class="card-img"
+                      loading="lazy"
+                      decoding="async"
                       on:error={(e) => {
                         (e.currentTarget as HTMLImageElement).src =
                           "https://placehold.co/400x200/1e293b/64748b?text=Image+Unavailable";
@@ -11604,6 +11679,8 @@
                             "https://placehold.co/400x200/1e293b/64748b?text=No+Image"}
                           alt={event.title}
                           class="card-img"
+                          loading="lazy"
+                          decoding="async"
                           on:error={(e) => {
                             (e.currentTarget as HTMLImageElement).src =
                               "https://placehold.co/400x200/1e293b/64748b?text=Image+Unavailable";
@@ -13289,6 +13366,8 @@
                             "https://placehold.co/400x200/1e293b/64748b?text=No+Image"}
                           alt={event.title}
                           class="card-img"
+                          loading="lazy"
+                          decoding="async"
                           on:error={(e) => {
                             (e.currentTarget as HTMLImageElement).src =
                               "https://placehold.co/400x200/1e293b/64748b?text=Image+Unavailable";
@@ -15611,6 +15690,8 @@
                             "https://placehold.co/400x200/1e293b/64748b?text=No+Image"}
                           alt={event.title}
                           class="card-img"
+                          loading="lazy"
+                          decoding="async"
                           on:error={(e) => {
                             (e.currentTarget as HTMLImageElement).src =
                               "https://placehold.co/400x200/1e293b/64748b?text=Image+Unavailable";
@@ -30039,5 +30120,115 @@
       width: 10px;
       height: 10px;
     }
+  }
+  
+  /* ===== OPTIMIZATION: Skeleton Loading Styles ===== */
+  @keyframes shimmer {
+    0% {
+      background-position: -200px 0;
+    }
+    100% {
+      background-position: calc(200px + 100%) 0;
+    }
+  }
+  
+  .skeleton-card {
+    pointer-events: none;
+    overflow: hidden;
+  }
+  
+  .skeleton-img {
+    height: 160px;
+    background: linear-gradient(
+      90deg,
+      rgba(30, 41, 59, 0.8) 0px,
+      rgba(51, 65, 85, 0.8) 40px,
+      rgba(30, 41, 59, 0.8) 80px
+    );
+    background-size: 200px 100%;
+    animation: shimmer 1.2s ease-in-out infinite;
+  }
+  
+  .skeleton-line {
+    height: 16px;
+    border-radius: 8px;
+    background: linear-gradient(
+      90deg,
+      rgba(30, 41, 59, 0.8) 0px,
+      rgba(51, 65, 85, 0.8) 40px,
+      rgba(30, 41, 59, 0.8) 80px
+    );
+    background-size: 200px 100%;
+    animation: shimmer 1.2s ease-in-out infinite;
+    margin-bottom: 12px;
+  }
+  
+  .skeleton-title {
+    width: 70%;
+    height: 20px;
+  }
+  
+  .skeleton-desc {
+    width: 100%;
+  }
+  
+  .skeleton-desc.short {
+    width: 50%;
+  }
+  
+  .skeleton-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  
+  .skeleton-badge {
+    width: 60px;
+    height: 24px;
+    border-radius: 12px;
+    background: linear-gradient(
+      90deg,
+      rgba(30, 41, 59, 0.8) 0px,
+      rgba(51, 65, 85, 0.8) 40px,
+      rgba(30, 41, 59, 0.8) 80px
+    );
+    background-size: 200px 100%;
+    animation: shimmer 1.2s ease-in-out infinite;
+  }
+  
+  /* Loading spinner improvements */
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+  }
+  
+  .loading-content {
+    text-align: center;
+    color: #e2e8f0;
+  }
+  
+  .loading-spinner-lg {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(100, 116, 139, 0.3);
+    border-top-color: #10b981;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  
+  .loading-text {
+    font-size: 14px;
+    color: #94a3b8;
+    margin-top: 8px;
   }
 </style>

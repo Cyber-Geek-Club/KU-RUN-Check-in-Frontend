@@ -19,14 +19,7 @@ export const nodes = [
 	() => import('./nodes/15'),
 	() => import('./nodes/16'),
 	() => import('./nodes/17'),
-	() => import('./nodes/18'),
-	() => import('./nodes/19'),
-	() => import('./nodes/20'),
-	() => import('./nodes/21'),
-	() => import('./nodes/22'),
-	() => import('./nodes/23'),
-	() => import('./nodes/24'),
-	() => import('./nodes/25')
+	() => import('./nodes/18')
 ];
 
 export const server_loads = [];
@@ -44,18 +37,11 @@ export const dictionary = {
 		"/officer/setting-account": [11],
 		"/organizer": [12],
 		"/organizer/create-event": [13],
-		"/organizer/event-log": [14],
-		"/organizer/event-verify": [15],
-		"/organizer/events": [16],
-		"/organizer/monthly-reward": [17],
-		"/organizer/settings": [18],
-		"/organizer/unlock-user": [19],
-		"/organizer/verify-proof": [20],
-		"/student": [21],
-		"/student/event-list": [22],
-		"/student/monthly-reward": [23],
-		"/student/myevents-upcoming": [24],
-		"/student/setting-account": [25]
+		"/student": [14],
+		"/student/event-list": [15],
+		"/student/monthly-reward": [16],
+		"/student/myevents-upcoming": [17],
+		"/student/setting-account": [18]
 	};
 
 export const hooks = {
