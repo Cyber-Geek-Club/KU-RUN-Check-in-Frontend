@@ -1746,8 +1746,6 @@
   
   
   .register-btn.coming-soon { background: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: 0.8; }
-  .register-btn.completed { background: rgba(16, 185, 129, 0.12); color: #10b981; box-shadow: none; cursor: not-allowed; border: 1px solid rgba(16, 185, 129, 0.4); }
-  .register-btn.completed:hover { filter: none; transform: none; }
 
   .register-btn.unpublished { background: #ef4444 !important; color: #ffffff !important; opacity: 1; cursor: not-allowed; box-shadow: none; border: none; }
 
