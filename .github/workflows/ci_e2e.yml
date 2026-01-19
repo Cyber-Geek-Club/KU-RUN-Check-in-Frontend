@@ -20,32 +20,22 @@ jobs:
           node-version: '18'
           cache: 'pnpm'
 
-      - name: Install pnpm (global)
-        run: npm install -g pnpm@8
-
-      - name: Ensure pnpm is available
-        run: |
-          corepack enable || true
-          corepack prepare pnpm@8 --activate || npm install -g pnpm
-
-      - name: Debug: show Node/npm/pnpm versions
+      - name: Debug: show Node/npm versions
         run: |
           node -v || true
           npm -v || true
-          pnpm -v || true
-          which pnpm || true
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies (npm)
+        run: npm ci
 
       - name: Typecheck
-        run: pnpm run check
+        run: npm run check
 
       - name: Build
-        run: pnpm run build
+        run: npm run build
 
       - name: Start preview server
-        run: pnpm run preview -- --port 4173 &
+        run: npm run preview -- --port 4173 &
 
       - name: Wait for server
         run: |
