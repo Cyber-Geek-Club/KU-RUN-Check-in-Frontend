@@ -292,7 +292,17 @@
                 stroke-linejoin="round"
                 ><polyline points="20 6 9 17 4 12"></polyline></svg
               >
-            </diRedirecting to login in {redirectCountdown}s...
+            </div>
+          </div>
+
+          <div class="title-section" style="text-align: center;" in:slide>
+            <h1 class="main-title success-text">PASSWORD UPDATED</h1>
+            <p class="sub-title">
+              Your password has been reset successfully.<br />
+              <span
+                style="color: #9ca3af; font-weight: 500; display: block; margin-top: 12px;"
+              >
+                Redirecting to login in {redirectCountdown}s...
               </span>
             </p>
           </div>
@@ -303,11 +313,8 @@
             on:click={() => goto("/auth/login")}
           >
             GO TO LOGIN NOW
-          </buttonclass="title-section" style="text-align: center;" in:slide>
-            <h1 class="main-title success-text">PASSWORD UPDATED</h1>
-            <p class="sub-title">
-              Your password has been reset successfully.<br />
-              <span
+          </button>
+        {/if}
                 style="color: #9ca3af; font-weight: 500; display: block; margin-top: 12px;"
               >
                 You can close this window now.
