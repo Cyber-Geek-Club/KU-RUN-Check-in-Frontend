@@ -315,13 +315,6 @@
             GO TO LOGIN NOW
           </button>
         {/if}
-                style="color: #9ca3af; font-weight: 500; display: block; margin-top: 12px;"
-              >
-                You can close this window now.
-              </span>
-            </p>
-          </div>
-        {/if}
       </div>
     </div>
   </div>
