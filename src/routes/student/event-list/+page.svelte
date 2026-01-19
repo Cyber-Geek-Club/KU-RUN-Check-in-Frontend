@@ -413,7 +413,7 @@
       const batch = eventsCopy.slice(i, i + BATCH_SIZE);
       // For student, use participant_count from event directly
       batch.forEach((event) => {
-        const eventIndex = events.findIndex((e) => e.id === event.id);
+        const eventIndex = events.findIndex((e) => e.id === even.id);
         if (eventIndex !== -1) {
           events[eventIndex].participant_count = event.participant_count || 0;
         }
@@ -423,7 +423,7 @@
     events = [...events];
   }
 
-  
+
 
   async function updateUserStatus() {
     try {
