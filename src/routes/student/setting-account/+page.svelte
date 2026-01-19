@@ -229,48 +229,6 @@
   }
 
   // --- Profile Image Upload ---
-  async function handleImageUpload(e: Event) {
-    const input = e.target as HTMLInputElement;
-    if (!input.files?.length) return;
-
-    const file = input.files[0];
-    if (!file.type.startsWith("image/")) {
-      showMessage("Please select an image file", "error");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      showMessage("Image must be less than 5MB", "error");
-      return;
-    }
-
-    isUploadingImage = true;
-    
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch(`${API_BASE_URL}/api/users/${userId}/avatar`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        profileImage = data.avatar_url || URL.createObjectURL(file);
-        showMessage("Profile photo updated!", "success");
-      } else {
-        profileImage = URL.createObjectURL(file);
-        showMessage("Photo preview updated", "success");
-      }
-    } catch (error) {
-      profileImage = URL.createObjectURL(file);
-      showMessage("Photo preview updated", "success");
-    } finally {
-      isUploadingImage = false;
-    }
-  }
 
   onMount(async () => {
     isLoading = true;
@@ -326,7 +284,7 @@
         // แก้: แปลงเป็นตัวพิมพ์เล็ก
         major = (data.major || "").toLowerCase();
         
-        // อัปเดต originalData ตรงนี้อีกครั้งเพื่อให้ปุ่ม Save ทำงานถูก
+        // อัปเดต originalData ตรงนี้อีกครั้งเพื่อให้ปุ่ม Save ทำงานถู
         originalData = { ...originalData, faculty, major };
     }, 100);
 } else {
@@ -535,17 +493,6 @@ console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
               </div>
             {/if}
             
-            <label class="avatar-upload-btn" class:uploading={isUploadingImage}>
-              <input type="file" accept="image/*" on:change={handleImageUpload} hidden />
-              {#if isUploadingImage}
-                <div class="mini-spinner"></div>
-              {:else}
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-              {/if}
-            </label>
           </div>
           
           <div class="profile-info">

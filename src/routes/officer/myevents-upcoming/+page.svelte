@@ -37,7 +37,7 @@
       th: {
           upcoming_header: "กิจกรรมเร็วๆ นี้",
           history_header: "ประวัติกิจกรรม",
-          search_placeholder: "ค้นหากิจกรรม...", // [แก้ไข 1] ปรับคำให้ชัดเจน
+          search_placeholder: "ค้นหากิจกรรม...",
           read_more: "ดูรายละเอียด",
           read_less: "ย่อลง",
           
@@ -63,7 +63,7 @@
           btn_submit: "ยืนยันการส่งข้อมูล",
           btn_resubmit: "ยืนยันการส่งซ้ำ",
           btn_back_strava: "← ย้อนกลับไปแก้ไข Strava",
-          btn_verify_link: "✅ ยืนยันลิงก์",
+          btn_verify_link: "ยืนยันลิงก์",
           status_daily_completed: "เจอกันพรุ่งนี้",
           btn_daily_wait: "รอวันถัดไป",
 
@@ -75,7 +75,7 @@
           modal_dist_warn: "*ระบบจะล็อคการแก้ไข กรุณากดปุ่ม 'ตรวจสอบ' เพื่อดึงข้อมูลจริง",
           modal_step2: "ขั้นตอนที่ 2: หลักฐานรูปภาพ *",
           modal_step2_sub: "อัปโหลดภาพแคปหน้าจอผลการวิ่ง (บังคับ)",
-          modal_upload_txt: "📸 แตะเพื่ออัปโหลดรูปภาพ (จำเป็น)",
+          modal_upload_txt: "แตะเพื่ออัปโหลดรูปภาพ (จำเป็น)",
           modal_rejected: "⚠️ รูปภาพถูกปฏิเสธ:",
           modal_verifying_title: "อยู่ระหว่างตรวจสอบ",
           modal_verifying_desc: "ระบบได้รับข้อมูลแล้ว กำลังรอเจ้าหน้าที่ตรวจสอบความถูกต้องครับ",
@@ -2786,7 +2786,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .checkin-display { min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .pin-box { display: flex; gap: 10px; margin-bottom: 10px; }
   .pin-box span { width: 45px; height: 60px; background: #0f172a; border: 2px solid var(--primary); color: var(--primary); font-size: 2rem; font-weight: 800; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
-  .qr-box img { width: 200px; height: 200px; border-radius: 12px; border: 4px solid white; }
+  .qr-box img { width: 300px; height: 300px; border-radius: 12px; border: 4px solid white; }
   .input-group { text-align: left; margin-bottom: 20px; }
   .input-group label { display: block; color: #cbd5e1; font-size: 0.9rem; margin-bottom: 8px; }
   .input-group input { width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 8px; font-size: 1rem; outline: none; box-sizing: border-box; }

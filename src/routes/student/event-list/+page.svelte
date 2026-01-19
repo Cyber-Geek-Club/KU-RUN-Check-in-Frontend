@@ -181,7 +181,7 @@
       inbox_empty: "ไม่มีรายการแจ้งเตือน",
       mark_all_read: "อ่านทั้งหมด",
 
-      // Event Type translations
+      // Event Type translation
       event_type_single: "วันเดียว",
       event_type_multi: "หลายวัน",
       event_type_challenge: "ท้าทาย",

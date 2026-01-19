@@ -63,7 +63,7 @@
           btn_submit: "ยืนยันการส่งข้อมูล",
           btn_resubmit: "ยืนยันการส่งซ้ำ",
           btn_back_strava: "← ย้อนกลับไปแก้ไข Strava",
-          btn_verify_link: "✅ ยืนยันลิงก์",
+          btn_verify_link: "ยืนยันลิงก์",
           status_daily_completed: "เจอกันพรุ่งนี้",
           btn_daily_wait: "รอวันถัดไป",
 
@@ -75,7 +75,7 @@
           modal_dist_warn: "*ระบบจะล็อคการแก้ไข กรุณากดปุ่ม 'ตรวจสอบ' เพื่อดึงข้อมูลจริง",
           modal_step2: "ขั้นตอนที่ 2: หลักฐานรูปภาพ *",
           modal_step2_sub: "อัปโหลดภาพแคปหน้าจอผลการวิ่ง (บังคับ)",
-          modal_upload_txt: "📸 แตะเพื่ออัปโหลดรูปภาพ (จำเป็น)",
+          modal_upload_txt: "แตะเพื่ออัปโหลดรูปภาพ (จำเป็น)",
           modal_rejected: "⚠️ รูปภาพถูกปฏิเสธ:",
           modal_verifying_title: "อยู่ระหว่างตรวจสอบ",
           modal_verifying_desc: "ระบบได้รับข้อมูลแล้ว กำลังรอเจ้าหน้าที่ตรวจสอบความถูกต้องครับ",
@@ -163,7 +163,7 @@
           modal_verifying_desc: "We are verifying your submission. Please wait.",
           modal_close: "Close",
 
-          // [แก้ไข 2] เพิ่มคำแปล Dashboard
+          // [แก้ไข 2] เพิ่มคำแปล Dashboar
           dash_location: "Location",
           dash_date: "Date",
           dash_time: "Time",
@@ -211,7 +211,8 @@
   let loading = true;
   let rawParticipations: any[] = [];
   let eventsMap: Record<number, any> = {}; 
-  let holidaysMap: Record<number, any> = {};
+    let holidaysMap: Record<number, any> = {};
+    let holidaysCalendar: Record<number, string[]> = {};
   
   let upcomingEvents: EventItem[] = [];
   let historyEvents: EventItem[] = [];
@@ -326,6 +327,7 @@
 
         // ✅ Holidays map is now built from event data itself (not from static file)
         holidaysMap = {};
+        holidaysCalendar = {};
 
         const [resPart, resAllEvents] = await Promise.all([
              fetch(`${BASE_URL}/api/participations/user/${userId}`, {
@@ -372,11 +374,30 @@
             throw new Error("Invalid events data format");
         });
 
+
         eventsMap = {};
         if (Array.isArray(allEvents)) {
-            allEvents.forEach((ev: any) => {
-                if (ev && ev.id) eventsMap[ev.id] = ev;
-            });
+            await Promise.all(allEvents.map(async (ev: any) => {
+                if (ev && ev.id) {
+                    eventsMap[ev.id] = ev;
+                    // Fetch holidays for each event
+                    try {
+                        const token = getToken();
+                        const res = await fetch(`${BASE_URL}/api/events/${ev.id}/holidays`, {
+                            method: 'GET',
+                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            holidaysCalendar[ev.id] = Array.isArray(data) ? data : [];
+                        } else {
+                            holidaysCalendar[ev.id] = [];
+                        }
+                    } catch (e) {
+                        holidaysCalendar[ev.id] = [];
+                    }
+                }
+            }));
         }
 
         // Fetch unique participant counts
@@ -2069,32 +2090,18 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                                 <span>{event.distance_km} KM</span>
                             </div>
 
-                            {#if holidaysMap[event.id]}
-                                {@const hConfig = holidaysMap[event.id]}
-                                {@const hasHoliday = hConfig && (hConfig.excludeWeekends || (hConfig.holidays && hConfig.holidays.length > 0))}
-                                 
-                                {#if hConfig.excludeWeekends || (hConfig.holidays && hConfig.holidays.length > 0)}
-                                    <div class="holiday-info-box" style={!hasHoliday ? "background: rgba(16, 185, 129, 0.1); border-color: #10b981;" : ""}>
-                                        <div class="holiday-title" style={!hasHoliday ? "color: #10b981;" : ""}>
-                                            {t[lang].dash_holiday_title}
-                                        </div>
-                                        <ul class="holiday-list" style={!hasHoliday ? "color: #34d399;" : ""}>
-                                            {#if hasHoliday}
-                                                {#if hConfig.excludeWeekends}
-                                                    <li>• {t[lang].dash_holiday_weekend}</li>
-                                                {/if}
-                                                {#if hConfig.holidays}
-                                                    {#each hConfig.holidays as hDate}
-                                                        <li>• {getDisplayDate(hDate, undefined, lang)}</li>
-                                                    {/each}
-                                                {/if}
-                                            {:else}
-                                                <li>{t[lang].dash_no_holiday}</li>
-                                            {/if}
-                                        </ul>
-                                    </div>
-                                {/if}
-                            {/if}
+                                                        {#if holidaysCalendar[event.id] && holidaysCalendar[event.id].length > 0}
+                                                            <div class="holiday-info-box" style="background: rgba(255, 99, 132, 0.08); border-color: #ef4444;">
+                                                                <div class="holiday-title" style="color: #ef4444;">
+                                                                    {t[lang].dash_holiday_title}
+                                                                </div>
+                                                                <div class="calendar-grid">
+                                                                    {#each holidaysCalendar[event.id] as hDate}
+                                                                        <div class="calendar-cell">{getDisplayDate(hDate, undefined, lang)}</div>
+                                                                    {/each}
+                                                                </div>
+                                                            </div>
+                                                        {/if}
                         </div>
                     {/if}
 
@@ -2786,7 +2793,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .checkin-display { min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .pin-box { display: flex; gap: 10px; margin-bottom: 10px; }
   .pin-box span { width: 45px; height: 60px; background: #0f172a; border: 2px solid var(--primary); color: var(--primary); font-size: 2rem; font-weight: 800; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
-  .qr-box img { width: 200px; height: 200px; border-radius: 12px; border: 4px solid white; }
+  .qr-box img { width: 300px; height: 300px; border-radius: 12px; border: 4px solid white; }
   .input-group { text-align: left; margin-bottom: 20px; }
   .input-group label { display: block; color: #cbd5e1; font-size: 0.9rem; margin-bottom: 8px; }
   .input-group input { width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 8px; font-size: 1rem; outline: none; box-sizing: border-box; }
