@@ -19,6 +19,8 @@
   let confirmPassword = "";
   let showPassword1 = false;
   let showPassword2 = false;
+  let redirectCountdown = 3;
+  let redirectInterval: any = null;
 
   onMount(() => {
     token = $page.url.searchParams.get("token");
@@ -29,6 +31,7 @@
 
   onDestroy(() => {
     if (messageTimeout) clearTimeout(messageTimeout);
+    if (redirectInterval) clearInterval(redirectInterval);
   });
 
   function showMessage(
@@ -86,6 +89,15 @@
 
       if (res.ok) {
         currentStep = 2;
+        
+        // Start countdown to redirect
+        redirectInterval = setInterval(() => {
+          redirectCountdown--;
+          if (redirectCountdown <= 0) {
+            clearInterval(redirectInterval);
+            goto("/auth/login");
+          }
+        }, 1000);
         localStorage.setItem("password_reset_done", Date.now().toString());
       } else {
         const detail = data.detail || "Failed to reset password.";
@@ -280,10 +292,18 @@
                 stroke-linejoin="round"
                 ><polyline points="20 6 9 17 4 12"></polyline></svg
               >
-            </div>
+            </diRedirecting to login in {redirectCountdown}s...
+              </span>
+            </p>
           </div>
-
-          <div class="title-section" style="text-align: center;" in:slide>
+          
+          <button
+            class="primary-btn"
+            style="margin-top: 24px;"
+            on:click={() => goto("/auth/login")}
+          >
+            GO TO LOGIN NOW
+          </buttonclass="title-section" style="text-align: center;" in:slide>
             <h1 class="main-title success-text">PASSWORD UPDATED</h1>
             <p class="sub-title">
               Your password has been reset successfully.<br />

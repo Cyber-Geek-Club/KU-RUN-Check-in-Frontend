@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { slide, scale } from "svelte/transition";
-  import { onMount, onDestroy } from "svelte";
+  import { onDestroy } from "svelte";
   import { page } from "$app/stores";
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -23,23 +23,7 @@
     }
   }
 
-  function handleStorageEvent(event: StorageEvent) {
-    if (event.key === "password_reset_done") {
-      localStorage.removeItem("password_reset_done");
-      goto(returnUrl); 
-    }
-  }
-
-  onMount(() => {
-    if (typeof window !== "undefined") {
-      window.addEventListener("storage", handleStorageEvent);
-    }
-  });
-
   onDestroy(() => {
-    if (typeof window !== "undefined") {
-      window.removeEventListener("storage", handleStorageEvent);
-    }
     if (messageTimeout) clearTimeout(messageTimeout);
   });
 
@@ -194,10 +178,7 @@
               We sent a link to <span style="color:#10b981; font-weight:600;"
                 >{email}</span
               >.<br />
-              Please check your inbox.
-            </p>
-            <p class="footer-text" style="font-size: 13px; opacity: 0.7;">
-              (This page will redirect automatically once reset is complete)
+              Please check your inbox and click the link to reset your password.
             </p>
           </div>
           <div class="footer-text">
