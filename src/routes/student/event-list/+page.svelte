@@ -640,20 +640,60 @@
     // ป้องกันการกดซ้ำ
     if (isRegistering) return;
 
-    // [RULE] จำกัดสมัครได้ครั้งเดียวต่อกิจกรรม
-    if (eventItem.isJoined) {
-      Swal.fire({
-        icon: 'info',
-        title: lang === 'th' ? 'สมัครได้ครั้งเดียว' : 'One-time Registration',
-        text: lang === 'th'
-          ? 'คุณได้สมัครกิจกรรมนี้ไปแล้ว ไม่สามารถสมัครซ้ำได้'
-          : 'You have already registered for this event and cannot register again.',
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#3b82f6'
-      }).then(() => {
-        navigateToMyEvents('student');
-      });
-      return;
+    // [NEW] แยกการตรวจสอบตาม event_type
+    const isMultiDay = eventItem.event_type === 'multi_day';
+    
+    if (isMultiDay) {
+      // Multi-day: ตรวจสอบตาม max_checkins_per_user
+      
+      // 1. เช็ควันนี้ลงทะเบียนแล้วหรือยัง
+      if (eventItem.isJoinedToday) {
+        Swal.fire({
+          icon: 'info',
+          title: lang === 'th' ? 'ลงทะเบียนวันนี้แล้ว' : 'Already Registered Today',
+          text: lang === 'th'
+            ? 'คุณได้ลงทะเบียนวันนี้ไปแล้ว กรุณารอถึงวันถัดไป'
+            : 'You have already registered today. Please wait until tomorrow.',
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#3b82f6'
+        });
+        return;
+      }
+      
+      // 2. เช็คจำนวนครั้งทั้งหมด (ถ้ามี max กำหนด)
+      if (eventItem.max_checkins_per_user && eventItem.max_checkins_per_user > 0) {
+        const checkinCount = eventItem.checkin_count || 0;
+        if (checkinCount >= eventItem.max_checkins_per_user) {
+          Swal.fire({
+            icon: 'info',
+            title: lang === 'th' ? 'ลงทะเบียนครบแล้ว' : 'Registration Limit Reached',
+            text: lang === 'th'
+              ? `คุณลงทะเบียนครบ ${eventItem.max_checkins_per_user} ครั้งแล้ว`
+              : `You have reached the limit of ${eventItem.max_checkins_per_user} registrations.`,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3b82f6'
+          }).then(() => {
+            navigateToMyEvents('student');
+          });
+          return;
+        }
+      }
+    } else {
+      // Single-day: จำกัดสมัครได้ครั้งเดียวต่อกิจกรรม
+      if (eventItem.isJoined) {
+        Swal.fire({
+          icon: 'info',
+          title: lang === 'th' ? 'สมัครได้ครั้งเดียว' : 'One-time Registration',
+          text: lang === 'th'
+            ? 'คุณได้สมัครกิจกรรมนี้ไปแล้ว ไม่สามารถสมัครซ้ำได้'
+            : 'You have already registered for this event and cannot register again.',
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#3b82f6'
+        }).then(() => {
+          navigateToMyEvents('student');
+        });
+        return;
+      }
     }
 
     // [NEW] ตรวจสอบว่าเป็นวันถัดไปหรือไม่
@@ -695,9 +735,6 @@
     // ตั้งสถานะกำลังสมัครทันทีเพื่อกันการเปิดหลายครั้ง
     isRegistering = true;
 
-    // [NEW] ตรวจสอบประเภท Event และใช้ API ที่เหมาะสม
-    const isMultiDay = eventItem.event_type === 'multi_day';
-    
     // แสดง Modal ยืนยัน
     const result = await Swal.fire({
       title: isMultiDay 
