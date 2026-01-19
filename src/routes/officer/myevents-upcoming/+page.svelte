@@ -70,12 +70,12 @@
           // Modal
           modal_step1: "ขั้นตอนที่ 1: ข้อมูลการวิ่ง",
           modal_step1_sub: "กรอกข้อมูลจาก Strava ของคุณ",
-          modal_link_label: "ลิงก์กิจกรรม Strava (จำเป็น)",
+          modal_link_label: "ลิงก์กิจกรรม Strava *",
           modal_dist_label: "ระยะทาง (กิโลเมตร)",
           modal_dist_warn: "*ระบบจะล็อคการแก้ไข กรุณากดปุ่ม 'ตรวจสอบ' เพื่อดึงข้อมูลจริง",
-          modal_step2: "ขั้นตอนที่ 2: หลักฐานรูปภาพ",
-          modal_step2_sub: "อัปโหลดภาพแคปหน้าจอผลการวิ่ง",
-          modal_upload_txt: "แตะเพื่ออัปโหลดรูปภาพ",
+          modal_step2: "ขั้นตอนที่ 2: หลักฐานรูปภาพ *",
+          modal_step2_sub: "อัปโหลดภาพแคปหน้าจอผลการวิ่ง (บังคับ)",
+          modal_upload_txt: "📸 แตะเพื่ออัปโหลดรูปภาพ (จำเป็น)",
           modal_rejected: "⚠️ รูปภาพถูกปฏิเสธ:",
           modal_verifying_title: "อยู่ระหว่างตรวจสอบ",
           modal_verifying_desc: "ระบบได้รับข้อมูลแล้ว กำลังรอเจ้าหน้าที่ตรวจสอบความถูกต้องครับ",
@@ -152,12 +152,12 @@
           // Modal
           modal_step1: "Step 1: Activity Data",
           modal_step1_sub: "Enter your Strava activity link",
-          modal_link_label: "Strava Activity Link (Required)",
+          modal_link_label: "Strava Activity Link *",
           modal_dist_label: "Distance (KM)",
           modal_dist_warn: "*Input is locked. Please click 'Verify Link' to fetch data.",
-          modal_step2: "Step 2: Proof Image",
-          modal_step2_sub: "Upload a screenshot of your run result",
-          modal_upload_txt: "📸 Tap to upload image",
+          modal_step2: "Step 2: Proof Image *",
+          modal_step2_sub: "Upload a screenshot of your run result (Required)",
+          modal_upload_txt: "📸 Tap to upload image (Required)",
           modal_rejected: "⚠️ Image Rejected:",
           modal_verifying_title: "Verification Pending",
           modal_verifying_desc: "We are verifying your submission. Please wait.",
@@ -253,9 +253,9 @@
 
   // --- MENU ITEMS ---
   const menuItems = [
-    { id: "event-list", label: "Event list", path: "/officer/event-list", svg: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9 2 2 4-4" },
-    { id: "my-event", label: "My event", path: "/officer/myevents-upcoming", svg: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
-    { id: "account-setting", label: "Account setting", path: "/officer/setting-account", svg: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+    { id: "event-list", label: "Event list", path: ROUTES.officer.eventList, svg: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
+    { id: "my-event", label: "My event", path: ROUTES.officer.myEvents, svg: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
+    { id: "account-setting", label: "Account setting", path: ROUTES.officer.settings, svg: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
   ];
   interface EventItem {
     id: number;
@@ -429,35 +429,10 @@
       
       const results = await Promise.allSettled(
         batch.map(async (eventId) => {
-          try {
-            const res = await fetch(
-              `${BASE_URL}/api/events/${eventId}/participants`,
-              { headers }
-            );
-
-            if (!res.ok) {
-              return { eventId, uniqueCount: eventsMap[eventId]?.participant_count || 0 };
-            }
-
-            const data = await res.json();
-            let participants: any[] = [];
-            if (Array.isArray(data)) {
-              participants = data;
-            } else if (data?.participants) {
-              participants = data.participants;
-            } else if (data?.data) {
-              participants = data.data;
-            }
-
-            // Deduplicate by user_id
-            const uniqueUserIds = new Set<number>();
-            participants.forEach((p: any) => {
-              const userId = p.user_id || p.id;
-              if (userId) uniqueUserIds.add(userId);
-            });
-
-            return { eventId, uniqueCount: uniqueUserIds.size };
-          } catch (err) {
+                    try {
+                        // Removed participants API call for student role
+                        return { eventId, uniqueCount: eventsMap[eventId]?.participant_count || 0 };
+                    } catch (err) {
             return { eventId, uniqueCount: eventsMap[eventId]?.participant_count || 0 };
           }
         })
@@ -788,26 +763,64 @@ function mapApiStatusToUi(apiStatus: string): EventItem['status'] {
     return 'JOINED';
 }
 
+
+  // --- UPCOMING PAGINATION ---
   $: filteredUpcoming = upcomingEvents.filter(event => 
       event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  let upcomingCurrentPage = 1;
+  const upcomingItemsPerPage = 8;
+  $: upcomingTotalPages = Math.ceil(filteredUpcoming.length / upcomingItemsPerPage);
+  $: paginatedUpcoming = filteredUpcoming.slice((upcomingCurrentPage - 1) * upcomingItemsPerPage, upcomingCurrentPage * upcomingItemsPerPage);
+  function changeUpcomingPage(page: number) {
+      if (page >= 1 && page <= upcomingTotalPages) {
+          upcomingCurrentPage = page;
+          // Optionally scroll to top of upcoming section
+          document.getElementById('upcoming-section')?.scrollIntoView({ behavior: 'smooth' });
+      }
+  }
+
+  // --- HISTORY PAGINATION ---
+  let historyCurrentPage = 1;
+  const historyItemsPerPage = 8;
   $: filteredHistory = historyEvents.filter(event => 
-      (event.title.toLowerCase().includes(searchQuery.toLowerCase())) &&
-      event.status !== 'CANCELED'
+          (event.title.toLowerCase().includes(searchQuery.toLowerCase())) &&
+          event.status !== 'CANCELED'
   );
+  $: historyTotalPages = Math.ceil(filteredHistory.length / historyItemsPerPage);
+  $: paginatedHistory = filteredHistory.slice((historyCurrentPage - 1) * historyItemsPerPage, historyCurrentPage * historyItemsPerPage);
+  function changeHistoryPage(page: number) {
+      if (page >= 1 && page <= historyTotalPages) {
+          historyCurrentPage = page;
+          // Optionally scroll to top of history section
+          document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' });
+      }
+  }
 
   async function CheckInEvent(eventId: number) {
       const token = getToken();
       if (!token) return null;
+      // ดึง event_type จาก eventsMap
+      const event = eventsMap[eventId];
+      const eventType = event?.event_type || "single_day";
+      let url = "";
+      let body = {};
+      if (eventType === "multi_day") {
+          url = `${BASE_URL}/api/participations/pre-register/${eventId}`;
+          body = {};
+      } else {
+          url = `${BASE_URL}/api/participations/join`;
+          body = { event_id: eventId };
+      }
       try {
-          const res = await fetch(`${BASE_URL}/api/participations/join`, { 
+          const res = await fetch(url, {
               method: 'POST',
-              headers: { 
+              headers: {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${token}`
               },
-              body: JSON.stringify({ event_id: eventId }) 
+              body: Object.keys(body).length ? JSON.stringify(body) : undefined
           });
           if (!res.ok) {
               try {
@@ -897,6 +910,7 @@ function mapApiStatusToUi(apiStatus: string): EventItem['status'] {
       }
     } catch (e) { console.error("Error parsing token expiration:", e); }
   }
+  
 async function handleCheckInConfirm() {
     if (!selectedEvent) return;
 
@@ -1322,7 +1336,31 @@ async function handleCheckInConfirm() {
          return;
     }
 
-    // ... (Code การเปิด Modal ส่วนที่เหลือเหมือนเดิม) ...
+    // --- Show checkout_code for CHECKED_OUT (single_day & multi_day) ---
+    if (updatedEvent.status === 'CHECKED_OUT') {
+        try {
+            const checkoutRes = await fetch(`${BASE_URL}/api/participations/${updatedEvent.participation_id}/checkout-code`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (checkoutRes.ok) {
+                const data = await checkoutRes.json();
+                updatedEvent.completion_code = data.checkout_code;
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Checkout Code',
+                    html: `<div style=\"font-size:2em;font-weight:bold;\">${data.checkout_code}</div><div style=\"margin-top:8px;\">${data.message || ''}</div>`,
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#10b981'
+                });
+            } else {
+                updatedEvent.completion_code = undefined;
+            }
+        } catch (e) {
+            updatedEvent.completion_code = undefined;
+        }
+    }
+
     selectedEvent = updatedEvent;
     currentParticipationId = updatedEvent.participation_id;
     checkInMethod = 'PIN';
@@ -1458,7 +1496,7 @@ async function handleCheckInConfirm() {
               
               if (result.success && result.distance_km) {
                   distanceInput = Number(result.distance_km) || 0;
-                  stravaVerified = true; // ✅ Mark as verified
+                  stravaVerified = true; // Mark as verified
                   lastVerifiedLink = trimmedLink; // Save verified link
                   Swal.fire({
                       icon: 'success',
@@ -1475,7 +1513,7 @@ async function handleCheckInConfirm() {
               } else if (result.distance_km === 0 || result.distance_km) {
                   // API returned but distance is 0
                   distanceInput = Number(result.distance_km) || 0;
-                  stravaVerified = true; // ✅ Mark as verified
+                  stravaVerified = true; // Mark as verified
                   lastVerifiedLink = trimmedLink; // Save verified link
                   Swal.fire({
                       icon: 'info',
@@ -1530,7 +1568,7 @@ async function handleCheckInConfirm() {
 
       if (result.isConfirmed && result.value) {
           distanceInput = Number(result.value);
-          stravaVerified = true; // ✅ Mark as verified
+          stravaVerified = true; // Mark as verified
           lastVerifiedLink = sendingLink?.trim() || ""; // Save verified link
           Swal.fire({
               icon: 'success',
@@ -1543,21 +1581,45 @@ async function handleCheckInConfirm() {
   }
 
   function goToStep3_Proof() {
+      // ✅ บังคับ: ต้องมี Strava Link
       if (!sendingLink || sendingLink.trim() === "") {
           Swal.fire(t[lang].alert_warning, t[lang].alert_link_required, "warning");
           return;
       }
-      // ✅ บังคับให้กดปุ่มตรวจสอบก่อน
+      
+      // ✅ บังคับ: ต้องกดปุ่มตรวจสอบ Strava Link
       if (!stravaVerified) {
           Swal.fire(
               t[lang].alert_warning,
-              lang === 'th' ? 'กรุณากดปุ่ม "🔍 ตรวจสอบลิงก์" ก่อนดำเนินการต่อ' : 'Please click "🔍 Verify Link" button before proceeding',
+              lang === 'th' ? 'กรุณากดปุ่ม "🔍 ตรวจสอบลิงก์" เพื่อยืนยันว่า Link Strava ถูกต้อง' : 'Please click "🔍 Verify Link" to confirm your Strava link is valid',
               "warning"
           );
           return;
       }
+      
+      // ✅ บังคับ: ต้องมี Link ที่ valid
+      if (!isValidStravaLink(sendingLink.trim())) {
+          Swal.fire(
+              t[lang].alert_error,
+              t[lang].alert_link_invalid,
+              "error"
+          );
+          return;
+      }
+      
+      // ✅ ต้องมีระยะทางมากกว่า 0
       if (distanceInput <= 0) { 
           Swal.fire(t[lang].alert_warning, t[lang].alert_verify_first, "warning");
+          return;
+      }
+      
+      // ✅ บังคับ: ต้องมีรูปภาพหลักฐาน
+      if (!proofFile && !selectedEvent?.proof_image_url) {
+          Swal.fire(
+              t[lang].alert_warning,
+              lang === 'th' ? 'กรุณาอัปโหลดรูปภาพหลักฐาน (บังคับ)' : 'Please upload proof image (Required)',
+              "warning"
+          );
           return;
       }
 
@@ -1621,14 +1683,14 @@ async function submitProofAction() {
           Swal.showLoading();
           let finalImageUrl = selectedEvent.proof_image_url || "";
 
-          // 3. Upload Image (If new file selected) - Using centralized uploadImage
+          // 4. Upload Image (If new file selected) - Using centralized uploadImage
           if (proofFile) {
               const { uploadImage } = await import('$lib/utils/imageUtils');
               const upData = await uploadImage(proofFile, 'proofs');
               finalImageUrl = upData.url;
           }
 
-          // 4. Prepare Payload
+          // 5. Prepare Payload
           const payload = {
               proof_image_url: finalImageUrl,
               strava_link: sendingLink,
@@ -1936,7 +1998,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
             <div style="text-align: center; color: #94a3b8; padding: 40px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;">No Active Events</div>
         {:else}
             <div class="events-grid">
-            {#each filteredUpcoming as event, i}
+            {#each paginatedUpcoming as event, i}
                 <div class="event-card" class:locked-card={event.isLocked}>
                 <div class="card-image" use:lazyLoadBg={event.banner_image_url}>
                     {#if event.isLocked}
@@ -1974,14 +2036,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                         {:else}
                              <span class="status-badge running">{event.status}</span>
                         {/if}
-
-                        <div class="count-badge">
-                            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                            {event.participant_count}/{event.max_participants} {t[lang].participants}
-                        </div>
- 
                         <div class="count-badge" style="margin-top: 4px; background-color: #10b981;">
-                            🏃 {event.completed_count} / {event.total_days} {t[lang].dash_unit_days}
+                            🏃 {event.completed_count} {lang === 'th' ? 'ครั้ง' : 'times'}
                         </div>
                     </div>
                  
@@ -2103,6 +2159,20 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                 </div>
             {/each}
             </div>
+
+            {#if upcomingTotalPages > 1}
+            <div class="pagination-bar">
+                <button class="pagination-arrow" on:click={() => changeUpcomingPage(upcomingCurrentPage - 1)} disabled={upcomingCurrentPage === 1} style="opacity: {upcomingCurrentPage === 1 ? 0.4 : 1};">
+                    &#60;
+                </button>
+                {#each Array(upcomingTotalPages) as _, idx}
+                    <button class="pagination-page" class:active={upcomingCurrentPage === idx + 1} on:click={() => changeUpcomingPage(idx + 1)}>{idx + 1}</button>
+                {/each}
+                <button class="pagination-arrow" on:click={() => changeUpcomingPage(upcomingCurrentPage + 1)} disabled={upcomingCurrentPage === upcomingTotalPages} style="opacity: {upcomingCurrentPage === upcomingTotalPages ? 0.4 : 1};">
+                    &#62;
+                </button>
+            </div>
+            {/if}
        {/if}
 
         <div id="history-section" class="section-header-wrapper header-row" style="margin-top: 60px;">
@@ -2116,8 +2186,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
           </button>
         </div>
 
-        <div class="events-grid">
-          {#each filteredHistory as event, i}
+                <div class="events-grid">
+                    {#each paginatedHistory as event, i}
                         <div class="event-card">
                             <div class="card-image" use:lazyLoadBg={event.banner_image_url}></div>
               <div class="card-content">
@@ -2133,6 +2203,20 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                                     🏆 {t[lang].rank_label} {event.completion_rank}
                                 </span>
                              {/if}
+
+                                {#if historyTotalPages > 1}
+                                <div class="pagination-bar">
+                                    <button class="pagination-arrow" on:click={() => changeHistoryPage(historyCurrentPage - 1)} disabled={historyCurrentPage === 1} style="opacity: {historyCurrentPage === 1 ? 0.4 : 1};">
+                                        &#60;
+                                    </button>
+                                    {#each Array(historyTotalPages) as _, idx}
+                                        <button class="pagination-page" class:active={historyCurrentPage === idx + 1} on:click={() => changeHistoryPage(idx + 1)}>{idx + 1}</button>
+                                    {/each}
+                                    <button class="pagination-arrow" on:click={() => changeHistoryPage(historyCurrentPage + 1)} disabled={historyCurrentPage === historyTotalPages} style="opacity: {historyCurrentPage === historyTotalPages ? 0.4 : 1};">
+                                        &#62;
+                                    </button>
+                                </div>
+                                {/if}
 
                              <span class="status-badge" style="background:#10b981; color:white; border:none; font-size:0.7rem;">
                                 🏃 {event.completed_count} / {event.total_days} {t[lang].dash_unit_days}
@@ -2306,9 +2390,11 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                     {/if}
 
                     <div class="input-group">
-                        <label for="link">Strava Activity Link</label>
+                        <label for="link">
+                            Strava Activity Link <span style="color: #ef4444; font-weight: bold;">*</span>
+                        </label>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <input type="text" id="link" bind:value={sendingLink} placeholder="https://strava.app.link/... หรือ strava.com/activities/..." style="flex: 1;" />
+                            <input type="text" id="link" bind:value={sendingLink} placeholder="https://strava.app.link/... หรือ strava.com/activities/..." style="flex: 1;" required />
                             <button type="button" class="verify-strava-btn" on:click={checkStravaLink}>
                                 🔍 {t[lang].btn_verify_link}
                             </button>
@@ -2326,7 +2412,9 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                     </div>
 
                     <div class="upload-area" style="margin-top: 15px;">
-                        <p style="display: block; margin-bottom: 5px; font-weight: 600;">{lang === 'th' ? 'รูปภาพหลักฐาน' : 'Proof Image'}</p>
+                        <p style="display: block; margin-bottom: 5px; font-weight: 600;">
+                            {lang === 'th' ? 'รูปภาพหลักฐาน' : 'Proof Image'} <span style="color: #ef4444; font-weight: bold;">*</span>
+                        </p>
                         {#if !proofImage}
                             <label class="upload-label" style="border: 2px dashed #ccc; padding: 20px; text-align: center; display: block; cursor: pointer; border-radius: 8px;">
                                 <input id="proofImageInput" type="file" accept="image/*" on:change={handleImageUpload} hidden />
@@ -2444,10 +2532,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                         <div class="stat-info">
                             <span class="stat-label">{t[lang].dash_success_title}</span>
                             <span class="stat-value">
-                                {dashboardEvent.completed_count} / {dashboardEvent.total_days} 
-                                <span class="stat-unit" style="font-size: 0.9rem; margin-left: 2px;">
-                                    {t[lang].dash_unit_days}
-                                </span>
+                                {dashboardEvent.completed_count ?? 0} {lang === 'th' ? 'ครั้ง' : 'times'}
                             </span>
                         </div>
                     </div>
@@ -2557,24 +2642,9 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .search-input-wrapper { position: relative; width: 100%; display: flex; align-items: center; }
   
   /* [แก้ไข 1] ปรับ Style ช่องค้นหา PC */
-  .search-input { 
-      width: 100%; 
-      background: rgba(255, 255, 255, 0.05); /* พื้นหลังสว่างขึ้นนิดหน่อย */
-      border: 1px solid rgba(255,255,255,0.15); /* ขอบชัดขึ้น */
-      color: var(--text-main); 
-      padding: 8px 16px 8px 36px; 
-      border-radius: 8px; 
-      font-size: 0.85rem; 
-      outline: none; 
-      transition: all 0.2s; 
-  }
-  .search-input:focus { 
-      border-color: var(--primary); 
-      background: rgba(255, 255, 255, 0.1);
-      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); 
-  }
-  /* [แก้ไข 1] ปรับไอคอนแว่นขยายให้ชัด */
-  .search-icon { position: absolute; left: 10px; width: 16px; height: 16px; color: var(--text-muted); }
+  .search-input { width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 8px 16px 8px 36px; border-radius: 8px; font-size: 0.85rem; outline: none; transition: all 0.2s; }
+  .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
+  .search-icon { position: absolute; left: 10px; width: 16px; height: 16px; color: #10b981; }
   .active-search-icon { color: var(--primary); opacity: 0.8; } 
 
   .mobile-toggle { display: none; background: transparent; border: none; color: white; padding: 6px; border-radius: 6px; cursor: pointer; }
@@ -2587,27 +2657,15 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
     .brand-name { font-size: 1.5rem; } 
     .search-bar-container { display: none; } 
   }
-  
+
   .mobile-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); z-index: 2000; backdrop-filter: blur(2px); }
   .mobile-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 70vw; max-width: 280px; background: var(--bg-nav); z-index: 2001; padding: 20px; display: flex; flex-direction: column; box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5); }
   .drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
   .close-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
-  .drawer-search { margin-bottom: 15px; }
   
-  /* [แก้ไข 1] ปรับ Style ช่องค้นหา Mobile */
-  .drawer-search-input { 
-      width: 100%; 
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: var(--text-main); 
-      padding: 10px; 
-      border-radius: 8px; 
-      font-size: 0.9rem; 
-      outline: none; 
-      box-sizing: border-box; 
-  }
-  .drawer-search-input:focus { border-color: var(--primary); }
-
+  .drawer-search { margin-bottom: 15px; }
+  .drawer-search-input { width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 10px; border-radius: 8px; font-size: 0.9rem; outline: none; box-sizing: border-box; }
+  
   .drawer-content { flex: 1; display: flex; flex-direction: column; gap: 10px; }
   .drawer-item { background: transparent; border: none; color: var(--text-muted); text-align: left; padding: 12px 16px; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; }
   .drawer-item.active { background-color: #0f172a; color: #10b981; border: 1px solid rgba(255, 255, 255, 0.05); } 
@@ -2615,7 +2673,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .logout-special { color: #ef4444; margin-top: auto; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 20px; }
 
   /* LANG SWITCHER STYLES */
-  .lang-switch { margin-left: 16px; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-right: 12px; }
+  .lang-switch { display: flex; align-items: center; background: rgba(255, 255, 255, 0.05); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); margin-right: 12px; }
   .lang-switch button { background: none; border: none; color: #64748b; font-size: 0.8rem; font-weight: 700; cursor: pointer; padding: 4px; transition: 0.2s; }
   .lang-switch button.active { color: #10b981; text-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
   .lang-switch .sep { color: #334155; font-size: 0.8rem; margin: 0 4px; }
@@ -2728,7 +2786,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   .checkin-display { min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .pin-box { display: flex; gap: 10px; margin-bottom: 10px; }
   .pin-box span { width: 45px; height: 60px; background: #0f172a; border: 2px solid var(--primary); color: var(--primary); font-size: 2rem; font-weight: 800; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
-  .qr-box img { width: 160px; height: 160px; border-radius: 12px; border: 4px solid white; }
+  .qr-box img { width: 200px; height: 200px; border-radius: 12px; border: 4px solid white; }
   .input-group { text-align: left; margin-bottom: 20px; }
   .input-group label { display: block; color: #cbd5e1; font-size: 0.9rem; margin-bottom: 8px; }
   .input-group input { width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px; border-radius: 8px; font-size: 1rem; outline: none; box-sizing: border-box; }
@@ -2934,11 +2992,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
       font-weight: 800;
       color: white;
   }
-  .stat-unit {
-      font-size: 0.8rem;
-      font-weight: 500;
-      opacity: 0.7;
-  }
 
   .holiday-section {
       background: rgba(239, 68, 68, 0.1);
@@ -3073,4 +3126,40 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
       opacity: 0.5;
       cursor: not-allowed;
   }
+  
+.pagination-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin: 24px 0 0 0;
+}
+.pagination-arrow {
+    background: #e5e7eb;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 1.1em;
+    cursor: pointer;
+    color: #334155;
+    transition: background 0.2s;
+}
+.pagination-arrow[disabled] {
+    cursor: not-allowed;
+}
+.pagination-page {
+    background: #f1f5f9;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 1em;
+    cursor: pointer;
+    color: #334155;
+    transition: background 0.2s, color 0.2s;
+}
+.pagination-page.active, .pagination-page:focus {
+    background: #10b981;
+    color: #fff;
+    font-weight: bold;
+}
 </style>

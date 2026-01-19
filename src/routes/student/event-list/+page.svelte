@@ -116,11 +116,34 @@
   ];
 
   // =========================================
+  // [NEW] PAGINATION LOGIC
+  // =========================================
+  let currentPage = $state(1);
+  const itemsPerPage = 8;
+
+  // คำนวณจำนวนหน้าทั้งหมด
+  let totalPages = $derived(Math.ceil(events.length / itemsPerPage));
+
+  // ตัดข้อมูล events ที่จะแสดงในหน้าปัจจุบัน
+  let paginatedEvents = $derived(
+    events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  );
+
+  // ฟังก์ชันเปลี่ยนหน้า
+  function changePage(page: number) {
+    if (page >= 1 && page <= totalPages) {
+      currentPage = page;
+      // เลื่อนหน้าจอขึ้นไปบนสุดของรายการ (ถ้าต้องการ)
+      // window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  // =========================================
   // 3. TRANSLATION & LANGUAGE LOGIC
   // =========================================
   const t = {
     th: {
-      search_placeholder: "ค้นหา...",
+      search_placeholder: "ค้นหากิจกรรม...",
       status_active: "เปิดรับสมัคร",
       status_non_active: "ไม่รับสมัคร",
       status_not_open: "ยังไม่เปิด",
@@ -166,10 +189,11 @@
       checkin_progress: "ความคืบหน้า",
       days_remaining: "วันที่เหลือ",
       day_unit: "วัน",
-      participants: "ผู้เข้าร่วม"
+      participants: "ผู้เข้าร่วม",
+      event_list_header: "รายการกิจกรรม"
     },
     en: {
-      search_placeholder: "Search...",
+      search_placeholder: "Search events...",
       status_active: "ACTIVE",
       status_non_active: "NOT OPEN",
       status_not_open: "NOT OPEN",
@@ -215,7 +239,8 @@
       checkin_progress: "Progress",
       days_remaining: "Days Left",
       day_unit: "days",
-      participants: "Participants"
+      participants: "Participants",
+      event_list_header: "Event List"
     }
   };
 
@@ -365,7 +390,7 @@
         });
 
       events = newEvents;
-      await updateUserStatus();
+      await updateUserStatus(); // Ensure user status is updated after fetching events
       fetchUniqueParticipantCounts(); // ดึงจำนวนผู้เข้าร่วมที่ไม่ซ้ำ
     } catch (error: any) {
       console.error("Error loading events:", error);
@@ -386,55 +411,14 @@
     
     for (let i = 0; i < eventsCopy.length; i += BATCH_SIZE) {
       const batch = eventsCopy.slice(i, i + BATCH_SIZE);
-      
-      const results = await Promise.allSettled(
-        batch.map(async (event) => {
-          try {
-            const res = await fetch(
-              `${BASE_URL}/api/events/${event.id}/participants`,
-              { headers }
-            );
-
-            if (!res.ok) {
-              return { eventId: event.id, uniqueCount: event.participant_count || 0 };
-            }
-
-            const data = await res.json();
-            let participants: any[] = [];
-            if (Array.isArray(data)) {
-              participants = data;
-            } else if (data?.participants) {
-              participants = data.participants;
-            } else if (data?.data) {
-              participants = data.data;
-            }
-
-            // Deduplicate by user_id
-            const uniqueUserIds = new Set<number>();
-            participants.forEach((p: any) => {
-              const userId = p.user_id || p.id;
-              if (userId) uniqueUserIds.add(userId);
-            });
-
-            return { eventId: event.id, uniqueCount: uniqueUserIds.size };
-          } catch (err) {
-            return { eventId: event.id, uniqueCount: event.participant_count || 0 };
-          }
-        })
-      );
-
-      // Update events with results
-      results.forEach((result) => {
-        if (result.status === "fulfilled") {
-          const { eventId, uniqueCount } = result.value;
-          const eventIndex = events.findIndex((e) => e.id === eventId);
-          if (eventIndex !== -1) {
-            events[eventIndex].participant_count = uniqueCount;
-          }
+      // For student, use participant_count from event directly
+      batch.forEach((event) => {
+        const eventIndex = events.findIndex((e) => e.id === event.id);
+        if (eventIndex !== -1) {
+          events[eventIndex].participant_count = event.participant_count || 0;
         }
       });
     }
-
     // Force reactivity update
     events = [...events];
   }
@@ -1207,12 +1191,9 @@
   }
 
   function toggleDetails(index: number) {
-    const targetId = filteredEvents[index].id;
-    const realIndex = events.findIndex(e => e.id === targetId);
-    if (realIndex !== -1) {
-      events[realIndex].isExpanded = !events[realIndex].isExpanded;
-      events = [...events];
-    }
+  // Only one expanded at a time
+  const targetId = paginatedEvents[index].id;
+  events = events.map(e => ({ ...e, isExpanded: e.id === targetId ? !e.isExpanded : false }));
   }
 
   function selectView(id: string, path: string) {
@@ -1327,7 +1308,9 @@
     <div class="mobile-overlay" role="button" tabindex="0" aria-label="Close menu" onclick={() => (isMobileMenuOpen = false)} onkeydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { isMobileMenuOpen = false; } }} transition:fade={{ duration: 200 }}></div>
     <div class="mobile-drawer" transition:slide={{ axis: 'x', duration: 300 }}>
       <div class="drawer-header"><span class="brand-name" style="font-size: 1.4rem;">MENU</span><button class="close-btn" onclick={() => (isMobileMenuOpen = false)}>&times;</button></div>
-      <div class="drawer-search"><input type="text" placeholder="Search..." class="drawer-search-input" bind:value={searchQuery} /></div>
+      <div class="drawer-search">
+            <input type="text" placeholder={t[lang].search_placeholder} class="drawer-search-input" bind:value={searchQuery} />
+       </div>
       <div class="drawer-content">
         {#each menuItems as item}
           <button class="drawer-item" class:active={currentView === item.id} onclick={() => selectView(item.id, item.path)}>
@@ -1359,7 +1342,7 @@
     <div class="content-wrapper">
 
       <div class="page-header">
-        <h2 class="section-title">Event List</h2>
+        <h2 class="section-title">{t[lang].event_list_header}</h2>
         <div class="title-underline"></div>
       </div>
 
@@ -1376,7 +1359,7 @@
           </div>
         {:else}
           <div class="events-grid">
-            {#each filteredEvents as event, i}
+            {#each paginatedEvents as event, i (event.id)}
               <div class="event-card">
                 <div class="card-image" use:lazyLoadBg={event.banner_image_url}></div>
                 <div class="card-content">
@@ -1407,10 +1390,6 @@
                         {#if event.event_type === 'multi_day' && event.allow_daily_checkin}
                           <span class="type-badge daily">{t[lang].daily_checkin}</span>
                         {/if}
-                      </div>
-                      <div class="count-badge">
-                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                        {event.participant_count}/{event.max_participants} {t[lang].participants}
                       </div>
                     </div>
                   </div>
@@ -1443,7 +1422,7 @@
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <span>
-                              {t[lang].checkin_progress}: {event.checkin_count}/{event.max_checkins_per_user ?? '-'} {t[lang].day_unit}
+                              {t[lang].checkin_progress}: {event.checkin_count} {lang === 'th' ? 'ครั้ง' : 'times'}
                             </span>
                           </div>
                         {/if}
@@ -1460,7 +1439,7 @@
                     <div class="footer-actions">
                       {#if event.isJoined}
                         <button class="register-btn running" onclick={() => navigateToMyEvents('student')}>
-                          {lang === 'th' ? '✅ สมัครแล้ว' : '✅ Registered'}
+                          {lang === 'th' ? 'สมัครแล้ว' : 'Registered'}
                         </button>
 
                       {:else if !event.is_published}
@@ -1486,9 +1465,9 @@
                       {:else}
                         <button class="register-btn" disabled={isRegistering} onclick={() => handleRegister(event)}>
                           {#if event.hasCancelledRecord}
-                            {lang === 'th' ? '🔄 สมัครใหม่อีกครั้ง' : '🔄 Register Again'}
+                            {lang === 'th' ? 'สมัครใหม่' : 'Register Again'}
                           {:else}
-                            {lang === 'th' ? '📝 สมัคร' : '📝 Register'}
+                            {lang === 'th' ? 'สมัคร' : 'Register'}
                           {/if}
                         </button>
                       {/if}
@@ -1503,8 +1482,37 @@
 
                 </div>
               </div>
-            {/each}
+            {/each} 
           </div>
+          {#if filteredEvents.length > itemsPerPage}
+                <div class="pagination-wrapper">
+                  <div class="pagination-glass-bar">
+                    
+                    <button 
+                      class="nav-btn" 
+                      onclick={() => changePage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                
+                    <div class="page-indicator">
+                      <span class="current-num">{currentPage}</span>
+                      <span class="separator">/</span>
+                      <span class="total-num">{totalPages}</span>
+                    </div>
+                
+                    <button 
+                      class="nav-btn" 
+                      onclick={() => changePage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                
+                  </div>
+                </div>
+              {/if}
         {/if}
       {/if}
 
@@ -1638,7 +1646,8 @@
   .search-input-wrapper { position: relative; width: 100%; display: flex; align-items: center; }
   .search-input { width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 8px 16px 8px 36px; border-radius: 8px; font-size: 0.85rem; outline: none; transition: all 0.2s; }
   .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
-  .search-icon { position: absolute; left: 10px; width: 16px; height: 16px; color: var(--text-muted); }
+  .search-icon { position: absolute; left: 10px; width: 16px; height: 16px; color: #10b981; }
+  .active-search-icon { color: var(--primary); opacity: 0.8; } 
 
   /* --- Mobile Drawer --- */
   .mobile-toggle { display: none; background: transparent; border: none; color: white; padding: 6px; border-radius: 6px; cursor: pointer; }
@@ -1817,4 +1826,81 @@
   .lang-toggle-pill { display: flex; background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); }
   .lang-toggle-pill button { background: transparent; border: none; color: #64748b; font-size: 0.8rem; font-weight: 700; padding: 6px 12px; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; }
   .lang-toggle-pill button.active { background: #10b981; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+  
+  /* ========================================= */
+  /* NEW PAGINATION STYLE */
+  /* ========================================= */
+  
+  /* จัดให้อยู่ด้านล่างสุดของ Content (เหนือ Footer) */
+  .pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 40px; 
+    margin-bottom: 20px; /* เว้นระยะห่างจาก Footer */
+    width: 100%;
+  }
+
+  /* ตัวบาร์พื้นหลังขุ่น (Glassmorphism) และขอบมน */
+  .pagination-glass-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    
+    /* สไตล์ขุ่นและขอบมน */
+    background: rgba(15, 23, 42, 0.6); /* พื้นหลังสีเข้มโปร่งแสง */
+    backdrop-filter: blur(10px);        /* เอฟเฟกต์เบลอ */
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 20px;
+    border-radius: 50px; /* ขอบมนเป็นวงรี (Pill shape) */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  /* ปุ่มลูกศร */
+  .nav-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, opacity 0.2s;
+    border-radius: 50%;
+  }
+
+  .nav-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(1.1);
+  }
+
+  .nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(100%); /* ทำให้สีเขียวซีดลงเมื่อกดไม่ได้ */
+  }
+
+  /* โซนตัวเลข */
+  .page-indicator {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 1px;
+    user-select: none;
+  }
+
+  /* เลขหน้าปัจจุบัน (สีเขียว) */
+  .current-num {
+    color: #10b981; /* สีเขียว */
+    font-size: 1.2rem;
+  }
+
+  /* เครื่องหมาย / และเลขหน้าทั้งหมด */
+  .separator, .total-num {
+    color: #94a3b8; /* สีเทา */
+    font-size: 1rem;
+  }
 </style>

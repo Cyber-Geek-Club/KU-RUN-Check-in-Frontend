@@ -9,6 +9,8 @@
   import { ROUTES } from "$lib/utils/routes";
   import { navigateToMyEvents } from "$lib/utils/navigation";
 
+
+  
   // =========================================
   // 1. CONFIGURATION & INTERFACES
   // =========================================
@@ -61,20 +63,20 @@
   // =========================================
   
   // Layout State
-  let isMobileMenuOpen = false;
-  let currentView = "event-list";
-  let isLoading = true;
+  let isMobileMenuOpen = $state(false);
+  let currentView = $state("event-list");
+  let isLoading = $state(true);
 
   // Language State
-  let lang: 'th' | 'en' = 'th';
+  let lang: 'th' | 'en' = $state('th');
 
   // Search & Data State
-  let searchQuery = "";
-  let events: EventItem[] = [];
+  let searchQuery = $state("");
+  let events: EventItem[] = $state([]);
 
   // Session & Timer State
-  let timeLeftStr = "--:--:--";
-  let timeLeftSeconds = 0;
+  let timeLeftStr = $state("--:--:--");
+  let timeLeftSeconds = $state(0);
   let timerInterval: ReturnType<typeof setInterval> | null = null;
   // Adaptive polling via setTimeout loop (better control vs setInterval)
   let pollTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -87,18 +89,18 @@
 
 
   // Modal State
-  let showUploadModal = false;
-  let showCancelModal = false;
-  let selectedEvent: EventItem | null = null;
-  let eventToCancel: EventItem | null = null;
+  let showUploadModal = $state(false);
+  let showCancelModal = $state(false);
+  let selectedEvent: EventItem | null = $state(null);
+  let eventToCancel: EventItem | null = $state(null);
   
   // Upload State
-  let proofImage: string | null = null;
+  let proofImage: string | null = $state(null);
   let proofFile: File | null = null;
 
   // Cancel Reason State
-  let selectedCancelReason = "";
-  let otherCancelReason = "";
+  let selectedCancelReason = $state("");
+  let otherCancelReason = $state("");
   const cancelReasons = [
     "ติดธุระด่วน / Urgent matter",
     "ปัญหาสุขภาพ / Health issue",
@@ -114,11 +116,34 @@
   ];
 
   // =========================================
+  // [NEW] PAGINATION LOGIC
+  // =========================================
+  let currentPage = $state(1);
+  const itemsPerPage = 8;
+
+  // คำนวณจำนวนหน้าทั้งหมด
+  let totalPages = $derived(Math.ceil(events.length / itemsPerPage));
+
+  // ตัดข้อมูล events ที่จะแสดงในหน้าปัจจุบัน
+  let paginatedEvents = $derived(
+    events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  );
+
+  // ฟังก์ชันเปลี่ยนหน้า
+  function changePage(page: number) {
+    if (page >= 1 && page <= totalPages) {
+      currentPage = page;
+      // เลื่อนหน้าจอขึ้นไปบนสุดของรายการ (ถ้าต้องการ)
+      // window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  // =========================================
   // 3. TRANSLATION & LANGUAGE LOGIC
   // =========================================
   const t = {
     th: {
-      search_placeholder: "ค้นหา...",
+      search_placeholder: "ค้นหากิจกรรม...",
       status_active: "เปิดรับสมัคร",
       status_non_active: "ไม่รับสมัคร",
       status_not_open: "ยังไม่เปิด",
@@ -164,10 +189,11 @@
       checkin_progress: "ความคืบหน้า",
       days_remaining: "วันที่เหลือ",
       day_unit: "วัน",
-      participants: "ผู้เข้าร่วม"
+      participants: "ผู้เข้าร่วม",
+      event_list_header: "รายการกิจกรรม"
     },
     en: {
-      search_placeholder: "Search...",
+      search_placeholder: "Search events...",
       status_active: "ACTIVE",
       status_non_active: "NOT OPEN",
       status_not_open: "NOT OPEN",
@@ -213,7 +239,8 @@
       checkin_progress: "Progress",
       days_remaining: "Days Left",
       day_unit: "days",
-      participants: "Participants"
+      participants: "Participants",
+      event_list_header: "Event List"
     }
   };
 
@@ -363,7 +390,7 @@
         });
 
       events = newEvents;
-      await updateUserStatus();
+      await updateUserStatus(); // Ensure user status is updated after fetching events
       fetchUniqueParticipantCounts(); // ดึงจำนวนผู้เข้าร่วมที่ไม่ซ้ำ
     } catch (error: any) {
       console.error("Error loading events:", error);
@@ -384,55 +411,14 @@
     
     for (let i = 0; i < eventsCopy.length; i += BATCH_SIZE) {
       const batch = eventsCopy.slice(i, i + BATCH_SIZE);
-      
-      const results = await Promise.allSettled(
-        batch.map(async (event) => {
-          try {
-            const res = await fetch(
-              `${BASE_URL}/api/events/${event.id}/participants`,
-              { headers }
-            );
-
-            if (!res.ok) {
-              return { eventId: event.id, uniqueCount: event.participant_count || 0 };
-            }
-
-            const data = await res.json();
-            let participants: any[] = [];
-            if (Array.isArray(data)) {
-              participants = data;
-            } else if (data?.participants) {
-              participants = data.participants;
-            } else if (data?.data) {
-              participants = data.data;
-            }
-
-            // Deduplicate by user_id
-            const uniqueUserIds = new Set<number>();
-            participants.forEach((p: any) => {
-              const userId = p.user_id || p.id;
-              if (userId) uniqueUserIds.add(userId);
-            });
-
-            return { eventId: event.id, uniqueCount: uniqueUserIds.size };
-          } catch (err) {
-            return { eventId: event.id, uniqueCount: event.participant_count || 0 };
-          }
-        })
-      );
-
-      // Update events with results
-      results.forEach((result) => {
-        if (result.status === "fulfilled") {
-          const { eventId, uniqueCount } = result.value;
-          const eventIndex = events.findIndex((e) => e.id === eventId);
-          if (eventIndex !== -1) {
-            events[eventIndex].participant_count = uniqueCount;
-          }
+      // For student, use participant_count from event directly
+      batch.forEach((event) => {
+        const eventIndex = events.findIndex((e) => e.id === event.id);
+        if (eventIndex !== -1) {
+          events[eventIndex].participant_count = event.participant_count || 0;
         }
       });
     }
-
     // Force reactivity update
     events = [...events];
   }
@@ -649,7 +635,7 @@
   // =========================================
 
   // --- Register Action ---
-  let isRegistering = false;
+  let isRegistering = $state(false);
   async function handleRegister(eventItem: EventItem) {
     // ป้องกันการกดซ้ำ
     if (isRegistering) return;
@@ -711,7 +697,7 @@
 
     // [NEW] ตรวจสอบประเภท Event และใช้ API ที่เหมาะสม
     const isMultiDay = eventItem.event_type === 'multi_day';
-
+    
     // แสดง Modal ยืนยัน
     const result = await Swal.fire({
       title: isMultiDay 
@@ -1205,12 +1191,9 @@
   }
 
   function toggleDetails(index: number) {
-    const targetId = filteredEvents[index].id;
-    const realIndex = events.findIndex(e => e.id === targetId);
-    if (realIndex !== -1) {
-      events[realIndex].isExpanded = !events[realIndex].isExpanded;
-      events = [...events];
-    }
+  // Only one expanded at a time
+  const targetId = paginatedEvents[index].id;
+  events = events.map(e => ({ ...e, isExpanded: e.id === targetId ? !e.isExpanded : false }));
   }
 
   function selectView(id: string, path: string) {
@@ -1242,16 +1225,17 @@
   }
 
   // Debounce search to reduce frequent recomputation
-  let debouncedQuery = "";
+  let debouncedQuery = $state("");
   let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-  $: {
+  
+  $effect(() => {
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
       debouncedQuery = searchQuery.toLowerCase().trim();
     }, 250);
-  }
+  });
 
-  $: filteredEvents = events.filter(event => {
+  let filteredEvents = $derived(events.filter(event => {
     // [NEW] เงื่อนไขเวลา: ต้องยังไม่เลยช่วงเวลา (Not Expired)
     // ดึงไปแล้วในฟังก์ชัน fetchEvents เลย ดังนั้นควรจะไม่มีเหตุการณ์ที่เลยวันแล้ว
     // แต่เราเช็คตรงนี้เพิ่มเติมเพื่อความปลอดภัย
@@ -1277,7 +1261,7 @@
       event.location.toLowerCase().includes(query) ||
       event.description.toLowerCase().includes(query)
     );
-  });
+  }));
 </script>
 
 <div class="app-container">
@@ -1285,10 +1269,10 @@
   <header class="header-bar">
     <div class="header-inner">
       <div class="left-group">
-        <div class="brand"><span class="brand-name">Officer</span></div>
+        <div class="brand"><span class="brand-name">OFFICER</span></div>
         <nav class="nav-menu desktop-only">
           {#each menuItems as item}
-            <button class="menu-btn" class:active={currentView === item.id} on:click={() => selectView(item.id, item.path)}>
+            <button class="menu-btn" class:active={currentView === item.id} onclick={() => selectView(item.id, item.path)}>
               <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={item.svg}></path></svg>
               <span class="btn-label">{item.label}</span>
             </button>
@@ -1309,25 +1293,27 @@
         </div>
 
         <div class="lang-switch desktop-only">
-          <button class:active={lang === 'th'} on:click={() => setLang('th')}>TH</button>
+          <button class:active={lang === 'th'} onclick={() => setLang('th')}>TH</button>
           <span class="sep">|</span>
-          <button class:active={lang === 'en'} on:click={() => setLang('en')}>EN</button>
+          <button class:active={lang === 'en'} onclick={() => setLang('en')}>EN</button>
         </div>
 
-        <button class="logout-btn desktop-only" aria-label="Logout" on:click={handleLogout}><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
-        <button class="mobile-toggle mobile-only" aria-label="Toggle menu" on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 9h16M4 15h16"></path></svg></button>
+        <button class="logout-btn desktop-only" aria-label="Logout" onclick={handleLogout}><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></button>
+        <button class="mobile-toggle mobile-only" aria-label="Toggle menu" onclick={() => (isMobileMenuOpen = !isMobileMenuOpen)}><svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 9h16M4 15h16"></path></svg></button>
       </div>
     </div>
   </header>
 
   {#if isMobileMenuOpen}
-    <div class="mobile-overlay" role="button" tabindex="0" aria-label="Close menu" on:click={() => (isMobileMenuOpen = false)} on:keydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { isMobileMenuOpen = false; } }} transition:fade={{ duration: 200 }}></div>
+    <div class="mobile-overlay" role="button" tabindex="0" aria-label="Close menu" onclick={() => (isMobileMenuOpen = false)} onkeydown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { isMobileMenuOpen = false; } }} transition:fade={{ duration: 200 }}></div>
     <div class="mobile-drawer" transition:slide={{ axis: 'x', duration: 300 }}>
-      <div class="drawer-header"><span class="brand-name" style="font-size: 1.4rem;">MENU</span><button class="close-btn" on:click={() => (isMobileMenuOpen = false)}>&times;</button></div>
-      <div class="drawer-search"><input type="text" placeholder="Search..." class="drawer-search-input" bind:value={searchQuery} /></div>
+      <div class="drawer-header"><span class="brand-name" style="font-size: 1.4rem;">MENU</span><button class="close-btn" onclick={() => (isMobileMenuOpen = false)}>&times;</button></div>
+      <div class="drawer-search">
+            <input type="text" placeholder={t[lang].search_placeholder} class="drawer-search-input" bind:value={searchQuery} />
+       </div>
       <div class="drawer-content">
         {#each menuItems as item}
-          <button class="drawer-item" class:active={currentView === item.id} on:click={() => selectView(item.id, item.path)}>
+          <button class="drawer-item" class:active={currentView === item.id} onclick={() => selectView(item.id, item.path)}>
             <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 10px;">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={item.svg}></path>
             </svg>
@@ -1343,12 +1329,12 @@
             <span>Language</span>
           </div>
           <div class="lang-toggle-pill">
-            <button class:active={lang === 'th'} on:click={() => setLang('th')}>TH</button>
-            <button class:active={lang === 'en'} on:click={() => setLang('en')}>EN</button>
+            <button class:active={lang === 'th'} onclick={() => setLang('th')}>TH</button>
+            <button class:active={lang === 'en'} onclick={() => setLang('en')}>EN</button>
           </div>
         </div>
       </div>
-      <button class="drawer-item logout-special" on:click={handleLogout}>Logout</button>
+      <button class="drawer-item logout-special" onclick={handleLogout}>Logout</button>
     </div>
   {/if}
 
@@ -1356,7 +1342,7 @@
     <div class="content-wrapper">
 
       <div class="page-header">
-        <h2 class="section-title">Event List</h2>
+        <h2 class="section-title">{t[lang].event_list_header}</h2>
         <div class="title-underline"></div>
       </div>
 
@@ -1373,7 +1359,7 @@
           </div>
         {:else}
           <div class="events-grid">
-            {#each filteredEvents as event, i}
+            {#each paginatedEvents as event, i (event.id)}
               <div class="event-card">
                 <div class="card-image" use:lazyLoadBg={event.banner_image_url}></div>
                 <div class="card-content">
@@ -1404,10 +1390,6 @@
                         {#if event.event_type === 'multi_day' && event.allow_daily_checkin}
                           <span class="type-badge daily">{t[lang].daily_checkin}</span>
                         {/if}
-                      </div>
-                      <div class="count-badge">
-                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                        {event.participant_count}/{event.max_participants} {t[lang].participants}
                       </div>
                     </div>
                   </div>
@@ -1440,7 +1422,7 @@
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <span>
-                              {t[lang].checkin_progress}: {event.checkin_count}/{event.max_checkins_per_user ?? '-'} {t[lang].day_unit}
+                              {t[lang].checkin_progress}: {event.checkin_count} {lang === 'th' ? 'ครั้ง' : 'times'}
                             </span>
                           </div>
                         {/if}
@@ -1450,14 +1432,14 @@
                   {/if}
 
                   <div class="card-footer-actions">
-                    <button class="view-btn" on:click={() => toggleDetails(i)}>
+                    <button class="view-btn" onclick={() => toggleDetails(i)}>
                       {event.isExpanded ? t[lang].btn_read_less : t[lang].btn_read_more}
                     </button>
 
                     <div class="footer-actions">
                       {#if event.isJoined}
-                        <button class="register-btn running" on:click={() => navigateToMyEvents('officer')}>
-                          {lang === 'th' ? '✅ สมัครแล้ว' : '✅ Registered'}
+                        <button class="register-btn running" onclick={() => navigateToMyEvents('officer')}>
+                          {lang === 'th' ? 'สมัครแล้ว' : 'Registered'}
                         </button>
 
                       {:else if !event.is_published}
@@ -1481,17 +1463,17 @@
                         </button>
 
                       {:else}
-                        <button class="register-btn" disabled={isRegistering} on:click={() => handleRegister(event)}>
+                        <button class="register-btn" disabled={isRegistering} onclick={() => handleRegister(event)}>
                           {#if event.hasCancelledRecord}
-                            {lang === 'th' ? '🔄 สมัครใหม่อีกครั้ง' : '🔄 Register Again'}
+                            {lang === 'th' ? 'สมัครใหม่' : 'Register Again'}
                           {:else}
-                            {lang === 'th' ? '📝 สมัคร' : '📝 Register'}
+                            {lang === 'th' ? 'สมัคร' : 'Register'}
                           {/if}
                         </button>
                       {/if}
 
                       {#if event.isJoined && event.checkin_count === 0}
-                        <button class="cancel-direct-btn" on:click={() => openCancelModal(event)}>
+                        <button class="cancel-direct-btn" onclick={() => openCancelModal(event)}>
                           {lang === 'th' ? '❌ ยกเลิก' : '❌ Cancel'}
                         </button>
                       {/if}
@@ -1500,8 +1482,37 @@
 
                 </div>
               </div>
-            {/each}
+            {/each} 
           </div>
+          {#if filteredEvents.length > itemsPerPage}
+                <div class="pagination-wrapper">
+                  <div class="pagination-glass-bar">
+                    
+                    <button 
+                      class="nav-btn" 
+                      onclick={() => changePage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                
+                    <div class="page-indicator">
+                      <span class="current-num">{currentPage}</span>
+                      <span class="separator">/</span>
+                      <span class="total-num">{totalPages}</span>
+                    </div>
+                
+                    <button 
+                      class="nav-btn" 
+                      onclick={() => changePage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                
+                  </div>
+                </div>
+              {/if}
         {/if}
       {/if}
 
@@ -1518,7 +1529,7 @@
   {#if showUploadModal}
     <div class="modal-overlay" transition:fade={{ duration: 200 }}>
       <div class="modal-box" transition:scale={{ duration: 250, start: 0.9 }}>
-        <button class="modal-close" on:click={closeUploadModal}>&times;</button>
+        <button class="modal-close" onclick={closeUploadModal}>&times;</button>
         <div class="modal-body">
           <h3 class="modal-title">{t[lang].upload_title}</h3>
           {#if selectedEvent?.participationStatus === 'REJECTED'}
@@ -1529,17 +1540,17 @@
           <div class="upload-area">
             {#if !proofImage}
               <label class="upload-label">
-                <input type="file" accept="image/*" on:change={handleImageSelect} hidden />
+                <input type="file" accept="image/*" onchange={handleImageSelect} hidden />
                 <div class="upload-placeholder"><span>Click to Upload Image</span></div>
               </label>
             {:else}
               <div class="image-preview">
                 <img src={proofImage} alt="Proof" />
-                <button class="remove-img-btn" on:click={() => { proofImage = null; proofFile = null; }}>&times;</button>
+                <button class="remove-img-btn" onclick={() => { proofImage = null; proofFile = null; }}>&times;</button>
               </div>
             {/if}
           </div>
-          <button class="action-submit-btn purple-theme" disabled={!proofImage} on:click={submitProof}>
+          <button class="action-submit-btn purple-theme" disabled={!proofImage} onclick={submitProof}>
             {t[lang].upload_btn}
           </button>
         </div>
@@ -1550,7 +1561,7 @@
   {#if showCancelModal}
     <div class="modal-overlay" transition:fade={{ duration: 200 }}>
       <div class="modal-box" transition:scale={{ duration: 250, start: 0.9 }}>
-        <button class="modal-close" on:click={closeCancelModal}>&times;</button>
+        <button class="modal-close" onclick={closeCancelModal}>&times;</button>
         <div class="modal-body">
           <h3 class="modal-title" style="color: #ef4444;">{t[lang].cancel_title}</h3>
           <p class="modal-subtitle">{t[lang].cancel_desc}</p>
@@ -1570,7 +1581,7 @@
           <div class="action-row">
             <button 
               class="action-submit-btn cancel-confirm-btn" 
-              on:click={confirmCancellation}
+              onclick={confirmCancellation}
               disabled={
                 !selectedCancelReason || 
                 ((selectedCancelReason.includes("Other") || selectedCancelReason.includes("อื่นๆ")) && !otherCancelReason.trim())
@@ -1635,7 +1646,8 @@
   .search-input-wrapper { position: relative; width: 100%; display: flex; align-items: center; }
   .search-input { width: 100%; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 8px 16px 8px 36px; border-radius: 8px; font-size: 0.85rem; outline: none; transition: all 0.2s; }
   .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
-  .search-icon { position: absolute; left: 10px; width: 16px; height: 16px; color: var(--text-muted); }
+  .search-icon { position: absolute; left: 10px; width: 16px; height: 16px; color: #10b981; }
+  .active-search-icon { color: var(--primary); opacity: 0.8; } 
 
   /* --- Mobile Drawer --- */
   .mobile-toggle { display: none; background: transparent; border: none; color: white; padding: 6px; border-radius: 6px; cursor: pointer; }
@@ -1814,4 +1826,81 @@
   .lang-toggle-pill { display: flex; background: rgba(0, 0, 0, 0.3); padding: 4px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); }
   .lang-toggle-pill button { background: transparent; border: none; color: #64748b; font-size: 0.8rem; font-weight: 700; padding: 6px 12px; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; }
   .lang-toggle-pill button.active { background: #10b981; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+  
+  /* ========================================= */
+  /* NEW PAGINATION STYLE */
+  /* ========================================= */
+  
+  /* จัดให้อยู่ด้านล่างสุดของ Content (เหนือ Footer) */
+  .pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 40px; 
+    margin-bottom: 20px; /* เว้นระยะห่างจาก Footer */
+    width: 100%;
+  }
+
+  /* ตัวบาร์พื้นหลังขุ่น (Glassmorphism) และขอบมน */
+  .pagination-glass-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    
+    /* สไตล์ขุ่นและขอบมน */
+    background: rgba(15, 23, 42, 0.6); /* พื้นหลังสีเข้มโปร่งแสง */
+    backdrop-filter: blur(10px);        /* เอฟเฟกต์เบลอ */
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 20px;
+    border-radius: 50px; /* ขอบมนเป็นวงรี (Pill shape) */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  /* ปุ่มลูกศร */
+  .nav-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, opacity 0.2s;
+    border-radius: 50%;
+  }
+
+  .nav-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(1.1);
+  }
+
+  .nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(100%); /* ทำให้สีเขียวซีดลงเมื่อกดไม่ได้ */
+  }
+
+  /* โซนตัวเลข */
+  .page-indicator {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 1px;
+    user-select: none;
+  }
+
+  /* เลขหน้าปัจจุบัน (สีเขียว) */
+  .current-num {
+    color: #10b981; /* สีเขียว */
+    font-size: 1.2rem;
+  }
+
+  /* เครื่องหมาย / และเลขหน้าทั้งหมด */
+  .separator, .total-num {
+    color: #94a3b8; /* สีเทา */
+    font-size: 1rem;
+  }
 </style>
