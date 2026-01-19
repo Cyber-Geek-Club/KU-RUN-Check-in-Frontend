@@ -32,6 +32,13 @@ jobs:
           corepack enable || true
           corepack prepare pnpm@8 --activate || npm install -g pnpm
 
+      - name: Debug: show Node/npm/pnpm versions
+        run: |
+          node -v || true
+          npm -v || true
+          pnpm -v || true
+          which pnpm || true
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
