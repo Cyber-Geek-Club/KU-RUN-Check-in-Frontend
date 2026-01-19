@@ -7,6 +7,7 @@
     "dev": "vite dev --host",
     "build": "vite build",
     "preview": "vite preview",
+    "test:e2e": "playwright test",
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json"
   },
   "devDependencies": {
@@ -21,7 +22,8 @@
     "svelte": "^5.45.2",
     "svelte-check": "^4.3.4",
     "typescript": "~5.9.3",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "@playwright/test": "^1.44.0"
   },
   "dependencies": {
     "@smui/button": "^7.0.0",
