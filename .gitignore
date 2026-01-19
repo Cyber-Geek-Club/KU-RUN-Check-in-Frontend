@@ -22,3 +22,22 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+
+# Dependencies
+node_modules/
+
+# SvelteKit build output
+.svelte-kit/
+build/
+dist/
+
+# Environment variables (กันรหัสหลุด)
+.env
+.env.local
+.env.*
+!.env.example
+
+# OS Generated files (ไฟล์ขยะระบบ)
+.DS_Store
+Thumbs.db
