@@ -3486,10 +3486,38 @@
   async function startCamera() {
     cameraError = "";
     
+    // ✅ Get current language as string for comparison
+    const langCode: string = currentLang as string;
+    
+    // ✅ Check if context is secure (HTTPS or localhost)
+    const isSecureContext = window.isSecureContext || 
+                           window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.protocol === 'https:';
+    
+    if (!isSecureContext) {
+      console.error("Insecure context - camera not available over HTTP");
+      cameraError = langCode === 'th' 
+        ? "ไม่สามารถเปิดกล้องผ่าน HTTP ได้ กรุณาใช้โหมด PIN แทน หรือเปลี่ยนเป็น HTTPS"
+        : "Camera not available over HTTP. Please use PIN mode instead or switch to HTTPS.";
+      return;
+    }
+    
+    // ✅ Check if browser supports getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("getUserMedia not supported");
+      cameraError = langCode === 'th'
+        ? "เบราว์เซอร์ไม่รองรับการเข้าถึงกล้อง กรุณาใช้โหมด PIN แทน"
+        : "Browser does not support camera access. Please use PIN mode instead.";
+      return;
+    }
+    
     // ✅ Ensure video element is ready
     if (!videoRef) {
       console.error("Video element not ready");
-      cameraError = "Video element not initialized. Please try again.";
+      cameraError = langCode === 'th'
+        ? "กล้องยังไม่พร้อม กรุณาลองอีกครั้ง"
+        : "Camera view not ready. Please try again.";
       return;
     }
     
@@ -3525,9 +3553,23 @@
       }
     } catch (err: any) {
       console.error("Camera access error:", err);
-      cameraError = err.name === "NotAllowedError" 
-        ? "Camera permission denied. Please allow camera access in your browser settings."
-        : "Unable to access camera. Please check permissions and try again.";
+      if (err.name === "NotAllowedError") {
+        cameraError = langCode === 'th'
+          ? "ไม่ได้รับอนุญาตให้เข้าถึงกล้อง กรุณาอนุญาตในการตั้งค่าเบราว์เซอร์ หรือใช้โหมด PIN แทน"
+          : "Camera permission denied. Please allow camera access in browser settings or use PIN mode.";
+      } else if (err.name === "NotFoundError") {
+        cameraError = langCode === 'th'
+          ? "ไม่พบกล้อง กรุณาเชื่อมต่อกล้องหรือใช้โหมด PIN แทน"
+          : "No camera found. Please connect a camera or use PIN mode.";
+      } else if (err.name === "NotReadableError") {
+        cameraError = langCode === 'th'
+          ? "กล้องถูกใช้งานโดยแอปพลิเคชันอื่น กรุณาปิดแอปอื่นหรือใช้โหมด PIN แทน"
+          : "Camera is already in use by another application. Please close other apps or use PIN mode.";
+      } else {
+        cameraError = langCode === 'th'
+          ? "ไม่สามารถเปิดกล้องได้ กรุณาใช้โหมด PIN แทน"
+          : "Unable to access camera. Please use PIN mode instead.";
+      }
     }
   }
 
@@ -3591,7 +3633,8 @@
     if (newMode === "qr") {
       // ✅ Use tick() to ensure DOM is updated before starting camera
       await tick();
-      setTimeout(() => startCamera(), 100);
+      // ✅ Increased delay to ensure video element is fully mounted
+      setTimeout(() => startCamera(), 300);
     } else {
       await tick();
       setTimeout(() => pinInputRefs[0]?.focus(), 100);

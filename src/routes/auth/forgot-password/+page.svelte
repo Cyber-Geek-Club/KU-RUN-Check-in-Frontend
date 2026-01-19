@@ -205,6 +205,7 @@
               class="resend-link"
               on:click={() => {
                 currentStep = 1;
+                clearMessage();
               }}>Resend</button
             >
           </div>
