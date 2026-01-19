@@ -33,7 +33,7 @@ build/
 dist/
 
 # Environment variables (กันรหัสหลุด)
-.env
+
 .env.local
 .env.*
 !.env.example
