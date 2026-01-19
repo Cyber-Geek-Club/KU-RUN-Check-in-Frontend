@@ -19,7 +19,7 @@ jobs:
           node-version: '18'
           cache: 'pnpm'
 
-      - name: Debug: show Node/npm versions
+      - name: "Debug: show Node/npm versions"
         run: |
           node -v || true
           npm -v || true

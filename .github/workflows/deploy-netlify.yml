@@ -17,7 +17,7 @@ jobs:
           node-version: '18'
           cache: 'pnpm'
 
-      - name: Debug: show Node/npm versions
+      - name: "Debug: show Node/npm versions"
         run: |
           node -v || true
           npm -v || true
@@ -29,14 +29,12 @@ jobs:
         run: npm run build
 
       - name: Deploy to Netlify
-        if: ${{ secrets.NETLIFY_AUTH_TOKEN && secrets.NETLIFY_SITE_ID }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
-          npx netlify-cli deploy --dir=dist --prod --site=$NETLIFY_SITE_ID
-
-      - name: Skip deploy notice
-        if: ${{ !secrets.NETLIFY_AUTH_TOKEN || !secrets.NETLIFY_SITE_ID }}
-        run: |
-          echo "NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID not set — skipping deploy."
+          if [ -n "$NETLIFY_AUTH_TOKEN" ] && [ -n "$NETLIFY_SITE_ID" ]; then
+            npx netlify-cli deploy --dir=dist --prod --site="$NETLIFY_SITE_ID"
+          else
+            echo "NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID not set — skipping deploy."
+          fi
