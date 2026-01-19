@@ -58,6 +58,7 @@
             title: 'Service Unavailable',
             defaultDesc: 'The server is temporarily unable to handle the request.',
             icon: '🔧'
+            
         },
         504: {
             title: 'Gateway Timeout',

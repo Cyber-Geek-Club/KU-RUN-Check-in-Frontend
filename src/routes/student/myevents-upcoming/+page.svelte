@@ -2426,7 +2426,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                             <label class="upload-label" style="border: 2px dashed #ccc; padding: 20px; text-align: center; display: block; cursor: pointer; border-radius: 8px;">
                                 <input id="proofImageInput" type="file" accept="image/*" on:change={handleImageUpload} hidden />
                                 <div class="upload-placeholder">
-                                     <span>📸 {t[lang].modal_upload_txt}</span>
+                                     <span> {t[lang].modal_upload_txt}</span>
                                 </div>
                             </label>
                         {:else}
