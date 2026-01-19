@@ -422,6 +422,7 @@
     // Force reactivity update
     events = [...events];
   }
+
   
 
   async function updateUserStatus() {
