@@ -22,6 +22,11 @@ jobs:
         with:
           version: 8
 
+      - name: Ensure pnpm is available
+        run: |
+          corepack enable || true
+          corepack prepare pnpm@8 --activate || npm install -g pnpm
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
