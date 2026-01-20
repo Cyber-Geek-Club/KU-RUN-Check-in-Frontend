@@ -2605,10 +2605,10 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   :root { --bg-body: #0f172a; --bg-nav: #1e293b; --bg-card: #1e293b; --primary: #10b981; --text-main: #f8fafc; --text-muted: #94a3b8; --nav-height: 72px; }
   :global(.swal2-container) { z-index: 10000 !important; }
   :global(.swal2-toast) { z-index: 10001 !important; }
-    :global(body) { margin: 0; padding: 0; background-color: var(--bg-body); font-family: "Inter", sans-serif; overflow: hidden; }
-  
-    .app-container { min-height: 100vh; background-color: var(--bg-body); color: var(--text-main); display: flex; flex-direction: column; }
-    .scroll-container { height: calc(100vh - var(--nav-height)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-bottom: 20px; }
+    :global(body) { margin: 0; padding: 0; background-color: var(--bg-body); font-family: "Inter", sans-serif; }
+
+    .app-container { height: 100vh; background-color: var(--bg-body); color: var(--text-main); display: flex; flex-direction: column; }
+    .scroll-container { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-bottom: 20px; }
   .content-wrapper { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
 
   /* HEADER & NAVBAR */
