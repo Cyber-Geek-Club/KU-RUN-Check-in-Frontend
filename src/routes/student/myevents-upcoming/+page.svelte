@@ -14,6 +14,22 @@
   const BASE_URL = API_BASE_URL;
 
   // --- STATE: LAYOUT ---
+
+    // --- UI SYNC HELPER ---
+    // Update a single event in upcoming/history lists immutably to ensure Svelte reactivity
+    function updateEventInLists(eventId: number, patch: Partial<EventItem>) {
+        const uIdx = upcomingEvents.findIndex(e => e.id === eventId);
+        if (uIdx > -1) {
+            upcomingEvents[uIdx] = { ...upcomingEvents[uIdx], ...patch };
+            upcomingEvents = [...upcomingEvents];
+            return;
+        }
+        const hIdx = historyEvents.findIndex(e => e.id === eventId);
+        if (hIdx > -1) {
+            historyEvents[hIdx] = { ...historyEvents[hIdx], ...patch };
+            historyEvents = [...historyEvents];
+        }
+    }
   let isMobileMenuOpen = false;
   let currentView = "my-event";
 
@@ -26,6 +42,8 @@
   let pollInterval: ReturnType<typeof setInterval> | null = null;
   let pollDelay = 5000; // 5 seconds for realtime updates
   let isPollingActive = false;
+    // Pause-resume helper for UX while user scrolls
+    let userScrollTimer: ReturnType<typeof setTimeout> | null = null;
 
   // --- STATE: SEARCH ---
   let searchQuery = "";
@@ -797,8 +815,11 @@ function mapApiStatusToUi(apiStatus: string): EventItem['status'] {
   function changeUpcomingPage(page: number) {
       if (page >= 1 && page <= upcomingTotalPages) {
           upcomingCurrentPage = page;
-          // Optionally scroll to top of upcoming section
-          document.getElementById('upcoming-section')?.scrollIntoView({ behavior: 'smooth' });
+          // Optionally scroll to top of upcoming section (use scroll-container as host)
+          const container = document.querySelector('.scroll-container') as HTMLElement | null;
+          const el = document.getElementById('upcoming-section');
+          if (container && el) container.scrollTo({ top: el.offsetTop, behavior: 'smooth' });
+          else el?.scrollIntoView({ behavior: 'smooth' });
       }
   }
 
@@ -814,8 +835,10 @@ function mapApiStatusToUi(apiStatus: string): EventItem['status'] {
   function changeHistoryPage(page: number) {
       if (page >= 1 && page <= historyTotalPages) {
           historyCurrentPage = page;
-          // Optionally scroll to top of history section
-          document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' });
+          const container = document.querySelector('.scroll-container') as HTMLElement | null;
+          const el = document.getElementById('history-section');
+          if (container && el) container.scrollTo({ top: el.offsetTop, behavior: 'smooth' });
+          else el?.scrollIntoView({ behavior: 'smooth' });
       }
   }
 
@@ -947,12 +970,9 @@ async function handleCheckInConfirm() {
             showConfirmButton: false
         });
 
-        // เปลี่ยนสถานะในหน้าเว็บเป็น COMPLETED (จบแล้วสำหรับวันนี้)
-        selectedEvent.status = 'COMPLETED'; 
-        
+
         // รีโหลดข้อมูลใหม่เพื่อให้เห็นสถานะล่าสุดจาก Server
         await loadData();
-        
         // ปิด Modal
         closeModal();
         return;
@@ -1125,8 +1145,19 @@ async function handleCheckInConfirm() {
     }
   }
 
-  function scrollToHistory() { document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' }); }
-  function scrollToUpcoming() { document.getElementById('upcoming-section')?.scrollIntoView({ behavior: 'smooth' }); }
+    function scrollToHistory() {
+        const container = document.querySelector('.scroll-container') as HTMLElement | null;
+        const el = document.getElementById('history-section');
+        if (container && el) container.scrollTo({ top: el.offsetTop, behavior: 'smooth' });
+        else el?.scrollIntoView({ behavior: 'smooth' });
+    }
+    function scrollToUpcoming() {
+        const container = document.querySelector('.scroll-container') as HTMLElement | null;
+        const el = document.getElementById('upcoming-section');
+        if (container && el) container.scrollTo({ top: el.offsetTop, behavior: 'smooth' });
+        else el?.scrollIntoView({ behavior: 'smooth' });
+    }
+
   
   function getStepFromStatus(status: string) {
     switch (status) {
@@ -1645,8 +1676,7 @@ async function handleCheckInConfirm() {
       }
 
       if (selectedEvent) {
-          selectedEvent.status = 'proof_submitted';
-          upcomingEvents = [...upcomingEvents];
+          updateEventInLists(selectedEvent.id, { status: 'proof_submitted' });
           saveDraft(3);
       }
   }
@@ -1746,15 +1776,17 @@ async function submitProofAction() {
               });
           }
 
-          if(res.ok) {
-              Swal.fire(t[lang].alert_success_title, t[lang].alert_submit_success, "success");
-              if (currentParticipationId) clearDraft(currentParticipationId);
+                    if(res.ok) {
+                            Swal.fire(t[lang].alert_success_title, t[lang].alert_submit_success, "success");
+                            if (currentParticipationId) clearDraft(currentParticipationId);
               
-              if (selectedEvent) {
-            selectedEvent.status = 'proof_submitted';
-            selectedEvent.proof_image_url = proofImage || undefined;
-                }
-              closeModal();
+                            if (selectedEvent) {
+                                // Optimistic local update for immediate UX
+                                updateEventInLists(selectedEvent.id, { status: 'proof_submitted', proof_image_url: finalImageUrl || undefined });
+                            }
+                            closeModal();
+                            // Reconcile authoritative state from server
+                            await loadData();
           } else {
               const errData = await res.json().catch(() => ({}));
               console.error("❌ Submit Error Detail:", errData);
@@ -1769,9 +1801,9 @@ async function submitProofAction() {
   function handleBackToStrava() {
       if (selectedEvent) {
           if (selectedEvent.rejection_reason) {
-              selectedEvent.status = 'REJECTED';
+              updateEventInLists(selectedEvent.id, { status: 'REJECTED' });
           } else {
-              selectedEvent.status = 'CHECKED_IN';
+              updateEventInLists(selectedEvent.id, { status: 'CHECKED_IN' });
           }
           saveDraft(2);
       }
@@ -1821,27 +1853,26 @@ async function submitProofAction() {
       
       const newParticipations = await resPart.json();
       
-      // Check if any status changed
-      let hasChanges = false;
-      for (const newP of newParticipations) {
-        const oldP = rawParticipations.find((p: any) => p.id === newP.id);
-        if (!oldP || oldP.status !== newP.status) {
-          hasChanges = true;
-          console.log(`📢 Status changed: ${oldP?.status || 'NEW'} → ${newP.status}`);
-          break;
-        }
-      }
-      
-      // Also check if participation count changed
-      if (newParticipations.length !== rawParticipations.length) {
-        hasChanges = true;
-      }
+            // More robust change detection by event_id (handles new rounds / new participation ids)
+            const newByEvent: Record<number, any> = {};
+            newParticipations.forEach((p: any) => { if (p && p.event_id) newByEvent[p.event_id] = p; });
+            const oldByEvent: Record<number, any> = {};
+            rawParticipations.forEach((p: any) => { if (p && p.event_id) oldByEvent[p.event_id] = p; });
 
-      if (hasChanges) {
-        console.log("✅ Detected changes, updating UI...");
-        rawParticipations = newParticipations;
-        processData();
-      }
+            let hasChanges = false;
+            for (const k of Object.keys(newByEvent)) {
+                const eid = Number(k);
+                const np = newByEvent[eid];
+                const op = oldByEvent[eid];
+                if (!op || op.status !== np.status || op.id !== np.id) { hasChanges = true; break; }
+            }
+            if (!hasChanges && Object.keys(newByEvent).length !== Object.keys(oldByEvent).length) hasChanges = true;
+
+            if (hasChanges) {
+                console.log("✅ Detected changes, updating UI...");
+                rawParticipations = newParticipations;
+                processData();
+            }
     } catch (err) {
       // Silently ignore errors in background refresh
     }
@@ -1873,6 +1904,39 @@ async function submitProofAction() {
     // Pause when offline, resume when online
     window.addEventListener('offline', stopPolling);
     window.addEventListener('online', startPolling);
+
+        // Pause polling while user is actively scrolling to avoid cancelling momentum
+        const sc = document.querySelector('.scroll-container') as HTMLElement | null;
+        function onUserScroll() {
+
+        // Debounce helper to restart polling only after scrolling has stopped
+        function createDebounced(fn: () => void, delay: number) {
+            let timer: ReturnType<typeof setTimeout> | null = null;
+            return () => {
+                if (timer) {
+                    clearTimeout(timer);
+                }
+                timer = setTimeout(fn, delay);
+            };
+        }
+
+        const debouncedStartPolling = createDebounced(() => {
+            // Only restart if polling is not already active
+            if (!pollInterval) {
+                startPolling();
+            }
+        }, 700);
+
+        function onUserScroll() {
+            if (pollInterval) {
+                stopPolling();
+            }
+            debouncedStartPolling();
+        }
+
+        // store for cleanup via closure
+        (onMount as any).__sc = sc;
+        (onMount as any).__onUserScroll = onUserScroll;
   });
   
   onDestroy(() => { 
@@ -1881,6 +1945,13 @@ async function submitProofAction() {
     document.removeEventListener('visibilitychange', handleVisibilityChange);
     window.removeEventListener('offline', stopPolling);
     window.removeEventListener('online', startPolling);
+        // remove scroll listener and clear timer
+        try {
+            const sc = (onMount as any).__sc as HTMLElement | null;
+            const onUserScroll = (onMount as any).__onUserScroll as EventListener;
+            if (sc && onUserScroll) sc.removeEventListener('scroll', onUserScroll as EventListener);
+        } catch (e) { }
+        if (userScrollTimer) clearTimeout(userScrollTimer);
   });
 
   // [เพิ่มใหม่] ฟังก์ชันย่อรูปภาพ (Client-side Compression)
@@ -2560,10 +2631,10 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
   :root { --bg-body: #0f172a; --bg-nav: #1e293b; --bg-card: #1e293b; --primary: #10b981; --text-main: #f8fafc; --text-muted: #94a3b8; --nav-height: 72px; }
   :global(.swal2-container) { z-index: 10000 !important; }
   :global(.swal2-toast) { z-index: 10001 !important; }
-  :global(body) { margin: 0; padding: 0; background-color: var(--bg-body); font-family: "Inter", sans-serif; overflow-y: auto; }
+  :global(body) { margin: 0; padding: 0; background-color: var(--bg-body); font-family: "Inter", sans-serif; overflow-x: hidden; }
   
   .app-container { min-height: 100vh; background-color: var(--bg-body); color: var(--text-main); display: flex; flex-direction: column; }
-  .scroll-container { margin-top: calc(var(--nav-height) + 40px); padding-bottom: 20px; flex: 1; }
+    .scroll-container { height: calc(100vh - var(--nav-height)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-bottom: 20px; }
   .content-wrapper { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
 
   /* HEADER & NAVBAR */
