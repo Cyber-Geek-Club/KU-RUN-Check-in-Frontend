@@ -32,26 +32,35 @@ jobs:
       - name: Typecheck
         run: pnpm run check
 
+# ... (steps ก่อนหน้าเหมือนเดิม)
+
       - name: Build
         run: pnpm run build
 
       - name: Start preview server
-        # ใช้ pnpm run preview และระบุ port
-        run: pnpm run preview -- --port 4173 &
+        # เพิ่ม --host เพื่อกันปัญหาเรื่อง IP Binding ใน CI
+        run: pnpm run preview -- --port 4173 --host &
 
       - name: Wait for server
         run: |
-          for i in {1..20}; do
+          echo "Waiting for server at http://127.0.0.1:4173..."
+          for i in {1..30}; do
             if curl -sSf http://127.0.0.1:4173/ > /dev/null; then
-              echo "server up"; break;
-            fi; sleep 1; done
+              echo "Server is up!"
+              exit 0
+            fi
+            echo "Retrying... ($i/30)"
+            sleep 1
+          done
+          echo "Server failed to start within time limit"
+          exit 1  # <--- สำคัญ: ถ้าหมดเวลาแล้วยังเข้าไม่ได้ ให้ Fail ทันที
 
       - name: Install Playwright browsers
-        # ใช้ pnpm exec เพื่อเรียก playwright จาก dependencies
         run: pnpm exec playwright install --with-deps
 
       - name: Run Playwright tests
         run: pnpm exec playwright test --config=playwright.config.ts
+
 
       - name: Upload Playwright report (HTML)
         if: always()
