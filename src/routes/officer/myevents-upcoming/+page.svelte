@@ -320,9 +320,9 @@
             const s = code === null || code === undefined ? "" : String(code);
             const chars = s.split('');
             const out: string[] = [];
-            for (let i = 0; i < 5; i++) out.push(chars[i] || '-');
+            for (let i = 0; i < (len || 5); i++) out.push(chars[i] || '-');
             return out;
-        } catch (e) { return new Array(5).fill('-'); }
+        } catch (e) { return new Array(len || 5).fill('-'); }
     }
 
   // --- DATA FETCHING ---
