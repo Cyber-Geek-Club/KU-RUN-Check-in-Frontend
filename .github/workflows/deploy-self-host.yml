@@ -22,7 +22,7 @@ jobs:
           $PM2_NAME = "ku-run-frontend"
           # ==========================================
 
-          Write-Host "Starting Deployment to $PROJECT_PATH..."
+          Write-Host "Starting Frontend Deployment to $PROJECT_PATH..."
 
           # 1. เข้าไปที่โฟลเดอร์โปรเจกต์
           if (Test-Path $PROJECT_PATH) {
@@ -32,30 +32,36 @@ jobs:
               exit 1
           }
 
-          # 2. Pull Code ล่าสุด
+          # 2. Pull & Reset Code
           Write-Host "Pulling latest code..."
           git fetch origin master
           git reset --hard origin/master
 
-          # 3. Install & Build (ส่วนนี้สำคัญมาก เพื่อสร้าง folder 'build')
+          # 3. Install & Build
           Write-Host "Installing dependencies & Building..."
           pnpm install --frozen-lockfile
           pnpm run build
 
-          # 4. Restart PM2
-          Write-Host "Checking PM2 Process..."
+          # 4. Restart PM2 with Watch Mode
+          Write-Host "Configuring PM2..."
           
-          # ตรวจสอบว่ามี Process นี้อยู่หรือไม่
+          # เช็คว่ามี Process นี้อยู่ไหม
           pm2 describe $PM2_NAME | Out-Null
           
           if ($LASTEXITCODE -eq 0) {
-              Write-Host "Process found. Restarting..."
-              pm2 restart $PM2_NAME --update-env
-          } else {
-              Write-Host "Process not found. Starting new..."
-              # ถ้า svelte.config.js ถูกต้อง จะมีไฟล์นี้เกิดขึ้น
-              pm2 start build/index.js --name $PM2_NAME
+              # ถ้ามีอยู่แล้ว ต้องเช็คว่าเราเคยเปิด Watch ไว้ไหม?
+              # แต่วิธีที่ชัวร์ที่สุดคือลบแล้ว Start ใหม่ด้วย --watch เพื่ออัปเดต Config
+              Write-Host "Process found. Re-creating to ensure Watch Mode is enabled..."
+              pm2 delete $PM2_NAME
           }
+
+          # Start ใหม่ด้วย --watch
+          # --watch: ให้เฝ้าดูการเปลี่ยนแปลงไฟล์
+          # --ignore-watch: ไม่ต้องเฝ้าดู node_modules (เพื่อประหยัดทรัพยากร)
+          Write-Host "Starting process with Watch Mode..."
+          pm2 start build/index.js --name $PM2_NAME --watch --ignore-watch="node_modules"
           
+          # Save สถานะ
           pm2 save
-          Write-Host "Deployment Complete!"
+
+          Write-Host "Frontend Deployment Complete!"
