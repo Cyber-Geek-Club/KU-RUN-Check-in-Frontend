@@ -3,20 +3,21 @@ import { test, expect } from '@playwright/test';
 test.describe('Student Event List', () => {
   
   test.beforeEach(async ({ page }) => {
-    // [FIX] 1. ใช้ Token ที่ถูกต้องตามมาตรฐาน JWT (มี Padding)
-    // Header.Payload(exp=9999999999).Signature
-    const futureToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjo5OTk5OTk5OTk5fQ==.somesignature";
+    // [FIX] Use a simple, valid Base64 payload for the token to avoid atob() errors in startSessionTimer
+    // Payload: {"exp": 9999999999, "id": 1, "role": "student"} 
+    // Base64: eyJleHAiOjk5OTk5OTk5OTksImlkIjoxLCJyb2xlIjoic3R1ZGVudCJ9
+    const validToken = "header.eyJleHAiOjk5OTk5OTk5OTksImlkIjoxLCJyb2xlIjoic3R1ZGVudCJ9.signature";
 
     await page.addInitScript((token) => {
       localStorage.setItem('access_token', token);
       localStorage.setItem('app_lang', 'en'); 
       localStorage.setItem('user_info', JSON.stringify({ id: 1, role: 'student', name: 'Test User' }));
-    }, futureToken);
+    }, validToken);
 
-    // [FIX] 2. ใช้ Glob Pattern (**) เพื่อให้ดักจับ URL ได้ครอบคลุมกว่า Regex
+    // [FIX] Use Regex for robust route matching to handle any Base URL variations
     
-    // Mock Events API
-    await page.route('**/api/events/**', async route => {
+    // 1. Mock Events API: Matches /api/events/ or /api/events
+    await page.route(/\/api\/events\/?$/, async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -53,13 +54,13 @@ test.describe('Student Event List', () => {
       });
     });
 
-    // Mock User Participation Status (Handle query params automatically with glob)
-    await page.route('**/api/participations/user/**', async route => {
+    // 2. Mock User Participation Status: Matches /api/participations/user/{id}
+    await page.route(/\/api\/participations\/user\/\d+/, async route => {
         await route.fulfill({ status: 200, body: JSON.stringify([]) });
     });
 
-    // Mock Join API
-    await page.route('**/api/participations/join', async route => {
+    // 3. Mock Join API: Matches /api/participations/join
+    await page.route(/\/api\/participations\/join\/?$/, async route => {
         await route.fulfill({ 
             status: 200, 
             contentType: 'application/json',
@@ -78,11 +79,14 @@ test.describe('Student Event List', () => {
   test('should filter events using search bar', async ({ page }) => {
     const searchInput = page.locator('.search-input');
     
-    // [FIX] 3. Fill + Dispatch Event เพื่อความชัวร์ใน Svelte binding
+    // [FIX] Ensure input binding updates by filling and blurring
     await searchInput.fill('Coding');
-    await searchInput.dispatchEvent('input');
+    await searchInput.blur(); // Trigger change event
     
-    // รอ Debounce และการ Render
+    // Verify input value is set
+    await expect(searchInput).toHaveValue('Coding');
+
+    // Wait for Svelte debounce (250ms) + rendering
     await page.waitForTimeout(1000);
 
     // Should only show 1 event
@@ -101,14 +105,22 @@ test.describe('Student Event List', () => {
   });
 
   test('should handle register modal flow', async ({ page }) => {
-    // Click register button (nth=0 is KU Run)
-    await page.locator('button.register-btn').first().click();
+    // Click register button on the first event (KU Run)
+    // We use .first() or nth=0
+    const registerBtn = page.locator('button.register-btn').first();
+    await expect(registerBtn).toBeVisible();
+    await expect(registerBtn).toBeEnabled();
+    await registerBtn.click();
 
     // Confirm SweetAlert dialog
-    await expect(page.locator('.swal2-popup')).toBeVisible();
-    await page.click('.swal2-confirm');
+    const confirmBtn = page.locator('.swal2-confirm');
+    await expect(confirmBtn).toBeVisible();
+    await confirmBtn.click();
 
-    // Check for success message
+    // Check for success message (Not Session Expired)
     await expect(page.locator('.swal2-title')).toContainText('Success');
+    
+    // Verify modal content details (optional but good for debugging)
+    await expect(page.locator('.swal2-html-container')).toContainText('JOIN-123');
   });
 });
