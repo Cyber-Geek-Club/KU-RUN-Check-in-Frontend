@@ -121,13 +121,7 @@
   let currentPage = $state(1);
   const itemsPerPage = 8;
 
-  // คำนวณจำนวนหน้าทั้งหมด
-  let totalPages = $derived(Math.ceil(events.length / itemsPerPage));
-
-  // ตัดข้อมูล events ที่จะแสดงในหน้าปัจจุบัน
-  let paginatedEvents = $derived(
-    events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-  );
+  // (totalPages and paginatedEvents are calculated after filtering)
 
   // ฟังก์ชันเปลี่ยนหน้า
   function changePage(page: number) {
@@ -1301,6 +1295,14 @@
       event.description.toLowerCase().includes(query)
     );
   }));
+
+  // Recompute pagination based on filtered results
+  let totalPages = $derived(Math.max(1, Math.ceil(filteredEvents.length / itemsPerPage)));
+
+  // Paginated events come from filteredEvents so search/pagination interact correctly
+  let paginatedEvents = $derived(
+    filteredEvents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  );
 </script>
 
 <div class="app-container">
