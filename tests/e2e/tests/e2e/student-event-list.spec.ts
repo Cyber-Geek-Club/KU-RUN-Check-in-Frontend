@@ -7,9 +7,57 @@ test.describe('Student Event List', () => {
     const validToken = "header.eyJleHAiOjk5OTk5OTk5OTksImlkIjoxLCJyb2xlIjoic3R1ZGVudCJ9==.signature";
 
     await page.addInitScript((token) => {
+      // set token and user info
       localStorage.setItem('access_token', token);
       localStorage.setItem('app_lang', 'en'); 
       localStorage.setItem('user_info', JSON.stringify({ id: 1, role: 'student', name: 'Test User' }));
+
+      // monkey-patch fetch to ensure client-side fetches return mocked responses
+      const origFetch = window.fetch.bind(window);
+      // simple router
+      window.fetch = (input, init) => {
+        const url = typeof input === 'string' ? input : input.url;
+        if (url.includes('/api/events')) {
+          return Promise.resolve(new Response(JSON.stringify([
+            {
+              id: 1,
+              title: 'KU Run 2026',
+              description: 'Annual running event',
+              location: 'Kasetsart Sriracha',
+              distance_km: 10,
+              participant_count: 50,
+              max_participants: 100,
+              event_date: '2026-01-20',
+              event_end_date: '2026-01-20',
+              is_active: true,
+              is_published: true,
+              event_type: 'single_day'
+            },
+            {
+              id: 2,
+              title: 'Coding Bootcamp',
+              description: 'Learn SvelteKit',
+              location: 'Lab 505',
+              distance_km: 0,
+              participant_count: 10,
+              max_participants: 20,
+              event_date: '2026-02-01',
+              event_end_date: '2026-02-01',
+              is_active: true,
+              is_published: true,
+              event_type: 'single_day'
+            }
+          ]), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        }
+        if (url.includes('/api/participations/user')) {
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        }
+        if (url.includes('/api/participations/join') || url.includes('/api/participations/pre-register')) {
+          return Promise.resolve(new Response(JSON.stringify({ id: 101, join_code: 'JOIN-123', first_code: 'JOIN-123', event_end_date: '2026-02-01' }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        }
+        // fallback to original
+        return origFetch(input, init);
+      };
     }, validToken);
 
     // 2. Mock API Routes using Regex (More robust than glob patterns)
