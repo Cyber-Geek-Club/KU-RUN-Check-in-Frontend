@@ -11,7 +11,6 @@
   let errorMessage = "";
   let errorTimeout: any = null;
   let errorField: string | null = null;
-
   function togglePassword() {
     showPassword = !showPassword;
   }
@@ -62,7 +61,6 @@
     clearError();
 
     if (isSubmitting) return;
-
     if (!email) return showError("Please enter your email.", "email");
     if (!validateEmail(email))
       return showError("Invalid email format.", "email");
@@ -72,13 +70,11 @@
       isSubmitting = true;
       const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
       const API_URL = `${base}/api/users/login`;
-
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
@@ -96,7 +92,6 @@
       const userRole = normalizeRole(rawRole);
 
       console.log("ROLE FROM SERVER:", rawRole, "=>", userRole);
-
       if (!accessToken || !userRole) {
         console.error("Login Error: Missing token or role", data);
         return showError("System Error: Invalid response from server.", "both");
@@ -113,10 +108,8 @@
         name: data.name || data.user?.name || data.username || data.user?.username || email.split('@')[0],
         role: userRole
       };
-
       // Use auth store - it will handle all localStorage operations
       auth.login(loginResponse);
-
       // Store additional role-based routing info
       try {
         localStorage.setItem("strict_allowed_path", getRoleHome(userRole));
@@ -147,7 +140,7 @@
           <p class="sub-title">Welcome back! Please enter your details.</p>
         </div>
 
-        <form class="form-section" on:submit|preventDefault={submitLogin}>
+        <form class="form-section" on:submit|preventDefault={submitLogin} novalidate>
           <div class="form-group">
             <label class="label" for="email">Email</label>
             <div
@@ -258,7 +251,6 @@
 
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
-
   :global(body) {
     margin: 0;
     padding: 0;
