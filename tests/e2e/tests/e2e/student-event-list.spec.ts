@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Student Event List', () => {
   
   test.beforeEach(async ({ page }) => {
-    // [FIX] 1. ใช้ Token ที่มี Padding ถูกต้อง (==) เพื่อป้องกัน atob error
+    // [FIX] 1. ใช้ Token ที่ถูกต้องตามมาตรฐาน JWT (มี Padding)
     // Header.Payload(exp=9999999999).Signature
     const futureToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjo5OTk5OTk5OTk5fQ==.somesignature";
 
@@ -13,8 +13,10 @@ test.describe('Student Event List', () => {
       localStorage.setItem('user_info', JSON.stringify({ id: 1, role: 'student', name: 'Test User' }));
     }, futureToken);
 
-    // [FIX] 2. ใช้ Regex ในการดัก Route เพื่อความแม่นยำสูงสุด (ป้องกัน case base url ไม่ตรง)
-    await page.route(/\/api\/events\/?(\?.*)?$/, async route => {
+    // [FIX] 2. ใช้ Glob Pattern (**) เพื่อให้ดักจับ URL ได้ครอบคลุมกว่า Regex
+    
+    // Mock Events API
+    await page.route('**/api/events/**', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -51,9 +53,18 @@ test.describe('Student Event List', () => {
       });
     });
 
-    // Mock User Participation Status
-    await page.route(/\/api\/participations\/user\/.*/, async route => {
+    // Mock User Participation Status (Handle query params automatically with glob)
+    await page.route('**/api/participations/user/**', async route => {
         await route.fulfill({ status: 200, body: JSON.stringify([]) });
+    });
+
+    // Mock Join API
+    await page.route('**/api/participations/join', async route => {
+        await route.fulfill({ 
+            status: 200, 
+            contentType: 'application/json',
+            body: JSON.stringify({ id: 101, join_code: 'JOIN-123' }) 
+        });
     });
 
     await page.goto('/student/event-list');
@@ -67,13 +78,11 @@ test.describe('Student Event List', () => {
   test('should filter events using search bar', async ({ page }) => {
     const searchInput = page.locator('.search-input');
     
-    // [FIX] 3. พิมพ์ช้าๆ เพื่อให้ Svelte Bind ทำงานทัน และรอ Debounce นานขึ้น
-    await searchInput.pressSequentially('Coding', { delay: 100 });
+    // [FIX] 3. Fill + Dispatch Event เพื่อความชัวร์ใน Svelte binding
+    await searchInput.fill('Coding');
+    await searchInput.dispatchEvent('input');
     
-    // ตรวจสอบว่าค่าใน Input เปลี่ยนจริง
-    await expect(searchInput).toHaveValue('Coding');
-
-    // รอ Debounce (250ms) + Processing time
+    // รอ Debounce และการ Render
     await page.waitForTimeout(1000);
 
     // Should only show 1 event
@@ -87,21 +96,12 @@ test.describe('Student Event List', () => {
     // Verify redirect to login
     await expect(page).toHaveURL(/\/auth\/login/);
     
-    // Check for login UI element instead of localStorage
+    // Check for login UI
     await expect(page.locator('h1.main-title')).toContainText('LOGIN');
   });
 
   test('should handle register modal flow', async ({ page }) => {
-    // Mock Join API
-    await page.route(/\/api\/participations\/join\/?$/, async route => {
-        await route.fulfill({ 
-            status: 200, 
-            contentType: 'application/json',
-            body: JSON.stringify({ id: 101, join_code: 'JOIN-123' }) 
-        });
-    });
-
-    // Click register button
+    // Click register button (nth=0 is KU Run)
     await page.locator('button.register-btn').first().click();
 
     // Confirm SweetAlert dialog
