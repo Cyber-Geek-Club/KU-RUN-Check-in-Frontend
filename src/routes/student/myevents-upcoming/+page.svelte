@@ -307,6 +307,13 @@
     total_days?: number;
 }
 
+    // Helper to normalize join/completion code fields coming from API
+    function normalizeCode(src: any): { join_code: string; completion_code?: string } {
+        const join = src?.join_code || src?.joinCode || src?.code || src?.pin || "";
+        const comp = src?.completion_code || src?.completionCode || src?.checkout_code || src?.completion || undefined;
+        return { join_code: join ? String(join) : "", completion_code: comp ? String(comp) : undefined };
+    }
+
   // [DEBUG] ฟังก์ชันสำหรับ override วันที่เพื่อทดสอบ
   // ใช้โดยเพิ่ม ?debug_date=2026-01-15 ใน URL
   function getDebugDate(): Date {
@@ -539,8 +546,9 @@
           let participationId = p.id;
           let proofImg = p.proof_image_url;
           let rejectReason = p.rejection_reason;
-          let joinCode = p.join_code;
-          let compCode = p.completion_code;
+          const codes = normalizeCode(p);
+          let joinCode = codes.join_code;
+          let compCode = codes.completion_code;
           let actualDist = p.actual_distance_km;
           let compRank = p.completion_rank;
           
@@ -901,67 +909,82 @@ function mapApiStatusToUi(apiStatus: string): EventItem['status'] {
   }
 
   function getLocalToken() {
-    if (typeof localStorage === 'undefined') return "";
-    let token = localStorage.getItem("token") || localStorage.getItem("access_token") || "";
-    if (!token) {
-        const userStr = localStorage.getItem("user") || localStorage.getItem("user_info");
-        if (userStr) { 
-            try { 
-                const userObj = JSON.parse(userStr);
-                token = userObj.token || userObj.accessToken || userObj.access_token || "";
-            } catch (e) {} 
-        }
+    try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return "";
+      let token = localStorage.getItem("token") || localStorage.getItem("access_token") || "";
+      if (!token) {
+          const userStr = localStorage.getItem("user") || localStorage.getItem("user_info");
+          if (userStr) { 
+              try { 
+                  const userObj = JSON.parse(userStr);
+                  token = userObj.token || userObj.accessToken || userObj.access_token || "";
+              } catch (e) { console.warn('Failed to parse stored user object for token', e); } 
+          }
+      }
+      return token || "";
+    } catch (e) {
+      console.warn('getLocalToken error (likely SSR):', e);
+      return "";
     }
-    return token;
   }
   function getToken() { return getLocalToken(); } 
   function getUserIdFromToken() {
+      if (typeof window === 'undefined') return null;
       const token = getLocalToken();
       if (!token) return null;
       try {
-          const base64Url = token.split('.')[1];
+          const parts = token.split('.');
+          if (!parts || parts.length < 2) return null;
+          const base64Url = parts[1];
           const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+          const atob = window.atob || ((str: string) => Buffer.from(str, 'base64').toString('binary'));
+          const raw = atob(base64);
+          const jsonPayload = decodeURIComponent(Array.prototype.map.call(raw, function(c: string) {
               return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
           }).join(''));
           const payload = JSON.parse(jsonPayload);
-          return payload.id || payload.user_id || payload.sub || payload.userId;
+          const id = payload.id || payload.user_id || payload.sub || payload.userId;
+          return (typeof id === 'string') ? (parseInt(id) || null) : id || null;
       } catch (e) {
           console.error("Token parsing error", e);
           return null;
       }
   }
 
-  function startSessionTimer() {
-    if (timerInterval) clearInterval(timerInterval);
-    const token = getToken();
-    if (!token) { timeLeftStr = "00:00:00"; return; }
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const payload = JSON.parse(decodeURIComponent(window.atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-      if (payload.exp) {
-          const expTime = payload.exp * 1000;
-          timerInterval = setInterval(() => {
-            const now = Date.now();
-            const diff = expTime - now;
-            if (diff <= 0) {
-              if (timerInterval) clearInterval(timerInterval);
-              timeLeftStr = "00:00:00";
-              timeLeftSeconds = 0;
-              handleSessionExpired(); 
-            } else {
-              const totalSeconds = Math.floor(diff / 1000);
-              timeLeftSeconds = totalSeconds;
-              const h = Math.floor(totalSeconds / 3600);
-              const m = Math.floor((totalSeconds % 3600) / 60);
-              const s = totalSeconds % 60;
-              timeLeftStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    function startSessionTimer() {
+        try {
+            if (typeof window === 'undefined') return;
+            if (timerInterval) clearInterval(timerInterval);
+            const token = getToken();
+            if (!token) { timeLeftStr = "00:00:00"; timeLeftSeconds = 0; return; }
+            const parts = token.split('.');
+            if (!parts || parts.length < 2) { timeLeftStr = "00:00:00"; return; }
+            const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            const atob = window.atob || ((str: string) => Buffer.from(str, 'base64').toString('binary'));
+            const raw = atob(base64);
+            const payload = JSON.parse(decodeURIComponent(Array.prototype.map.call(raw, (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+            if (payload && payload.exp) {
+                    const expTime = payload.exp * 1000;
+                    timerInterval = setInterval(() => {
+                        const now = Date.now();
+                        const diff = expTime - now;
+                        if (diff <= 0) {
+                            if (timerInterval) clearInterval(timerInterval);
+                            timeLeftStr = "00:00:00";
+                            timeLeftSeconds = 0;
+                            handleSessionExpired(); 
+                        } else {
+                            const totalSeconds = Math.floor(diff / 1000);
+                            timeLeftSeconds = totalSeconds;
+                            const h = Math.floor(totalSeconds / 3600);
+                            const m = Math.floor((totalSeconds % 3600) / 60);
+                            const s = totalSeconds % 60;
+                              timeLeftStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+                        }
+                    }, 1000);
             }
-          }, 1000);
-      }
-    } catch (e) { console.error("Error parsing token expiration:", e); }
-  }
+        } catch (e) { console.error("Error parsing token expiration:", e); timeLeftStr = "00:00:00"; timeLeftSeconds = 0; }
+    }
   
 async function handleCheckInConfirm() {
     if (!selectedEvent) return;
@@ -1059,9 +1082,11 @@ async function handleCheckInConfirm() {
       text: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่',
       allowOutsideClick: false,
       confirmButtonText: 'OK'
-    }).then(() => {
-      window.location.href = "/auth/login";
-    });
+        }).then(() => {
+            if (typeof window !== 'undefined') {
+                window.location.href = "/auth/login";
+            }
+        });
   }
 
   function handleLogout() { 
@@ -1082,8 +1107,10 @@ async function handleCheckInConfirm() {
       });
     }
     
-    auth.logout();
-    window.location.href = "/auth/login";
+        auth.logout();
+        if (typeof window !== 'undefined') {
+            window.location.href = "/auth/login";
+        }
   }
 
   // --- DASHBOARD STATE ---
@@ -1337,7 +1364,7 @@ async function handleCheckInConfirm() {
     // 2. แปลงข้อมูลจาก Backend เป็น UI
     if (resData && resData.codes && resData.codes.length > 0) {
         statusData = resData.codes[0];
-    } else if (resData && resData.join_code) {
+    } else if (resData && normalizeCode(resData).join_code) {
         statusData = resData;
     }
 
@@ -1362,9 +1389,10 @@ async function handleCheckInConfirm() {
     if (statusData) {
         updatedEvent.participation_id = statusData.id || updatedEvent.participation_id;
         updatedEvent.status = mapApiStatusToUi(statusData.status);
-        updatedEvent.join_code = statusData.join_code ? String(statusData.join_code) : "";
-        updatedEvent.completion_code = statusData.completion_code ? String(statusData.completion_code) : undefined;
-        updatedEvent.rejection_reason = statusData.rejection_reason;
+        const normalized = normalizeCode(statusData);
+        updatedEvent.join_code = normalized.join_code || "";
+        updatedEvent.completion_code = normalized.completion_code;
+        updatedEvent.rejection_reason = statusData.rejection_reason || statusData.reject_reason || statusData.rejectionReason;
         updatedEvent.isJoined = true;
     } else {
         // ถ้าไม่มีข้อมูล (หรือถูกกรองทิ้งเมื่อกี้) ให้รีเซ็ตสถานะเพื่อให้พร้อมสมัครใหม่
@@ -1446,6 +1474,13 @@ async function handleCheckInConfirm() {
     showModal = false;
     setTimeout(() => { selectedEvent = null; }, 300);
   }
+
+    // Prevent background scrolling when modal is open
+    $: if (typeof window !== 'undefined') {
+        try {
+            document.body.style.overflow = showModal ? 'hidden' : '';
+        } catch (e) { /* ignore */ }
+    }
 
   async function handleImageUpload(e: Event) {
     const target = e.target as HTMLInputElement;
@@ -1745,8 +1780,8 @@ async function submitProofAction() {
               const statusRes = await fetchMyStatus(selectedEvent.id);
               if (statusRes) {
                   let statusData = null;
-                  if (statusRes.codes && statusRes.codes.length > 0) statusData = statusRes.codes[0];
-                  else if (statusRes.join_code) statusData = statusRes;
+                      if (statusRes.codes && statusRes.codes.length > 0) statusData = statusRes.codes[0];
+                      else if (normalizeCode(statusRes).join_code) statusData = statusRes;
                   if (statusData && statusData.id && statusData.id !== selectedEvent.participation_id) {
                       const oldId = selectedEvent.participation_id;
                       selectedEvent.participation_id = statusData.id;

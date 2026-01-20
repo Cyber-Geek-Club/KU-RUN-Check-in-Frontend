@@ -291,6 +291,13 @@
     total_days?: number;
 }
 
+    // Helper to normalize join/completion code fields coming from API
+    function normalizeCode(src: any): { join_code: string; completion_code?: string } {
+        const join = src?.join_code || src?.joinCode || src?.code || src?.pin || "";
+        const comp = src?.completion_code || src?.completionCode || src?.checkout_code || src?.completion || undefined;
+        return { join_code: join ? String(join) : "", completion_code: comp ? String(comp) : undefined };
+    }
+
   // [DEBUG] ฟังก์ชันสำหรับ override วันที่เพื่อทดสอบ
   // ใช้โดยเพิ่ม ?debug_date=2026-01-15 ใน URL
   function getDebugDate(): Date {
@@ -522,8 +529,9 @@
           let participationId = p.id;
           let proofImg = p.proof_image_url;
           let rejectReason = p.rejection_reason;
-          let joinCode = p.join_code;
-          let compCode = p.completion_code;
+          const codes = normalizeCode(p);
+          let joinCode = codes.join_code;
+          let compCode = codes.completion_code;
           let actualDist = p.actual_distance_km;
           let compRank = p.completion_rank;
           
@@ -1331,7 +1339,7 @@ async function handleCheckInConfirm() {
     // 2. แปลงข้อมูลจาก Backend เป็น UI
     if (resData && resData.codes && resData.codes.length > 0) {
         statusData = resData.codes[0];
-    } else if (resData && resData.join_code) {
+    } else if (resData && normalizeCode(resData).join_code) {
         statusData = resData;
     }
 
@@ -1356,9 +1364,10 @@ async function handleCheckInConfirm() {
     if (statusData) {
         updatedEvent.participation_id = statusData.id || updatedEvent.participation_id;
         updatedEvent.status = mapApiStatusToUi(statusData.status);
-        updatedEvent.join_code = statusData.join_code ? String(statusData.join_code) : "";
-        updatedEvent.completion_code = statusData.completion_code ? String(statusData.completion_code) : undefined;
-        updatedEvent.rejection_reason = statusData.rejection_reason;
+        const normalized = normalizeCode(statusData);
+        updatedEvent.join_code = normalized.join_code || "";
+        updatedEvent.completion_code = normalized.completion_code;
+        updatedEvent.rejection_reason = statusData.rejection_reason || statusData.reject_reason || statusData.rejectionReason;
         updatedEvent.isJoined = true;
     } else {
         // ถ้าไม่มีข้อมูล (หรือถูกกรองทิ้งเมื่อกี้) ให้รีเซ็ตสถานะเพื่อให้พร้อมสมัครใหม่
@@ -1740,7 +1749,7 @@ async function submitProofAction() {
               if (statusRes) {
                   let statusData = null;
                   if (statusRes.codes && statusRes.codes.length > 0) statusData = statusRes.codes[0];
-                  else if (statusRes.join_code) statusData = statusRes;
+                  else if (normalizeCode(statusRes).join_code) statusData = statusRes;
                   if (statusData && statusData.id && statusData.id !== selectedEvent.participation_id) {
                       const oldId = selectedEvent.participation_id;
                       selectedEvent.participation_id = statusData.id;
