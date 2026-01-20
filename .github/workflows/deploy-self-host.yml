@@ -21,13 +21,14 @@ jobs:
           $PROJECT_PATH = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
           $PM2_NAME = "ku-run-frontend"
 
-          # ⚠️ ห้ามใช้ $HOST (reserved)
+          # App Network Config
           $APP_HOST = "0.0.0.0"
           $APP_PORT = "3000"
           # ==========================================
 
-          Write-Host "Starting Frontend Deployment..."
-          Write-Host "Target Path: $PROJECT_PATH"
+          Write-Host "========================================"
+          Write-Host "  KU-RUN Frontend Deployment (SvelteKit)"
+          Write-Host "========================================"
 
           # 1. Enter project directory
           if (Test-Path $PROJECT_PATH) {
@@ -37,38 +38,44 @@ jobs:
               exit 1
           }
 
-          # 2. Pull latest code
-          Write-Host "Fetching latest code..."
+          # 2. Update source code
+          Write-Host "Pulling latest code..."
           git fetch origin master
           git reset --hard origin/master
 
-          # 3. Install dependencies & build
+          # 3. Install dependencies
           Write-Host "Installing dependencies..."
           pnpm install --frozen-lockfile
 
-          Write-Host "Building project..."
+          # 4. Build SvelteKit
+          Write-Host "Building SvelteKit project..."
           pnpm run build
 
-          # 4. PM2 process handling
+          # 5. PM2 process handling
           Write-Host "Configuring PM2..."
 
           pm2 describe $PM2_NAME | Out-Null
           if ($LASTEXITCODE -eq 0) {
-              Write-Host "Existing process found. Deleting..."
+              Write-Host "Existing PM2 process found. Deleting..."
               pm2 delete $PM2_NAME
           }
 
-          # 5. Set ENV for SvelteKit
-          Write-Host "Starting process on ${APP_HOST}:${APP_PORT} ..."
+          # 6. Set environment variables
           $env:HOST = $APP_HOST
           $env:PORT = $APP_PORT
           $env:NODE_ENV = "production"
 
-          pm2 start build/index.js `
+          Write-Host "Starting SvelteKit on ${APP_HOST}:${APP_PORT}..."
+
+          # ⚠️ IMPORTANT: SvelteKit ต้อง start ด้วย directory (build)
+          pm2 start build `
             --name $PM2_NAME `
+            --interpreter node `
             --ignore-watch="node_modules"
 
-          # 6. Save PM2 state
+          # 7. Save PM2 state
           pm2 save
 
-          Write-Host "Frontend Deployment Completed Successfully 🎉"
+          Write-Host "========================================"
+          Write-Host " Frontend Deployment Completed Successfully 🚀"
+          Write-Host "========================================"
