@@ -331,11 +331,14 @@
     return new Date();
   }
 
-    function splitCode(code: any): string[] {
+    function splitCode(code: any, len = 5): string[] {
         try {
-            if (code === null || code === undefined) return [];
-            return String(code).split('');
-        } catch (e) { return []; }
+            const s = code === null || code === undefined ? "" : String(code);
+            const chars = s.split('');
+            const out: string[] = [];
+            for (let i = 0; i < len; i++) out.push(chars[i] || '-');
+            return out;
+        } catch (e) { return new Array(len).fill('-'); }
     }
 
   // --- DATA FETCHING ---
@@ -2481,15 +2484,13 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                     <div class="checkin-display">
                         {#if checkInMethod === 'PIN'}
                             <div class="pin-box">
-                                {#if currentCode}
-                                    {#each splitCode(currentCode) as char}<span>{char}</span>{/each}
-                                {:else}
-                                    <span>-</span><span>-</span><span>-</span><span>-</span><span>-</span>
-                                {/if}
+                                {#each splitCode(currentCode, 5) as char}
+                                    <span>{char}</span>
+                                {/each}
                             </div>
                         {:else}
                             <div class="qr-box">
-                                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${currentCode || 'WAITING'}`} alt="QR" />
+                                     <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(currentCode || 'WAITING')}`} alt="QR" />
                             </div>
                         {/if}
                     </div>
