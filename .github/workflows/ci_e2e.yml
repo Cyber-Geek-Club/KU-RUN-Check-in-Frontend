@@ -41,11 +41,10 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      # 3. รัน Server และเก็บ Log (แก้ปัญหา Server ตายเงียบๆ)
       - name: Start preview server
-        run: pnpm run preview -- --port 4173 --host > preview.log 2>&1 &
+        # แก้ไขบรรทัดนี้: ใช้ pnpm exec vite preview โดยตรง ตัดปัญหาเรื่อง --
+        run: pnpm exec vite preview --port 4173 --host > preview.log 2>&1 &
 
-      # 4. รอ Server และปริ้นท์ Log ออกมาถ้าพัง
       - name: Wait for server
         run: |
           echo "Waiting for server at http://127.0.0.1:4173..."
