@@ -20,6 +20,10 @@ jobs:
           # ================= CONFIG =================
           $PROJECT_PATH = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
           $PM2_NAME = "ku-run-frontend"
+
+          # 👉 กำหนด IP และ Port
+          $HOST = "0.0.0.0"   # หรือ IP จริง เช่น 203.xxx.xxx.xxx
+          $PORT = "8003"
           # ==========================================
 
           Write-Host "Starting Frontend Deployment to $PROJECT_PATH..."
@@ -42,26 +46,26 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run build
 
-          # 4. Restart PM2 with Watch Mode
+          # 4. Restart PM2
           Write-Host "Configuring PM2..."
-          
-          # เช็คว่ามี Process นี้อยู่ไหม
+
           pm2 describe $PM2_NAME | Out-Null
-          
           if ($LASTEXITCODE -eq 0) {
-              # ถ้ามีอยู่แล้ว ต้องเช็คว่าเราเคยเปิด Watch ไว้ไหม?
-              # แต่วิธีที่ชัวร์ที่สุดคือลบแล้ว Start ใหม่ด้วย --watch เพื่ออัปเดต Config
-              Write-Host "Process found. Re-creating to ensure Watch Mode is enabled..."
+              Write-Host "Process found. Re-creating..."
               pm2 delete $PM2_NAME
           }
 
-          # Start ใหม่ด้วย --watch
-          # --watch: ให้เฝ้าดูการเปลี่ยนแปลงไฟล์
-          # --ignore-watch: ไม่ต้องเฝ้าดู node_modules (เพื่อประหยัดทรัพยากร)
-          Write-Host "Starting process with Watch Mode..."
-          pm2 start build/index.js --name $PM2_NAME --watch --ignore-watch="node_modules"
+          # 5. Set ENV + Start
+          Write-Host "Starting process on $HOST:$PORT ..."
           
-          # Save สถานะ
+          $env:HOST = $HOST
+          $env:PORT = $PORT
+
+          pm2 start build/index.js `
+            --name $PM2_NAME `
+            --watch `
+            --ignore-watch="node_modules"
+
           pm2 save
 
           Write-Host "Frontend Deployment Complete!"
