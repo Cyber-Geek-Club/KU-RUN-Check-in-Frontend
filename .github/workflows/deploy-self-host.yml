@@ -7,12 +7,12 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          clean: false 
+          clean: false
 
       - name: Deploy Script
         shell: powershell
@@ -21,51 +21,55 @@ jobs:
           $PROJECT_PATH = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
           $PM2_NAME = "ku-run-frontend"
 
-          # 👉 กำหนด IP และ Port
-          $HOST = "0.0.0.0"   # หรือ IP จริง เช่น 203.xxx.xxx.xxx
+          # Network config
+          $HOST = "0.0.0.0"
           $PORT = "8003"
           # ==========================================
 
-          Write-Host "Starting Frontend Deployment to $PROJECT_PATH..."
+          Write-Host "Starting Frontend Deployment..."
+          Write-Host "Target Path: $PROJECT_PATH"
 
-          # 1. เข้าไปที่โฟลเดอร์โปรเจกต์
+          # 1. Enter project directory
           if (Test-Path $PROJECT_PATH) {
-              cd $PROJECT_PATH
+              Set-Location $PROJECT_PATH
           } else {
-              Write-Error "Project Path not found: $PROJECT_PATH"
+              Write-Error "Project path not found: $PROJECT_PATH"
               exit 1
           }
 
-          # 2. Pull & Reset Code
-          Write-Host "Pulling latest code..."
+          # 2. Pull latest code
+          Write-Host "Fetching latest code..."
           git fetch origin master
           git reset --hard origin/master
 
-          # 3. Install & Build
-          Write-Host "Installing dependencies & Building..."
+          # 3. Install dependencies & build
+          Write-Host "Installing dependencies..."
           pnpm install --frozen-lockfile
+
+          Write-Host "Building project..."
           pnpm run build
 
-          # 4. Restart PM2
-          Write-Host "Configuring PM2..."
+          # 4. PM2 process handling
+          Write-Host "Configuring PM2 process..."
 
           pm2 describe $PM2_NAME | Out-Null
           if ($LASTEXITCODE -eq 0) {
-              Write-Host "Process found. Re-creating..."
+              Write-Host "Existing process found. Deleting..."
               pm2 delete $PM2_NAME
           }
 
-          # 5. Set ENV + Start
-          Write-Host "Starting process on $HOST:$PORT ..."
-          
+          # 5. Set ENV for SvelteKit
+          Write-Host "Starting process on ${HOST}:${PORT} ..."
           $env:HOST = $HOST
           $env:PORT = $PORT
+          $env:NODE_ENV = "production"
 
           pm2 start build/index.js `
             --name $PM2_NAME `
             --watch `
             --ignore-watch="node_modules"
 
+          # 6. Save PM2 state
           pm2 save
 
-          Write-Host "Frontend Deployment Complete!"
+          Write-Host "Frontend Deployment Completed Successfully 🎉"
