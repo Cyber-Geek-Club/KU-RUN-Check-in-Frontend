@@ -66,6 +66,11 @@ test.describe('Student Event List', () => {
         });
     });
 
+    // Fallback: catch any other /api/ requests and return empty JSON (prevents unexpected 401s)
+    await page.route(/\/api\//, async route => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
+    });
+
     await page.goto('/student/event-list');
   });
 
