@@ -11,22 +11,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # เพิ่มขั้นตอนติดตั้ง pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'pnpm'
 
-      - name: "Debug: show Node/npm versions"
-        run: |
-          node -v || true
-          npm -v || true
-
-      - name: Install dependencies (npm)
-        run: npm ci
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Deploy to Netlify
         env:
@@ -34,7 +35,8 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         run: |
           if [ -n "$NETLIFY_AUTH_TOKEN" ] && [ -n "$NETLIFY_SITE_ID" ]; then
-            npx netlify-cli deploy --dir=dist --prod --site="$NETLIFY_SITE_ID"
+            # ใช้ npx ได้ หรือจะใช้ pnpm dlx ก็ได้
+            pnpm dlx netlify-cli deploy --dir=dist --prod --site="$NETLIFY_SITE_ID"
           else
             echo "NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID not set — skipping deploy."
           fi

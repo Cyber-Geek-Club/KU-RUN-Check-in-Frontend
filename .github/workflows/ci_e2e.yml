@@ -14,28 +14,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # เพิ่มขั้นตอนติดตั้ง pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'pnpm'
 
-      - name: "Debug: show Node/npm versions"
-        run: |
-          node -v || true
-          npm -v || true
-
-      - name: Install dependencies (npm)
-        run: npm ci
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        run: npm run check
+        run: pnpm run check
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Start preview server
-        run: npm run preview -- --port 4173 &
+        # ใช้ pnpm run preview และระบุ port
+        run: pnpm run preview -- --port 4173 &
 
       - name: Wait for server
         run: |
@@ -45,10 +47,11 @@ jobs:
             fi; sleep 1; done
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+        # ใช้ pnpm exec เพื่อเรียก playwright จาก dependencies
+        run: pnpm exec playwright install --with-deps
 
       - name: Run Playwright tests
-        run: npx playwright test --config=playwright.config.ts
+        run: pnpm exec playwright test --config=playwright.config.ts
 
       - name: Upload Playwright report (HTML)
         if: always()

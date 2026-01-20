@@ -13,25 +13,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # เพิ่มขั้นตอนติดตั้ง pnpm
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'pnpm'
 
-      - name: "Debug: show Node/npm versions"
-        run: |
-          node -v || true
-          npm -v || true
-
-      - name: Install dependencies (npm)
-        run: npm ci
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        run: npm run check
+        run: pnpm run check
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
