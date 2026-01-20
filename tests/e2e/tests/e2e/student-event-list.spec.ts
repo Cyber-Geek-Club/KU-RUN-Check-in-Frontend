@@ -60,65 +60,8 @@ test.describe('Student Event List', () => {
       };
     }, validToken);
 
-    // 2. Mock API Routes using Regex (More robust than glob patterns)
-    
-    // Mock Events API: Matches any URL containing /api/events
-    await page.route(/\/api\/events/, async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            id: 1,
-            title: 'KU Run 2026',
-            description: 'Annual running event',
-            location: 'Kasetsart Sriracha',
-            distance_km: 10,
-            participant_count: 50,
-            max_participants: 100,
-            event_date: '2026-01-20',
-            event_end_date: '2026-01-20',
-            is_active: true,
-            is_published: true,
-            event_type: 'single_day'
-          },
-          {
-            id: 2,
-            title: 'Coding Bootcamp',
-            description: 'Learn SvelteKit',
-            location: 'Lab 505',
-            distance_km: 0,
-            participant_count: 10,
-            max_participants: 20,
-            event_date: '2026-02-01',
-            event_end_date: '2026-02-01',
-            is_active: true,
-            is_published: true,
-            event_type: 'single_day'
-          }
-        ])
-      });
-    });
-
-    // Mock User Participation Status: Matches /api/participations/user... including query params
-    await page.route(/\/api\/participations\/user/, async route => {
-        await route.fulfill({ status: 200, body: JSON.stringify([]) });
-    });
-
-    // Mock Join API: Matches /api/participations/join
-    await page.route(/\/api\/participations\/join/, async route => {
-        await route.fulfill({ 
-            status: 200, 
-            contentType: 'application/json',
-            body: JSON.stringify({ id: 101, join_code: 'JOIN-123' }) 
-        });
-    });
-
-    // Fallback: catch any other /api/ requests and return empty JSON (prevents unexpected 401s)
-    await page.route(/\/api\//, async route => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) });
-    });
-
+    // 2. We rely on the in-page fetch monkey-patch above to return mocked API data.
+    //    Avoid Playwright route interception here to prevent conflicts with the override.
     await page.goto('/student/event-list');
   });
 
