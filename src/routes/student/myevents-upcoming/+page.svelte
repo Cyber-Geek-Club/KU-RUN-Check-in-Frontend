@@ -637,6 +637,14 @@
                if (now <= todayEnd) isTodayTimeRemaining = true;
           }
 
+          // If the event's end date/time already passed (final day) or we are past the end date, mark as COMPLETED
+          if (projectEndDate) {
+              const isFinalDayTimeOver = isNextDayAfterEnd && isTimeOver;
+              if (now > projectEndDate || isFinalDayTimeOver) {
+                  uiStatus = 'COMPLETED';
+              }
+          }
+
           // --- Logic Lock & Message ---
           let isLocked = false;
           let lockMessage = t[lang].btn_locked;
@@ -1311,18 +1319,6 @@ async function handleCheckInConfirm() {
   }
 
   async function openActionModal(event: EventItem) {
-    // [NEW VALIDATION] ถ้าไม่มี join_code หมายถึงไม่ได้สมัครสำหรับวันนี้
-    if (!event.join_code) {
-        Swal.fire({
-            icon: 'info',
-            title: 'ยังไม่ได้สมัครวันนี้',
-            text: 'กรุณาสมัครกิจกรรมนี้จากหน้า "ค้นหากิจกรรม" ก่อน',
-            confirmButtonText: 'ไปสมัคร'
-        }).then(result => {
-            if (result.isConfirmed) navigateToEventList('student');
-        });
-        return;
-    }
 
     const token = getToken();
     if (!token) {
@@ -1375,6 +1371,19 @@ async function handleCheckInConfirm() {
         updatedEvent.status = 'JOINED';
         updatedEvent.join_code = "";
         updatedEvent.isJoined = false; 
+    }
+
+    // If no server status and no client join_code -> prompt to register
+    if (!statusData && !event.join_code) {
+        Swal.fire({
+            icon: 'info',
+            title: 'ยังไม่ได้สมัครวันนี้',
+            text: 'กรุณาสมัครกิจกรรมนี้จากหน้า "ค้นหากิจกรรม" ก่อน',
+            confirmButtonText: 'ไปสมัคร'
+        }).then(result => {
+            if (result.isConfirmed) navigateToEventList('student');
+        });
+        return;
     }
 
     // [REMOVED] ลบระบบสมัครอัตโนมัติ (joinDailyEvent)
@@ -1731,6 +1740,33 @@ async function submitProofAction() {
       }
 
       try {
+          // Ensure we have the latest participation context (fresh participation_id) before submitting
+          try {
+              const statusRes = await fetchMyStatus(selectedEvent.id);
+              if (statusRes) {
+                  let statusData = null;
+                  if (statusRes.codes && statusRes.codes.length > 0) statusData = statusRes.codes[0];
+                  else if (statusRes.join_code) statusData = statusRes;
+                  if (statusData && statusData.id && statusData.id !== selectedEvent.participation_id) {
+                      const oldId = selectedEvent.participation_id;
+                      selectedEvent.participation_id = statusData.id;
+                      currentParticipationId = statusData.id;
+                      // migrate draft if present
+                      try {
+                          if (typeof localStorage !== 'undefined' && oldId) {
+                              const oldKey = getDraftKey(oldId);
+                              const newKey = getDraftKey(statusData.id);
+                              const oldDraft = localStorage.getItem(oldKey);
+                              if (oldDraft) {
+                                  localStorage.setItem(newKey, oldDraft);
+                                  localStorage.removeItem(oldKey);
+                              }
+                          }
+                      } catch (e) { }
+                  }
+              }
+          } catch (e) { console.warn('Failed to refresh participation status before submit', e); }
+
           Swal.showLoading();
           let finalImageUrl = selectedEvent.proof_image_url || "";
 
