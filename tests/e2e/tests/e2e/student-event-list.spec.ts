@@ -3,9 +3,9 @@ import { test, expect } from '@playwright/test';
 test.describe('Student Event List', () => {
   
   test.beforeEach(async ({ page }) => {
-    // [FIX] Use a valid JWT structure with future expiration to prevent "Session Expired" error
+    // [FIX] 1. ใช้ Token ที่มี Padding ถูกต้อง (==) เพื่อป้องกัน atob error
     // Header.Payload(exp=9999999999).Signature
-    const futureToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjo5OTk5OTk5OTk5fQ.somesignature";
+    const futureToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjo5OTk5OTk5OTk5fQ==.somesignature";
 
     await page.addInitScript((token) => {
       localStorage.setItem('access_token', token);
@@ -13,7 +13,8 @@ test.describe('Student Event List', () => {
       localStorage.setItem('user_info', JSON.stringify({ id: 1, role: 'student', name: 'Test User' }));
     }, futureToken);
 
-    await page.route('**/api/events/', async route => {
+    // [FIX] 2. ใช้ Regex ในการดัก Route เพื่อความแม่นยำสูงสุด (ป้องกัน case base url ไม่ตรง)
+    await page.route(/\/api\/events\/?(\?.*)?$/, async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -50,7 +51,8 @@ test.describe('Student Event List', () => {
       });
     });
 
-    await page.route('**/api/participations/user/*', async route => {
+    // Mock User Participation Status
+    await page.route(/\/api\/participations\/user\/.*/, async route => {
         await route.fulfill({ status: 200, body: JSON.stringify([]) });
     });
 
@@ -65,12 +67,14 @@ test.describe('Student Event List', () => {
   test('should filter events using search bar', async ({ page }) => {
     const searchInput = page.locator('.search-input');
     
-    // [FIX] Force input event to ensure Svelte bind works correctly
-    await searchInput.fill('Coding');
-    await searchInput.dispatchEvent('input');
+    // [FIX] 3. พิมพ์ช้าๆ เพื่อให้ Svelte Bind ทำงานทัน และรอ Debounce นานขึ้น
+    await searchInput.pressSequentially('Coding', { delay: 100 });
     
-    // Wait for debounce
-    await page.waitForTimeout(500);
+    // ตรวจสอบว่าค่าใน Input เปลี่ยนจริง
+    await expect(searchInput).toHaveValue('Coding');
+
+    // รอ Debounce (250ms) + Processing time
+    await page.waitForTimeout(1000);
 
     // Should only show 1 event
     await expect(page.locator('.event-card')).toHaveCount(1);
@@ -83,15 +87,16 @@ test.describe('Student Event List', () => {
     // Verify redirect to login
     await expect(page).toHaveURL(/\/auth\/login/);
     
-    // [FIX] Removed localStorage check because addInitScript reinjects token on navigation
-    // Check for login UI element instead
+    // Check for login UI element instead of localStorage
     await expect(page.locator('h1.main-title')).toContainText('LOGIN');
   });
 
   test('should handle register modal flow', async ({ page }) => {
-    await page.route('**/api/participations/join', async route => {
+    // Mock Join API
+    await page.route(/\/api\/participations\/join\/?$/, async route => {
         await route.fulfill({ 
             status: 200, 
+            contentType: 'application/json',
             body: JSON.stringify({ id: 101, join_code: 'JOIN-123' }) 
         });
     });
