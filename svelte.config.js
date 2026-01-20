@@ -11,6 +11,7 @@ try {
   preprocess = undefined;
 }
 
+
 const config = {
   preprocess,
   kit: {
