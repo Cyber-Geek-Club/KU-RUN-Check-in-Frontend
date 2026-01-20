@@ -9,12 +9,12 @@ jobs:
     runs-on: self-hosted
     
     steps:
-      - name: Checkout Code (Trigger)
+      - name: Checkout Code
         uses: actions/checkout@v4
         with:
           clean: false 
 
-      - name: Deploy Frontend Script
+      - name: Deploy Script
         shell: powershell
         run: |
           # ================= CONFIG =================
@@ -22,7 +22,7 @@ jobs:
           $PM2_NAME = "ku-run-frontend"
           # ==========================================
 
-          Write-Host "Starting Frontend Deployment to $PROJECT_PATH..."
+          Write-Host "Starting Deployment to $PROJECT_PATH..."
 
           # 1. เข้าไปที่โฟลเดอร์โปรเจกต์
           if (Test-Path $PROJECT_PATH) {
@@ -35,33 +35,27 @@ jobs:
           # 2. Pull Code ล่าสุด
           Write-Host "Pulling latest code..."
           git fetch origin master
-          
-          # Reset เพื่อให้โค้ดตรงกับ GitHub
           git reset --hard origin/master
 
-          # [ส่วนที่เพิ่มกลับเข้ามา] 
-          # 3. Install & Build (สำคัญมาก: ถ้าไม่มีขั้นตอนนี้ โฟลเดอร์ build จะไม่ถูกอัปเดต)
+          # 3. Install & Build (ส่วนนี้สำคัญมาก เพื่อสร้าง folder 'build')
           Write-Host "Installing dependencies & Building..."
           pnpm install --frozen-lockfile
           pnpm run build
 
-          # 4. Restart PM2 Service
-          Write-Host "Restarting PM2 Service..."
+          # 4. Restart PM2
+          Write-Host "Checking PM2 Process..."
           
-          # เช็คว่ามี process นี้อยู่ไหม
+          # ตรวจสอบว่ามี Process นี้อยู่หรือไม่
           pm2 describe $PM2_NAME | Out-Null
           
           if ($LASTEXITCODE -eq 0) {
-              # ถ้ามีอยู่แล้ว ให้ Restart
               Write-Host "Process found. Restarting..."
               pm2 restart $PM2_NAME --update-env
           } else {
-              # ถ้าไม่มี ให้ Start ใหม่
               Write-Host "Process not found. Starting new..."
+              # ถ้า svelte.config.js ถูกต้อง จะมีไฟล์นี้เกิดขึ้น
               pm2 start build/index.js --name $PM2_NAME
           }
           
-          # Save สถานะ
           pm2 save
-
-          Write-Host "Frontend Deployment Complete!"
+          Write-Host "Deployment Complete!"
