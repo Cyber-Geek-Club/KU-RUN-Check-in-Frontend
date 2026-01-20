@@ -21,9 +21,9 @@ jobs:
           $PROJECT_PATH = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
           $PM2_NAME = "ku-run-frontend"
 
-          # Network config
-          $HOST = "158.108.102.14"
-          $PORT = "8003"
+          # ⚠️ ห้ามใช้ $HOST (reserved)
+          $APP_HOST = "0.0.0.0"
+          $APP_PORT = "3000"
           # ==========================================
 
           Write-Host "Starting Frontend Deployment..."
@@ -50,7 +50,7 @@ jobs:
           pnpm run build
 
           # 4. PM2 process handling
-          Write-Host "Configuring PM2 process..."
+          Write-Host "Configuring PM2..."
 
           pm2 describe $PM2_NAME | Out-Null
           if ($LASTEXITCODE -eq 0) {
@@ -59,14 +59,13 @@ jobs:
           }
 
           # 5. Set ENV for SvelteKit
-          Write-Host "Starting process on ${HOST}:${PORT} ..."
-          $env:HOST = $HOST
-          $env:PORT = $PORT
+          Write-Host "Starting process on ${APP_HOST}:${APP_PORT} ..."
+          $env:HOST = $APP_HOST
+          $env:PORT = $APP_PORT
           $env:NODE_ENV = "production"
 
           pm2 start build/index.js `
             --name $PM2_NAME `
-            --watch `
             --ignore-watch="node_modules"
 
           # 6. Save PM2 state
