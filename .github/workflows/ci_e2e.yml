@@ -14,17 +14,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # เพิ่มขั้นตอนติดตั้ง pnpm
+      # 1. ติดตั้ง pnpm
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
+      # 2. ใช้ Node.js v22 (แก้ปัญหา styleText error)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'pnpm'
+
+      - name: "Debug: show Node/npm versions"
+        run: |
+          node -v || true
+          pnpm -v || true
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -32,35 +38,37 @@ jobs:
       - name: Typecheck
         run: pnpm run check
 
-# ... (steps ก่อนหน้าเหมือนเดิม)
-
       - name: Build
         run: pnpm run build
 
+      # 3. รัน Server และเก็บ Log (แก้ปัญหา Server ตายเงียบๆ)
       - name: Start preview server
-        # เพิ่ม --host เพื่อกันปัญหาเรื่อง IP Binding ใน CI
-        run: pnpm run preview -- --port 4173 --host &
+        run: pnpm run preview -- --port 4173 --host > preview.log 2>&1 &
 
+      # 4. รอ Server และปริ้นท์ Log ออกมาถ้าพัง
       - name: Wait for server
         run: |
           echo "Waiting for server at http://127.0.0.1:4173..."
           for i in {1..30}; do
             if curl -sSf http://127.0.0.1:4173/ > /dev/null; then
-              echo "Server is up!"
+              echo "✅ Server is up!"
               exit 0
             fi
             echo "Retrying... ($i/30)"
             sleep 1
           done
-          echo "Server failed to start within time limit"
-          exit 1  # <--- สำคัญ: ถ้าหมดเวลาแล้วยังเข้าไม่ได้ ให้ Fail ทันที
+          
+          echo "❌ Server failed to start within time limit."
+          echo "=== PREVIEW SERVER LOGS (START) ==="
+          cat preview.log
+          echo "=== PREVIEW SERVER LOGS (END) ==="
+          exit 1
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps
 
       - name: Run Playwright tests
         run: pnpm exec playwright test --config=playwright.config.ts
-
 
       - name: Upload Playwright report (HTML)
         if: always()
