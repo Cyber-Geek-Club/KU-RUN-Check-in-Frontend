@@ -3,10 +3,9 @@ import { test, expect } from '@playwright/test';
 test.describe('Student Event List', () => {
   
   test.beforeEach(async ({ page }) => {
-    // [FIX] Use a simple, valid Base64 payload for the token to avoid atob() errors in startSessionTimer
-    // Payload: {"exp": 9999999999, "id": 1, "role": "student"} 
-    // Base64: eyJleHAiOjk5OTk5OTk5OTksImlkIjoxLCJyb2xlIjoic3R1ZGVudCJ9
-    const validToken = "header.eyJleHAiOjk5OTk5OTk5OTksImlkIjoxLCJyb2xlIjoic3R1ZGVudCJ9.signature";
+    // [FIX] 1. ใช้ Token ที่ถูกต้อง (มี Padding ==) เพื่อป้องกัน atob error
+    // Payload: {"exp": 9999999999, "id": 1, "role": "student"}
+    const validToken = "header.eyJleHAiOjk5OTk5OTk5OTksImlkIjoxLCJyb2xlIjoic3R1ZGVudCJ9==.signature";
 
     await page.addInitScript((token) => {
       localStorage.setItem('access_token', token);
@@ -14,10 +13,10 @@ test.describe('Student Event List', () => {
       localStorage.setItem('user_info', JSON.stringify({ id: 1, role: 'student', name: 'Test User' }));
     }, validToken);
 
-    // [FIX] Use Regex for robust route matching to handle any Base URL variations
+    // [FIX] 2. ใช้ Glob Pattern (**) ดักจับทุก URL ที่มี path นี้ โดยไม่สน Base URL หรือ Query Params
     
-    // 1. Mock Events API: Matches /api/events/ or /api/events
-    await page.route(/\/api\/events\/?$/, async route => {
+    // Mock Events API
+    await page.route('**/api/events/**', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -54,13 +53,13 @@ test.describe('Student Event List', () => {
       });
     });
 
-    // 2. Mock User Participation Status: Matches /api/participations/user/{id}
-    await page.route(/\/api\/participations\/user\/\d+/, async route => {
+    // Mock User Participation Status
+    await page.route('**/api/participations/user/**', async route => {
         await route.fulfill({ status: 200, body: JSON.stringify([]) });
     });
 
-    // 3. Mock Join API: Matches /api/participations/join
-    await page.route(/\/api\/participations\/join\/?$/, async route => {
+    // Mock Join API
+    await page.route('**/api/participations/join**', async route => {
         await route.fulfill({ 
             status: 200, 
             contentType: 'application/json',
@@ -79,17 +78,16 @@ test.describe('Student Event List', () => {
   test('should filter events using search bar', async ({ page }) => {
     const searchInput = page.locator('.search-input');
     
-    // [FIX] Ensure input binding updates by filling and blurring
-    await searchInput.fill('Coding');
-    await searchInput.blur(); // Trigger change event
+    // [FIX] 3. ใช้ pressSequentially เพื่อพิมพ์ทีละตัว (เสมือนจริง) กระตุ้น Svelte binding ได้ดีกว่า
+    await searchInput.pressSequentially('Coding', { delay: 100 });
     
-    // Verify input value is set
+    // ตรวจสอบว่าค่าถูกพิมพ์ลงไปจริง
     await expect(searchInput).toHaveValue('Coding');
 
-    // Wait for Svelte debounce (250ms) + rendering
+    // รอ Debounce (250ms) + เวลาประมวลผล
     await page.waitForTimeout(1000);
 
-    // Should only show 1 event
+    // ต้องเหลือแค่ 1 Event
     await expect(page.locator('.event-card')).toHaveCount(1);
     await expect(page.locator('h3.card-title')).toContainText('Coding Bootcamp');
   });
@@ -105,11 +103,12 @@ test.describe('Student Event List', () => {
   });
 
   test('should handle register modal flow', async ({ page }) => {
-    // Click register button on the first event (KU Run)
-    // We use .first() or nth=0
-    const registerBtn = page.locator('button.register-btn').first();
+    // Click register button on the first event
+    // ใช้วิธีหาปุ่ม Register ตัวแรกสุดที่กดได้
+    const registerBtn = page.locator('button.register-btn:has-text("Register")').first();
+    
+    // รอให้ปุ่มพร้อมกด
     await expect(registerBtn).toBeVisible();
-    await expect(registerBtn).toBeEnabled();
     await registerBtn.click();
 
     // Confirm SweetAlert dialog
@@ -117,10 +116,10 @@ test.describe('Student Event List', () => {
     await expect(confirmBtn).toBeVisible();
     await confirmBtn.click();
 
-    // Check for success message (Not Session Expired)
+    // [FIX] 4. ตรวจสอบ Success Message (ถ้า Mock join ทำงานถูกต้อง จะไม่ขึ้น Session Expired)
     await expect(page.locator('.swal2-title')).toContainText('Success');
     
-    // Verify modal content details (optional but good for debugging)
+    // Optional: เช็ครายละเอียดใน Modal
     await expect(page.locator('.swal2-html-container')).toContainText('JOIN-123');
   });
 });
