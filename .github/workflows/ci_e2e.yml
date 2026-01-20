@@ -2,9 +2,9 @@ name: CI + E2E
 
 on:
   push:
-    branches: [ '**' ]
+    branches: [ master ]
   pull_request:
-    branches: [ '**' ]
+    branches: [ master ]
 
 jobs:
   e2e:

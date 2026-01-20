@@ -1,0 +1,49 @@
+name: Deploy Frontend to Self-Hosted
+
+on:
+  push:
+    branches: [ master ] # หรือ master ตามชื่อ branch หลักของคุณ
+
+jobs:
+  deploy:
+    # ใช้ self-hosted เพื่อวิ่งไปที่ Server ของคุณที่มี Runner อยู่แล้ว
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ติดตั้ง pnpm (ถ้าบน Server มีแล้ว ข้ามขั้นตอนนี้ได้ แต่ใส่ไว้ชัวร์กว่า)
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      # รันด้วย PM2 โดยระบุ PORT เพื่อไม่ให้ชนกับ Backend
+      # สมมติ Backend ใช้ 3000, 8000 -> เราเลี่ยงไปใช้ 3001 หรือ 5173
+      - name: Start/Restart Application
+        shell: bash
+        env:
+          PORT: 3001  # <--- เปลี่ยนเลข Port ตรงนี้ตามต้องการ
+          # ORIGIN: https://your-domain.com # (ถ้ามีปัญหาเรื่อง CSRF ให้เปิดบรรทัดนี้)
+        run: |
+          # ลบ Process เก่าทิ้งก่อน (ถ้ามี) เพื่อให้มั่นใจว่า Environment Variables ถูกอัปเดต
+          pm2 delete ku-run-frontend || true
+          
+          # เริ่มรันใหม่
+          pm2 start build/index.js --name "ku-run-frontend" --time
+          
+          # บันทึกสถานะเพื่อให้เปิด Auto เมื่อรีสตาร์ทเครื่อง
+          pm2 save
