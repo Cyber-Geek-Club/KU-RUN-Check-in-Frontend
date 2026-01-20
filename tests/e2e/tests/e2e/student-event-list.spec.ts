@@ -3,8 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Student Event List', () => {
   
   test.beforeEach(async ({ page }) => {
-    // [FIX] 1. ใช้ Token ที่ถูกต้อง (มี Padding ==) เพื่อป้องกัน atob error
-    // Payload: {"exp": 9999999999, "id": 1, "role": "student"}
+    // 1. Setup Valid Token
     const validToken = "header.eyJleHAiOjk5OTk5OTk5OTksImlkIjoxLCJyb2xlIjoic3R1ZGVudCJ9==.signature";
 
     await page.addInitScript((token) => {
@@ -13,10 +12,10 @@ test.describe('Student Event List', () => {
       localStorage.setItem('user_info', JSON.stringify({ id: 1, role: 'student', name: 'Test User' }));
     }, validToken);
 
-    // [FIX] 2. ใช้ Glob Pattern (**) ดักจับทุก URL ที่มี path นี้ โดยไม่สน Base URL หรือ Query Params
+    // 2. Mock API Routes using Regex (More robust than glob patterns)
     
-    // Mock Events API
-    await page.route('**/api/events/**', async route => {
+    // Mock Events API: Matches any URL containing /api/events
+    await page.route(/\/api\/events/, async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -53,13 +52,13 @@ test.describe('Student Event List', () => {
       });
     });
 
-    // Mock User Participation Status
-    await page.route('**/api/participations/user/**', async route => {
+    // Mock User Participation Status: Matches /api/participations/user... including query params
+    await page.route(/\/api\/participations\/user/, async route => {
         await route.fulfill({ status: 200, body: JSON.stringify([]) });
     });
 
-    // Mock Join API
-    await page.route('**/api/participations/join**', async route => {
+    // Mock Join API: Matches /api/participations/join
+    await page.route(/\/api\/participations\/join/, async route => {
         await route.fulfill({ 
             status: 200, 
             contentType: 'application/json',
@@ -78,48 +77,46 @@ test.describe('Student Event List', () => {
   test('should filter events using search bar', async ({ page }) => {
     const searchInput = page.locator('.search-input');
     
-    // [FIX] 3. ใช้ pressSequentially เพื่อพิมพ์ทีละตัว (เสมือนจริง) กระตุ้น Svelte binding ได้ดีกว่า
-    await searchInput.pressSequentially('Coding', { delay: 100 });
-    
-    // ตรวจสอบว่าค่าถูกพิมพ์ลงไปจริง
-    await expect(searchInput).toHaveValue('Coding');
+    // [FIX] Force update input value using DOM manipulation ensures Svelte binding triggers
+    await page.$eval('.search-input', (el: any) => {
+        el.value = 'Coding';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
 
-    // รอ Debounce (250ms) + เวลาประมวลผล
+    // Wait for Svelte debounce (250ms) + rendering time
     await page.waitForTimeout(1000);
 
-    // ต้องเหลือแค่ 1 Event
+    // Verify filter result
     await expect(page.locator('.event-card')).toHaveCount(1);
     await expect(page.locator('h3.card-title')).toContainText('Coding Bootcamp');
   });
 
   test('should handle logout', async ({ page }) => {
     await page.click('button.logout-btn');
-    
-    // Verify redirect to login
     await expect(page).toHaveURL(/\/auth\/login/);
-    
-    // Check for login UI
     await expect(page.locator('h1.main-title')).toContainText('LOGIN');
   });
 
   test('should handle register modal flow', async ({ page }) => {
-    // Click register button on the first event
-    // ใช้วิธีหาปุ่ม Register ตัวแรกสุดที่กดได้
+    // 1. Ensure no "Session Expired" alert exists initially
+    await expect(page.locator('text=Session Expired')).toBeHidden();
+
+    // 2. Click register on the first event
     const registerBtn = page.locator('button.register-btn:has-text("Register")').first();
-    
-    // รอให้ปุ่มพร้อมกด
     await expect(registerBtn).toBeVisible();
     await registerBtn.click();
 
-    // Confirm SweetAlert dialog
+    // 3. Confirm SweetAlert dialog
     const confirmBtn = page.locator('.swal2-confirm');
     await expect(confirmBtn).toBeVisible();
     await confirmBtn.click();
 
-    // [FIX] 4. ตรวจสอบ Success Message (ถ้า Mock join ทำงานถูกต้อง จะไม่ขึ้น Session Expired)
+    // 4. Verify Success Message
+    // Note: If this fails with "Session Expired", it means one of the initial fetch requests failed 
+    // and cleared the token. The regex routes in beforeEach fixes this.
     await expect(page.locator('.swal2-title')).toContainText('Success');
     
-    // Optional: เช็ครายละเอียดใน Modal
+    // 5. Verify Join Code in details
     await expect(page.locator('.swal2-html-container')).toContainText('JOIN-123');
   });
 });
