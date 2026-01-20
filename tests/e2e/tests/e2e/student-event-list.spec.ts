@@ -16,7 +16,7 @@ test.describe('Student Event List', () => {
       const origFetch = window.fetch.bind(window);
       // simple router
       window.fetch = (input, init) => {
-        const url = typeof input === 'string' ? input : input.url;
+        const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : String(input));
         if (url.includes('/api/events')) {
           return Promise.resolve(new Response(JSON.stringify([
             {
