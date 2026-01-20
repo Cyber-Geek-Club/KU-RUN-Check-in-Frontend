@@ -7,6 +7,8 @@ test.describe('Student Event List', () => {
     // 1. Set localStorage for logged in user
     await page.addInitScript(() => {
       localStorage.setItem('access_token', 'fake-token');
+      // [FIX] Force language to English so "Register" button exists (default is Thai "สมัคร")
+      localStorage.setItem('app_lang', 'en'); 
       localStorage.setItem('user_info', JSON.stringify({ id: 1, role: 'student', name: 'Test User' }));
     });
 
@@ -63,12 +65,10 @@ test.describe('Student Event List', () => {
 
   test('should filter events using search bar', async ({ page }) => {
     const searchInput = page.locator('.search-input');
-    await searchInput.fill('Coding');
+    // [FIX] Use pressSequentially to ensure bind:value triggers consistently
+    await searchInput.pressSequentially('Coding', { delay: 50 });
     
-    // Wait for debounce
-    await page.waitForTimeout(300);
-
-    // Should only show 1 event
+    // Auto-retrying assertion to wait for debounce (no explicit sleep needed)
     await expect(page.locator('.event-card')).toHaveCount(1);
     await expect(page.locator('h3.card-title')).toContainText('Coding Bootcamp');
   });
@@ -95,6 +95,7 @@ test.describe('Student Event List', () => {
     });
 
     // Click Register on the first event
+    // This now works because we force app_lang='en' in beforeEach
     await page.click('button.register-btn:has-text("Register") >> nth=0');
 
     // Confirm SweetAlert dialog

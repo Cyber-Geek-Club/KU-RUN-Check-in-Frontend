@@ -8,7 +8,9 @@ test.describe('Register Page', () => {
   test('should switch roles between Student and Officer', async ({ page }) => {
     // Default is Student
     await expect(page.locator('text=Nisit ID')).toBeVisible();
-    await expect(page.locator('text=Faculty')).toBeVisible();
+    
+    // [FIX] Specific locator for the Faculty LABEL to avoid matching the "Select Faculty" button text
+    await expect(page.locator('label:has-text("Faculty")')).toBeVisible();
 
     // Switch to Officer
     await page.click('button:has-text("Officer")');
