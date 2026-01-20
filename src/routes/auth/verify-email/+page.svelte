@@ -34,9 +34,17 @@
         verifyStatus = "success";
         message = "Your email has been verified successfully! 🎉";
         localStorage.setItem("register_verified", Date.now().toString());
-        const channel = new BroadcastChannel("auth-sync");
-        channel.postMessage("register-verified");
-        channel.close();
+        try {
+          const channel = new BroadcastChannel("auth-sync");
+          // Post message and delay closing the channel briefly to avoid
+          // "message port closed before a response was received" errors
+          channel.postMessage("register-verified");
+          setTimeout(() => {
+            try { channel.close(); } catch (e) { /* ignore */ }
+          }, 100);
+        } catch (e) {
+          console.warn('BroadcastChannel not available or failed:', e);
+        }
         
         // Start countdown for auto-redirect
         startCountdown();

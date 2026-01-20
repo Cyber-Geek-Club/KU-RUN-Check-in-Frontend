@@ -315,6 +315,13 @@
     return new Date();
   }
 
+    function splitCode(code: any): string[] {
+        try {
+            if (code === null || code === undefined) return [];
+            return String(code).split('');
+        } catch (e) { return []; }
+    }
+
   // --- DATA FETCHING ---
   async function loadData() {
     loading = true;
@@ -2419,7 +2426,7 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                         {#if checkInMethod === 'PIN'}
                             <div class="pin-box">
                                 {#if currentCode}
-                                    {#each currentCode.split('') as char}<span>{char}</span>{/each}
+                                    {#each splitCode(currentCode) as char}<span>{char}</span>{/each}
                                 {:else}
                                     <span>-</span><span>-</span><span>-</span><span>-</span><span>-</span>
                                 {/if}
