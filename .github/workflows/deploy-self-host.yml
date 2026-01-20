@@ -1,49 +1,60 @@
-name: Deploy Frontend to Self-Hosted
+name: Deploy Frontend to Specific Path
 
 on:
   push:
-    branches: [ master ] # หรือ master ตามชื่อ branch หลักของคุณ
+    branches: [ master ]
 
 jobs:
   deploy:
-    # ใช้ self-hosted เพื่อวิ่งไปที่ Server ของคุณที่มี Runner อยู่แล้ว
     runs-on: self-hosted
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # ติดตั้ง pnpm (ถ้าบน Server มีแล้ว ข้ามขั้นตอนนี้ได้ แต่ใส่ไว้ชัวร์กว่า)
-      - name: Install pnpm
+      - name: Setup Node & pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm run build
-
-      # รันด้วย PM2 โดยระบุ PORT เพื่อไม่ให้ชนกับ Backend
-      # สมมติ Backend ใช้ 3000, 8000 -> เราเลี่ยงไปใช้ 3001 หรือ 5173
-      - name: Start/Restart Application
-        shell: bash
-        env:
-          PORT: 3001  # <--- เปลี่ยนเลข Port ตรงนี้ตามต้องการ
-          # ORIGIN: https://your-domain.com # (ถ้ามีปัญหาเรื่อง CSRF ให้เปิดบรรทัดนี้)
+      - name: Install Dependencies & Build (In Runner Temp)
         run: |
-          # ลบ Process เก่าทิ้งก่อน (ถ้ามี) เพื่อให้มั่นใจว่า Environment Variables ถูกอัปเดต
-          pm2 delete ku-run-frontend || true
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Deploy to Target Path
+        shell: powershell
+        run: |
+          # 1. กำหนดตัวแปร Path (ใส่ฟันหนูเพราะมีช่องว่าง Web Project)
+          $TargetDir = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
+
+          # 2. สร้างโฟลเดอร์ปลายทางถ้ายังไม่มี
+          if (!(Test-Path $TargetDir)) { New-Item -ItemType Directory -Force -Path $TargetDir }
+
+          # 3. Copy ไฟล์ที่จำเป็นไปที่ปลายทาง (Build, Package.json)
+          # ใช้ Copy-Item หรือ Robocopy
+          Write-Host "Copying files to $TargetDir..."
+          Copy-Item -Path ".\build" -Destination "$TargetDir\build" -Recurse -Force
+          Copy-Item -Path ".\package.json" -Destination $TargetDir -Force
+          Copy-Item -Path ".\pnpm-lock.yaml" -Destination $TargetDir -Force
+          # Copy-Item -Path ".\.env" -Destination $TargetDir -Force # (ถ้าต้องการ Copy .env ด้วย)
+
+      - name: Install Prod Deps & Restart (At Target Path)
+        shell: powershell
+        run: |
+          $TargetDir = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
           
-          # เริ่มรันใหม่
-          pm2 start build/index.js --name "ku-run-frontend" --time
+          # ย้ายการทำงานไปที่โฟลเดอร์ปลายทาง
+          Set-Location $TargetDir
           
-          # บันทึกสถานะเพื่อให้เปิด Auto เมื่อรีสตาร์ทเครื่อง
+          # ลงเฉพาะ Production dependencies (เบากว่า)
+          pnpm install --prod
+
+          # Restart PM2 จาก Path นี้
+          # ใช้ --update-env เพื่อให้แน่ใจว่าค่า config ใหม่ถูกโหลด
+          pm2 start build/index.js --name "ku-run-frontend" --update-env --force
           pm2 save
