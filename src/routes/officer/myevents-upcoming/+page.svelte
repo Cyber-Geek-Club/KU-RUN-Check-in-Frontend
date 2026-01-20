@@ -315,14 +315,14 @@
     return new Date();
   }
 
-    function splitCode(code: any): string[] {
+    function splitCode(code: any, len = 5): string[] {
         try {
             const s = code === null || code === undefined ? "" : String(code);
             const chars = s.split('');
             const out: string[] = [];
-            for (let i = 0; i < (len || 5); i++) out.push(chars[i] || '-');
+            for (let i = 0; i < len; i++) out.push(chars[i] || '-');
             return out;
-        } catch (e) { return new Array(len || 5).fill('-'); }
+        } catch (e) { return new Array(len).fill('-'); }
     }
 
   // --- DATA FETCHING ---
