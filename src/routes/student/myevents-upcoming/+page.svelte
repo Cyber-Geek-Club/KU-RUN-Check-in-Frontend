@@ -1905,39 +1905,40 @@ async function submitProofAction() {
     window.addEventListener('offline', stopPolling);
     window.addEventListener('online', startPolling);
 
-        // Pause polling while user is actively scrolling to avoid cancelling momentum
-        const sc = document.querySelector('.scroll-container') as HTMLElement | null;
-        function onUserScroll() {
+    // Pause polling while user is actively scrolling to avoid cancelling momentum
+    const sc = document.querySelector('.scroll-container') as HTMLElement | null;
 
-        // Debounce helper to restart polling only after scrolling has stopped
-        function createDebounced(fn: () => void, delay: number) {
-            let timer: ReturnType<typeof setTimeout> | null = null;
-            return () => {
-                if (timer) {
-                    clearTimeout(timer);
-                }
-                timer = setTimeout(fn, delay);
-            };
-        }
-
-        const debouncedStartPolling = createDebounced(() => {
-            // Only restart if polling is not already active
-            if (!pollInterval) {
-                startPolling();
+    // Debounce helper to restart polling only after scrolling has stopped
+    function createDebounced(fn: () => void, delay: number) {
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        return () => {
+            if (timer) {
+                clearTimeout(timer);
             }
-        }, 700);
+            timer = setTimeout(fn, delay);
+        };
+    }
 
-        function onUserScroll() {
-            if (pollInterval) {
-                stopPolling();
-            }
-            debouncedStartPolling();
+    const debouncedStartPolling = createDebounced(() => {
+        // Only restart if polling is not already active
+        if (!pollInterval) {
+            startPolling();
         }
+    }, 700);
 
-        // store for cleanup via closure
-        (onMount as any).__sc = sc;
-        (onMount as any).__onUserScroll = onUserScroll;
-  });
+    // Single scroll handler (debounced restart)
+    function onUserScroll() {
+        if (pollInterval) {
+            stopPolling();
+        }
+        debouncedStartPolling();
+    }
+
+    // attach listener and store for cleanup via closure
+    if (sc) sc.addEventListener('scroll', onUserScroll);
+    (onMount as any).__sc = sc;
+    (onMount as any).__onUserScroll = onUserScroll;
+});
   
   onDestroy(() => { 
     if (timerInterval) clearInterval(timerInterval);
