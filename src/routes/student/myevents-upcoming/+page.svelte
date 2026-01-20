@@ -1367,13 +1367,13 @@ async function handleCheckInConfirm() {
             if (checkoutRes.ok) {
                 const data = await checkoutRes.json();
                 updatedEvent.completion_code = data.checkout_code;
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Checkout Code',
-                    html: `<div style=\"font-size:2em;font-weight:bold;\">${data.checkout_code}</div><div style=\"margin-top:8px;\">${data.message || ''}</div>`,
-                    confirmButtonText: 'OK',
-                    confirmButtonColor: '#10b981'
-                });
+                // Swal.fire({
+                //     icon: 'success',
+                //     title: 'Checkout Code',
+                //     html: `<div style=\"font-size:2em;font-weight:bold;\">${data.checkout_code}</div><div style=\"margin-top:8px;\">${data.message || ''}</div>`,
+                //     confirmButtonText: 'OK',
+                //     confirmButtonColor: '#10b981'
+                // });
             } else {
                 updatedEvent.completion_code = undefined;
             }
@@ -2089,19 +2089,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                                 <svg class="pill-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                                 <span>{event.distance_km} KM</span>
                             </div>
-
-                                                        {#if holidaysCalendar[event.id] && holidaysCalendar[event.id].length > 0}
-                                                            <div class="holiday-info-box" style="background: rgba(255, 99, 132, 0.08); border-color: #ef4444;">
-                                                                <div class="holiday-title" style="color: #ef4444;">
-                                                                    {t[lang].dash_holiday_title}
-                                                                </div>
-                                                                <div class="calendar-grid">
-                                                                    {#each holidaysCalendar[event.id] as hDate}
-                                                                        <div class="calendar-cell">{getDisplayDate(hDate, undefined, lang)}</div>
-                                                                    {/each}
-                                                                </div>
-                                                            </div>
-                                                        {/if}
                         </div>
                     {/if}
 
@@ -2261,26 +2248,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                             <svg class="pill-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                             <span>{event.distance_km} KM</span>
                         </div>
-
-                        <div class="holiday-info-box" style={!hasHoliday ? "background: rgba(16, 185, 129, 0.1); border-color: #10b981;" : ""}>
-                            <div class="holiday-title" style={!hasHoliday ? "color: #10b981;" : ""}>
-                                {t[lang].dash_holiday_title}
-                            </div>
-                            <ul class="holiday-list" style={!hasHoliday ? "color: #34d399;" : ""}>
-                                {#if hasHoliday}
-                                    {#if hConfig.excludeWeekends}
-                                        <li>• {t[lang].dash_holiday_weekend}</li>
-                                    {/if}
-                                    {#if hConfig.holidays}
-                                        {#each hConfig.holidays as hDate}
-                                            <li>• {getDisplayDate(hDate, undefined, lang)}</li>
-                                        {/each}
-                                    {/if}
-                                {:else}
-                                    <li>{t[lang].dash_no_holiday}</li>
-                                {/if}
-                            </ul>
-                        </div>
                     </div>
                  {/if}
 
@@ -2382,14 +2349,20 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                             {lang === 'th' ? 'กรุณาแสดงรหัสนี้ให้เจ้าหน้าที่สแกน' : 'Please present this code to staff.'}
                         </p>
                     </div>
-
                 {:else if selectedEvent.status === 'CHECKED_IN' || selectedEvent.status === 'REJECTED'}
                     
                     <h3 class="modal-title">{lang === 'th' ? 'ส่งผลการวิ่ง' : 'Submit Result'}</h3>
 
                     {#if selectedEvent.status === 'REJECTED'}
                          <div class="rejected-alert" style="background: #fee2e2; color: #b91c1c; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #fca5a5;">
-                            <strong>⚠️ {lang === 'th' ? 'หลักฐานถูกปฏิเสธ' : 'Submission Rejected'}</strong><br>
+                            <strong>
+                                ⚠️ {lang === 'th' ? 'หลักฐานถูกปฏิเสธ' : 'Submission Rejected'}
+                                <br> <span style="font-weight: normal; font-size: 0.9em;">
+                                    {lang === 'th' 
+                                        ? '(หากไม่ลงรูปจะส่งรูปเดิม)' 
+                                        : '(Original image will be sent if no new upload)'}
+                                </span>
+                            </strong><br>
                             <span style="font-size: 0.9rem;">
                                 {selectedEvent.rejection_reason || (lang === 'th' ? 'กรุณาตรวจสอบรูปภาพและลิงก์อีกครั้ง' : 'Please check your proof again.')}
                             </span>
@@ -2471,9 +2444,8 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                 {:else if selectedEvent.status === 'CANCELED'}
                     <div class="cancelled-view" style="text-align: center; padding: 40px 0; color: #94a3b8;">
                         <div style="font-size: 4rem; margin-bottom: 10px;">🚫</div>
-                        <h3>{lang === 'th' ? 'กิจกรรมถูกยกเลิก' : 'Event Cancelled'}</h3>
+                        <h3>{lang === 'th' ? 'กิจกรรมถูกยกเลิก (สมัครใหม่ในวันถัดไป)' : 'Event Cancelled (Please register again next day)'}</h3>
                     </div>
-
                 {/if}
                 </div>
             {/if}
@@ -2519,20 +2491,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                 </div>
 
                 <div class="stats-container">
-                    <!-- Rank hidden per requirement -->
-                    <!-- <div class="stat-box gold-stat">
-                        <div class="stat-icon">🏆</div>
-                        <div class="stat-info">
-                            <span class="stat-label">{t[lang].dash_rank_title}</span>
-                            <span class="stat-value rank-text">
-                                {#if showRank}
-                                    #{dashboardEvent.completion_rank}
-                                {:else}
-                                    -
-                                {/if}
-                            </span>
-                        </div>
-                    </div> -->
 
                     <div class="stat-box blue-stat">
                         <div class="stat-icon">🏃</div>
@@ -2543,26 +2501,6 @@ async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promis
                             </span>
                         </div>
                     </div>
-                </div>
-
-                <div class="holiday-section" style={!hasHoliday ? "background: rgba(16, 185, 129, 0.1); border-color: #10b981;" : ""}>
-                     <div class="holiday-header" style={!hasHoliday ? "color: #10b981;" : ""}>
-                        {t[lang].dash_holiday_title}
-                     </div>
-                     <ul class="holiday-list-dash" style={!hasHoliday ? "color: #34d399;" : ""}>
-                        {#if hasHoliday}
-                            {#if hConfig.excludeWeekends}
-                                <li>• {t[lang].dash_holiday_weekend}</li>
-                            {/if}
-                            {#if hConfig.holidays}
-                                {#each hConfig.holidays as hDate}
-                                    <li>• {getDisplayDate(hDate, undefined, lang)}</li>
-                                {/each}
-                            {/if}
-                        {:else}
-                            <li>{t[lang].dash_no_holiday}</li>
-                        {/if}
-                    </ul>
                 </div>
 
             </div>
