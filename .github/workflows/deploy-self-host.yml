@@ -18,13 +18,13 @@ jobs:
         shell: powershell
         run: |
           # ================= CONFIG =================
-   
           $PROJECT_PATH = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
           $PM2_NAME = "ku-run-frontend"
           # ==========================================
 
           Write-Host "Starting Frontend Deployment to $PROJECT_PATH..."
 
+          # 1. เข้าไปที่โฟลเดอร์โปรเจกต์
           if (Test-Path $PROJECT_PATH) {
               cd $PROJECT_PATH
           } else {
@@ -32,15 +32,23 @@ jobs:
               exit 1
           }
 
+          # 2. Pull Code ล่าสุด
           Write-Host "Pulling latest code..."
           git fetch origin master
           
-
+          # Reset เพื่อให้โค้ดตรงกับ GitHub
           git reset --hard origin/master
 
+          # [ส่วนที่เพิ่มกลับเข้ามา] 
+          # 3. Install & Build (สำคัญมาก: ถ้าไม่มีขั้นตอนนี้ โฟลเดอร์ build จะไม่ถูกอัปเดต)
+          Write-Host "Installing dependencies & Building..."
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+          # 4. Restart PM2 Service
           Write-Host "Restarting PM2 Service..."
           
-          # ใช้ describe เช็คก่อนว่ามี process นี้ไหม (ส่ง output ลงถังขยะ $null)
+          # เช็คว่ามี process นี้อยู่ไหม
           pm2 describe $PM2_NAME | Out-Null
           
           if ($LASTEXITCODE -eq 0) {
