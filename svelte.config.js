@@ -1,22 +1,12 @@
-import adapter from '@sveltejs/adapter-auto';
+import adapter from '@sveltejs/adapter-node'; 
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
-// Try to load svelte-preprocess but don't crash if it's missing (useful for CI/tooling)
-let preprocess;
-try {
-  const mod = await import('svelte-preprocess');
-  preprocess = mod.default ? mod.default() : mod();
-} catch (err) {
-  // eslint-disable-next-line no-console
-  console.warn('svelte-preprocess not installed — continuing without it.');
-  preprocess = undefined;
-}
-
-
+/** @type {import('@sveltejs/kit').Config} */
 const config = {
-  preprocess,
-  kit: {
-    adapter: adapter()
-  }
+    preprocess: vitePreprocess(),
+    kit: {
+        adapter: adapter() 
+    }
 };
 
 export default config;

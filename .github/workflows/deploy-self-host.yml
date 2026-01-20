@@ -1,61 +1,59 @@
-name: Deploy Frontend to Specific Path
+name: Deploy Frontend to Windows VPS
 
 on:
   push:
-    branches: [ master ]
+    branches: [ "master" ]
 
 jobs:
   deploy:
     runs-on: self-hosted
     
     steps:
-      - name: Checkout Code
+      - name: Checkout Code (Trigger)
         uses: actions/checkout@v4
-
-      - name: Setup Node & pnpm
-        uses: pnpm/action-setup@v4
         with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
+          clean: false 
 
-      - name: Install Dependencies & Build (In Runner Temp)
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm run build
-
-      - name: Deploy to Target Path
+      - name: Deploy Frontend Script
         shell: powershell
         run: |
-          # 1. กำหนดตัวแปร Path (ใส่ฟันหนูเพราะมีช่องว่าง Web Project)
-          $TargetDir = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
+          # ================= CONFIG =================
+   
+          $PROJECT_PATH = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
+          $PM2_NAME = "ku-run-frontend"
+          # ==========================================
 
-          # 2. สร้างโฟลเดอร์ปลายทางถ้ายังไม่มี
-          if (!(Test-Path $TargetDir)) { New-Item -ItemType Directory -Force -Path $TargetDir }
+          Write-Host "Starting Frontend Deployment to $PROJECT_PATH..."
 
-          # 3. Copy ไฟล์ที่จำเป็นไปที่ปลายทาง (Build, Package.json)
-          # ใช้ Copy-Item หรือ Robocopy
-          Write-Host "Copying files to $TargetDir..."
-          Copy-Item -Path ".\build" -Destination "$TargetDir\build" -Recurse -Force
-          Copy-Item -Path ".\package.json" -Destination $TargetDir -Force
-          Copy-Item -Path ".\pnpm-lock.yaml" -Destination $TargetDir -Force
-          # Copy-Item -Path ".\.env" -Destination $TargetDir -Force # (ถ้าต้องการ Copy .env ด้วย)
+          if (Test-Path $PROJECT_PATH) {
+              cd $PROJECT_PATH
+          } else {
+              Write-Error "Project Path not found: $PROJECT_PATH"
+              exit 1
+          }
 
-      - name: Install Prod Deps & Restart (At Target Path)
-        shell: powershell
-        run: |
-          $TargetDir = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
+          Write-Host "Pulling latest code..."
+          git fetch origin master
           
-          # ย้ายการทำงานไปที่โฟลเดอร์ปลายทาง
-          Set-Location $TargetDir
-          
-          # ลงเฉพาะ Production dependencies (เบากว่า)
-          pnpm install --prod
 
-          # Restart PM2 จาก Path นี้
-          # ใช้ --update-env เพื่อให้แน่ใจว่าค่า config ใหม่ถูกโหลด
-          pm2 start build/index.js --name "ku-run-frontend" --update-env --force
+          git reset --hard origin/master
+
+          Write-Host "Restarting PM2 Service..."
+          
+          # ใช้ describe เช็คก่อนว่ามี process นี้ไหม (ส่ง output ลงถังขยะ $null)
+          pm2 describe $PM2_NAME | Out-Null
+          
+          if ($LASTEXITCODE -eq 0) {
+              # ถ้ามีอยู่แล้ว ให้ Restart
+              Write-Host "Process found. Restarting..."
+              pm2 restart $PM2_NAME --update-env
+          } else {
+              # ถ้าไม่มี ให้ Start ใหม่
+              Write-Host "Process not found. Starting new..."
+              pm2 start build/index.js --name $PM2_NAME
+          }
+          
+          # Save สถานะ
           pm2 save
-          
+
+          Write-Host "Frontend Deployment Complete!"
