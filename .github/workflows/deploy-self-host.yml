@@ -58,3 +58,4 @@ jobs:
           # ใช้ --update-env เพื่อให้แน่ใจว่าค่า config ใหม่ถูกโหลด
           pm2 start build/index.js --name "ku-run-frontend" --update-env --force
           pm2 save
+          
