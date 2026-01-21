@@ -18,9 +18,10 @@ jobs:
         shell: powershell
         run: |
           # ================= CONFIG =================
-          # Use quotes for paths with spaces
           $PROJECT_PATH = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
           $PM2_NAME = "ku-run-frontend"
+          $PORT = 3000  # กำหนด Port ที่ต้องการรัน
+          $ORIGIN = "http://localhost:3000" # <-- แก้เป็นโดเมนจริงของคุณ เช่น https://ku-run.com
           # ==========================================
 
           Write-Host "Starting Deployment to $PROJECT_PATH..."
@@ -39,7 +40,6 @@ jobs:
           git reset --hard origin/master
 
           # 3. Install & Build
-          # Important: This creates the 'build/index.js' file
           Write-Host "Installing dependencies & Building..."
           pnpm install --frozen-lockfile
           pnpm run build
@@ -47,18 +47,20 @@ jobs:
           # 4. Manage PM2 Process
           Write-Host "Configuring PM2..."
           
-          # Check if process exists
+          # Check if process exists and delete it to ensure clean env vars
           pm2 describe $PM2_NAME | Out-Null
-          
           if ($LASTEXITCODE -eq 0) {
-              Write-Host "Process found. Re-creating to apply changes..."
+              Write-Host "Process found. Deleting to apply new config..."
               pm2 delete $PM2_NAME
           }
 
-          # START command: Specifically point to 'build/index.js'
-          # Use --watch to auto-restart when 'build/' updates
-          Write-Host "Starting process with Watch Mode..."
-          pm2 start "build/index.js" --name "$PM2_NAME" --watch --ignore-watch="node_modules"
+          # START command for SvelteKit (adapter-node)
+          # Note: Passing Environment Variables for SvelteKit
+          Write-Host "Starting process..."
+          
+          # ใช้ --env เพื่อส่งค่า PORT, ORIGIN, NODE_ENV เข้าไป
+          # build/index.js คือไฟล์ที่ adapter-node สร้างขึ้น
+          pm2 start "build/index.js" --name "$PM2_NAME" --watch --ignore-watch="node_modules .git .svelte-kit" --env PORT=$PORT,ORIGIN=$ORIGIN,NODE_ENV=production
           
           # Save PM2 state
           pm2 save

@@ -1379,6 +1379,10 @@ async function handleCheckInConfirm() {
     }
 
     // [ตรวจสอบเฉพาะวันนี้] ถ้าข้อมูลเป็นของวันเก่า ให้ถือว่าไม่มีข้อมูล
+    // [ตรวจสอบเฉพาะวันนี้] ถ้าข้อมูลเป็นของวันเก่า ให้ถือว่าไม่มีข้อมูล
+    // [FIX] ลบการเช็ควันที่เนื่องจาก Timezone ของ Server อาจไม่ตรงกับ Client 
+    // ทำให้ Code ที่ถูกต้องถูกลบไป (statusData = null)
+    /*
     if (statusData) {
         const recordDateStr = statusData.created_at || statusData.date || statusData.start_date;
         if (recordDateStr) {
@@ -1394,6 +1398,7 @@ async function handleCheckInConfirm() {
             }
         }
     }
+    */
 
     // ถ้ายังมี statusData (แปลว่าเป็นของวันนี้) ก็ Map ตามปกติ
     if (statusData) {
