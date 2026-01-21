@@ -845,11 +845,7 @@
         );
       }
 
-      // ✅ ตรวจสอบว่าวันเริ่มต้นไม่อยู่ในอดีต (เฉพาะสร้างใหม่)
-      if (!editingEventId && startDate < new Date()) {
-        validationErrors.add("startDate");
-        errorMessages.push(`ไม่สามารถสร้างกิจกรรมที่เริ่มต้นในอดีตได้`);
-      }
+      // (ลบ validation วันในอดีตออก - ให้ Backend จัดการ)
     }
 
     // ✅ Rewards validation (ถ้ามีการกรอกรางวัล)
