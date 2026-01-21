@@ -20,7 +20,8 @@ export const nodes = [
 	() => import('./nodes/16'),
 	() => import('./nodes/17'),
 	() => import('./nodes/18'),
-	() => import('./nodes/19')
+	() => import('./nodes/19'),
+	() => import('./nodes/20')
 ];
 
 export const server_loads = [];
@@ -38,12 +39,13 @@ export const dictionary = {
 		"/officer/setting-account": [11],
 		"/organizer": [12],
 		"/organizer/create-event": [13],
-		"/organizer/monthly-reward": [14],
-		"/student": [15],
-		"/student/event-list": [16],
-		"/student/monthly-reward": [17],
-		"/student/myevents-upcoming": [18],
-		"/student/setting-account": [19]
+		"/organizer/logs": [14],
+		"/organizer/monthly-reward": [15],
+		"/student": [16],
+		"/student/event-list": [17],
+		"/student/monthly-reward": [18],
+		"/student/myevents-upcoming": [19],
+		"/student/setting-account": [20]
 	};
 
 export const hooks = {
