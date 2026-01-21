@@ -273,5 +273,24 @@ export async function deleteParticipantSnapshot(
     }
 }
 
+// ===== User Statistics =====
+export interface UserStatistics {
+    total_distance_km?: number | null;
+    total_participations?: number | null;
+    total_days?: number | null;
+    [key: string]: any;
+}
+
+/**
+ * Fetch aggregated statistics for a user (participations)
+ */
+export async function getUserStatistics(userId: number): Promise<UserStatistics> {
+    const response = await api.get(`/api/participations/user/${userId}/statistics`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch user statistics: ${response.statusText}`);
+    }
+    return await response.json();
+}
+
 // Export for use in +page.ts load functions
 export { apiRequest as fetch };
