@@ -78,9 +78,9 @@
     // Get safe redirect based on user role
     function getSafeRedirect(role: string | null): string {
         const r = role?.toLowerCase() || '';
-        if (r === 'student') return '/student/event-list';
-        if (r === 'officer') return '/officer/event-list';
-        if (r === 'organizer') return '/organizer/create-event';
+            if (r === 'student') return '/student/event-list';
+            if (r === 'officer') return '/officer/event-list';
+            if (r === 'organizer') return '/organizer/events';
         return '/auth/login';
     }
 
