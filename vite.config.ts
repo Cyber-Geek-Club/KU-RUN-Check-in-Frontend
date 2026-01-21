@@ -7,7 +7,7 @@ export default defineConfig({
 		proxy: {
 			// เมื่อไหร่ก็ตามที่ Frontend ยิงไปที่ /api
 			'/api': {
-				target: 'http://158.108.102.14:8001', // ให้ส่งต่อไปที่ IP นี้แทน
+				target: 'http://localhost:8001', // ให้ส่งต่อไปที่ localhost แทน
 				changeOrigin: true,
 				secure: false,
 			}
