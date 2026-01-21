@@ -3,7 +3,9 @@ import { browser } from '$app/environment';
 import { auth } from '$lib/utils/auth';
 import { goto } from '$app/navigation';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const rawEnv = import.meta.env.VITE_API_BASE_URL;
+const envUrl = (rawEnv && rawEnv.trim() !== "") ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+const API_BASE = envUrl.replace(/\/$/, "");
 
 interface ApiRequestOptions extends RequestInit {
     skipAuth?: boolean;
@@ -40,7 +42,7 @@ export async function apiRequest(
     // Make the request
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
     let response: Response;
-    
+
     try {
         response = await fetch(url, fetchOptions);
     } catch (error) {
@@ -52,7 +54,7 @@ export async function apiRequest(
     // Check for error status codes
     if (!response.ok) {
         const status = response.status;
-        
+
         // If 401, try token refresh first
         if (status === 401 && !skipRefresh && browser) {
             const refreshToken = localStorage.getItem('refresh_token');
@@ -209,11 +211,11 @@ export async function getParticipantSnapshots(
     const response = await api.get(
         `/api/events/${eventId}/participants/history?page=${page}&page_size=${pageSize}`
     );
-    
+
     if (!response.ok) {
         throw new Error(`Failed to fetch snapshots: ${response.statusText}`);
     }
-    
+
     return await response.json();
 }
 
@@ -229,11 +231,11 @@ export async function getSnapshotEntries(
     const response = await api.get(
         `/api/events/${eventId}/participants/history/${snapshotId}/entries?page=${page}&page_size=${pageSize}`
     );
-    
+
     if (!response.ok) {
         throw new Error(`Failed to fetch snapshot entries: ${response.statusText}`);
     }
-    
+
     return await response.json();
 }
 
@@ -247,13 +249,13 @@ export async function createParticipantSnapshot(
     const url = description
         ? `/api/events/${eventId}/participants/snapshots?description=${encodeURIComponent(description)}`
         : `/api/events/${eventId}/participants/snapshots`;
-    
+
     const response = await api.post(url);
-    
+
     if (!response.ok) {
         throw new Error(`Failed to create snapshot: ${response.statusText}`);
     }
-    
+
     return await response.json();
 }
 
@@ -267,7 +269,7 @@ export async function deleteParticipantSnapshot(
     const response = await api.delete(
         `/api/events/${eventId}/participants/history/${snapshotId}`
     );
-    
+
     if (!response.ok) {
         throw new Error(`Failed to delete snapshot: ${response.statusText}`);
     }

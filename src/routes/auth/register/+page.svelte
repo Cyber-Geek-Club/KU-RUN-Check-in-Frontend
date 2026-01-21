@@ -3,7 +3,10 @@
   import { slide, fade } from "svelte/transition";
   import { onDestroy, onMount } from "svelte";
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+  const rawEnv = import.meta.env.VITE_API_BASE_URL;
+  const envUrl =
+    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+  const API_BASE = envUrl.replace(/\/$/, "");
 
   type Role = "student" | "officer";
   type Major = { id: string; name: string };
@@ -292,7 +295,7 @@
           loading = false;
           return showMessage(
             "Nisit ID verification service unavailable.",
-            "error"
+            "error",
           );
         }
         const nisitData = await nisitRes.json().catch(() => null);
@@ -341,7 +344,7 @@
 
       console.log(
         `🚀 Sending to [${endpoint}]:`,
-        JSON.stringify(payload, null, 2)
+        JSON.stringify(payload, null, 2),
       );
 
       const res = await fetch(endpoint, {
@@ -395,7 +398,7 @@
       {isRegisterSuccess ? "VERIFY EMAIL" : "CREATE ACCOUNT"}
     </h1>
   </div>
-<!-- scroll -->
+  <!-- scroll -->
   <div class="scroll-container">
     <div class="content-wrapper">
       <div class="form-card">
@@ -760,8 +763,14 @@
                 </div>
               </div>
               <div class="form-group">
-                <label class="label" for="confirmPassword">Confirm Password</label>
-                <div class="input-field {errorFields.confirmPassword ? 'error' : ''}">
+                <label class="label" for="confirmPassword"
+                  >Confirm Password</label
+                >
+                <div
+                  class="input-field {errorFields.confirmPassword
+                    ? 'error'
+                    : ''}"
+                >
                   <input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
@@ -772,7 +781,8 @@
                   <button
                     type="button"
                     class="toggle-password"
-                    on:click={() => (showConfirmPassword = !showConfirmPassword)}
+                    on:click={() =>
+                      (showConfirmPassword = !showConfirmPassword)}
                   >
                     {#if showConfirmPassword}
                       <svg

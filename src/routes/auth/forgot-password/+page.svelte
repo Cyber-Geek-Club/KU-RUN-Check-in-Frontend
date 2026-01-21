@@ -4,7 +4,10 @@
   import { onDestroy } from "svelte";
   import { page } from "$app/stores";
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+  const rawEnv = import.meta.env.VITE_API_BASE_URL;
+  const envUrl =
+    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+  const API_BASE = envUrl.replace(/\/$/, "");
 
   let email: string = "";
   let isLoading = false;
@@ -14,8 +17,8 @@
   let messageTimeout: any;
   let errorField = "";
 
-  let returnUrl = "/auth/login"; 
-  
+  let returnUrl = "/auth/login";
+
   $: {
     const param = $page.url.searchParams.get("return_to");
     if (param) {
@@ -30,7 +33,7 @@
   function showMessage(
     msg: string,
     type: "error" | "success" = "error",
-    field = ""
+    field = "",
   ) {
     if (messageTimeout) clearTimeout(messageTimeout);
     message = msg;
@@ -88,7 +91,7 @@
     <button
       class="back-btn"
       aria-label="Back"
-      on:click={() => goto(returnUrl)} 
+      on:click={() => goto(returnUrl)}
       disabled={isLoading}
     >
       <svg
@@ -113,7 +116,9 @@
         {#if currentStep === 1}
           <div class="title-section" in:slide>
             <h1 class="main-title">
-               {returnUrl.includes('login') ? 'FORGOT PASSWORD' : 'CHANGE PASSWORD'}
+              {returnUrl.includes("login")
+                ? "FORGOT PASSWORD"
+                : "CHANGE PASSWORD"}
             </h1>
             <p class="sub-title">Enter your email to receive a reset link.</p>
           </div>

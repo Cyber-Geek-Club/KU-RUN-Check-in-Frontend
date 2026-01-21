@@ -1,23 +1,26 @@
 <script lang="ts">
-  import axios from 'axios';
-  import { onMount } from 'svelte';
-  
+  import axios from "axios";
+  import { onMount } from "svelte";
+
   // ✅ Import API Endpoints
-  import { endpoints } from '../_lib/api/endpoints';
-  
+  import { endpoints } from "../_lib/api/endpoints";
+
   // API Configuration
-  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
-  
+  const rawEnv = import.meta.env.VITE_API_BASE_URL;
+  const envUrl =
+    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+  const API_BASE_URL = envUrl.replace(/\/$/, "");
+
   const api = axios.create({
     baseURL: API_BASE_URL,
     timeout: 30000,
   });
-  
+
   // Attach Token if available
   api.interceptors.request.use((config) => {
-    if (typeof localStorage !== 'undefined') {
-        const token = localStorage.getItem('access_token');
-        if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (typeof localStorage !== "undefined") {
+      const token = localStorage.getItem("access_token");
+      if (token) config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   });
@@ -27,21 +30,21 @@
     (response) => response,
     (error) => {
       if (error.response && error.response.status === 404) {
-         return Promise.reject(error);
+        return Promise.reject(error);
       }
       return Promise.reject(error);
-    }
+    },
   );
-  
+
   // Language Setup
   type Language = "th" | "en";
   let currentLang: Language = "th";
-  
+
   if (typeof localStorage !== "undefined") {
     const saved = localStorage.getItem("app_language");
     if (saved === "th" || saved === "en") currentLang = saved;
   }
-  
+
   const translations = {
     th: {
       title: "ปลดล็อคบัญชี",
@@ -70,9 +73,9 @@
       empty_email: "Email is required",
     },
   };
-  
+
   $: lang = translations[currentLang];
-  
+
   // State
   let email = "";
   let isLoading = false;
@@ -86,7 +89,7 @@
 
   async function handleSubmit() {
     statusMessage = "";
-    
+
     if (!email.trim()) {
       statusMessage = lang.empty_email;
       statusType = "error";
@@ -100,18 +103,17 @@
       inputElement?.focus();
       return;
     }
-    
+
     isLoading = true;
-    
+
     try {
       // ✅ ใช้ API Endpoint ที่ถูกต้อง (endpoints.users.unlock)
       // ปกติคือ /api/users/unlock
       await api.post(endpoints.users.unlock, { email: email.trim() });
-      
+
       statusMessage = lang.success;
       statusType = "success";
       email = ""; // Clear input on success
-      
     } catch (error: any) {
       statusType = "error";
       if (error.response?.status === 404) {
@@ -127,10 +129,15 @@
 
 <div class="unlock-container">
   <div class="unlock-card">
-    
     <div class="unlock-icon-wrapper">
       <div class="unlock-icon-bg"></div>
-      <svg class="unlock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg
+        class="unlock-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
       </svg>
@@ -144,48 +151,84 @@
     <div class="unlock-form">
       <div class="input-group">
         <label for="email">{lang.emailLabel}</label>
-        <div class="input-wrapper" class:error={statusType === 'error' && statusMessage}>
-          <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+        <div
+          class="input-wrapper"
+          class:error={statusType === "error" && statusMessage}
+        >
+          <svg
+            class="input-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+            ></path>
             <polyline points="22,6 12,13 2,6"></polyline>
           </svg>
-          <input 
+          <input
             id="email"
-            type="email" 
+            type="email"
             bind:this={inputElement}
-            bind:value={email} 
+            bind:value={email}
             placeholder={lang.placeholder}
             disabled={isLoading}
-            on:input={() => statusMessage = ""}
-            on:keydown={(e) => e.key === 'Enter' && handleSubmit()}
+            on:input={() => (statusMessage = "")}
+            on:keydown={(e) => e.key === "Enter" && handleSubmit()}
           />
         </div>
       </div>
 
       {#if statusMessage}
         <div class="status-box {statusType}">
-          {#if statusType === 'success'}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          {#if statusType === "success"}
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              ><polyline points="20 6 9 17 4 12"></polyline></svg
+            >
           {:else}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              ><circle cx="12" cy="12" r="10"></circle><line
+                x1="12"
+                y1="8"
+                x2="12"
+                y2="12"
+              ></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg
+            >
           {/if}
           <span>{statusMessage}</span>
         </div>
       {/if}
 
-      <button class="unlock-btn" on:click={handleSubmit} disabled={isLoading || !email}>
+      <button
+        class="unlock-btn"
+        on:click={handleSubmit}
+        disabled={isLoading || !email}
+      >
         {#if isLoading}
           <div class="loader"></div>
           <span>{lang.processing}</span>
         {:else}
           <span>{lang.submitBtn}</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <line x1="5" y1="12" x2="19" y2="12"></line>
             <polyline points="12 5 19 12 12 19"></polyline>
           </svg>
         {/if}
       </button>
-
     </div>
   </div>
 </div>
@@ -207,14 +250,14 @@
   .unlock-container {
     /* ✅ ลบ background ออกเพื่อไม่ให้ซ้อนกับ Layout หลัก */
     /* background: linear-gradient(to bottom right, #0f172a, #1e293b); */
-    
+
     /* ✅ ปรับ min-height เป็น auto หรือ 100% ตามความเหมาะสมของ container */
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 2rem 1.5rem;
-    font-family: 'Inter', sans-serif;
+    font-family: "Inter", sans-serif;
   }
 
   .unlock-card {
@@ -245,7 +288,11 @@
   .unlock-icon-bg {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1));
+    background: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.2),
+      rgba(5, 150, 105, 0.1)
+    );
     border-radius: 50%;
     animation: pulse 2s infinite;
   }
@@ -257,7 +304,9 @@
     color: var(--c-primary);
   }
 
-  .unlock-header { margin-bottom: 2rem; }
+  .unlock-header {
+    margin-bottom: 2rem;
+  }
 
   .unlock-title {
     font-size: 1.75rem;
@@ -346,7 +395,11 @@
     animation: slideDown 0.2s ease-out;
   }
 
-  .status-box svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .status-box svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
 
   .status-box.error {
     background: rgba(239, 68, 68, 0.1);
@@ -364,7 +417,11 @@
   .unlock-btn {
     width: 100%;
     padding: 1rem;
-    background: linear-gradient(135deg, var(--c-primary), var(--c-primary-hover));
+    background: linear-gradient(
+      135deg,
+      var(--c-primary),
+      var(--c-primary-hover)
+    );
     border: none;
     border-radius: 12px;
     color: white;
@@ -393,7 +450,10 @@
     cursor: not-allowed;
   }
 
-  .unlock-btn svg { width: 20px; height: 20px; }
+  .unlock-btn svg {
+    width: 20px;
+    height: 20px;
+  }
 
   /* --- Loader --- */
   .loader {
@@ -406,14 +466,53 @@
   }
 
   /* --- Animations --- */
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-  @keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
 
   /* --- Mobile --- */
   @media (max-width: 480px) {
-    .unlock-card { padding: 2rem 1.5rem; }
-    .unlock-title { font-size: 1.5rem; }
+    .unlock-card {
+      padding: 2rem 1.5rem;
+    }
+    .unlock-title {
+      font-size: 1.5rem;
+    }
   }
 </style>

@@ -1,12 +1,16 @@
 <script lang="ts">
-    import {goto} from "$app/navigation";
-    import {slide} from "svelte/transition";
-    import {onMount} from "svelte";
-    import {page} from "$app/stores";
-    import {ROUTES} from "$lib/utils/routes";
+    import { goto } from "$app/navigation";
+    import { slide } from "svelte/transition";
+    import { onMount } from "svelte";
+    import { page } from "$app/stores";
+    import { ROUTES } from "$lib/utils/routes";
 
-    const API_BASE_URL =
-        import.meta.env.VITE_API_BASE_URL || "";
+    const rawEnv = import.meta.env.VITE_API_BASE_URL;
+    const envUrl =
+        rawEnv && rawEnv.trim() !== ""
+            ? rawEnv
+            : "https://reg1.src.ku.ac.th:8005";
+    const API_BASE_URL = envUrl.replace(/\/$/, "");
 
     let userId: string = "";
     let token: string = "";
@@ -61,61 +65,61 @@
 
     const titleList = ["Mr.", "Ms.", "Mrs.", "Dr.", "Prof."];
     const organizerDepartments = [
-        {id: "Academic Affairs", name: "Academic Affairs"},
-        {id: "Student Affairs", name: "Student Affairs"},
-        {id: "Registrar Office", name: "Registrar Office"},
-        {id: "Finance Department", name: "Finance Department"},
-        {id: "IT Support Center", name: "IT Support Center"},
-        {id: "Human Resources", name: "Human Resources"},
+        { id: "Academic Affairs", name: "Academic Affairs" },
+        { id: "Student Affairs", name: "Student Affairs" },
+        { id: "Registrar Office", name: "Registrar Office" },
+        { id: "Finance Department", name: "Finance Department" },
+        { id: "IT Support Center", name: "IT Support Center" },
+        { id: "Human Resources", name: "Human Resources" },
     ];
     const facultyList = [
-        {id: "management", name: "Management Sciences"},
-        {id: "engineering", name: "Engineering at Sriracha"},
-        {id: "science", name: "Science at Sriracha"},
-        {id: "economics", name: "Economics at Sriracha"},
-        {id: "maritime", name: "International Maritime Studies"},
+        { id: "management", name: "Management Sciences" },
+        { id: "engineering", name: "Engineering at Sriracha" },
+        { id: "science", name: "Science at Sriracha" },
+        { id: "economics", name: "Economics at Sriracha" },
+        { id: "maritime", name: "International Maritime Studies" },
     ];
 
     type Major = { id: string; name: string };
     const majorData: Record<string, Major[]> = {
         management: [
-            {id: "mgt", name: "Management"},
-            {id: "fin", name: "Finance and Investment"},
-            {id: "ib", name: "International Business"},
-            {id: "lm", name: "Logistics Management"},
-            {id: "hh", name: "Hospitality - Hotel"},
-            {id: "ht", name: "Hospitality - Tourism"},
-            {id: "acc", name: "Accounting"},
-            {id: "amb", name: "Digital Marketing"},
+            { id: "mgt", name: "Management" },
+            { id: "fin", name: "Finance and Investment" },
+            { id: "ib", name: "International Business" },
+            { id: "lm", name: "Logistics Management" },
+            { id: "hh", name: "Hospitality - Hotel" },
+            { id: "ht", name: "Hospitality - Tourism" },
+            { id: "acc", name: "Accounting" },
+            { id: "amb", name: "Digital Marketing" },
         ],
         engineering: [
-            {id: "med", name: "Mechanical Engineering"},
-            {id: "mme", name: "Mechanical & Mfg Systems"},
-            {id: "eee", name: "Electrical & Electronics"},
-            {id: "ise", name: "Industrial Systems"},
-            {id: "cie", name: "Computer Engineering"},
-            {id: "ce", name: "Civil Engineering"},
-            {id: "ee", name: "Electrical Engineering"},
-            {id: "rae", name: "Robotics Engineering"},
-            {id: "die", name: "Digital Electronics"},
-            {id: "dms", name: "Digital Mfg Systems"},
-            {id: "ae", name: "Automotive Engineering"},
+            { id: "med", name: "Mechanical Engineering" },
+            { id: "mme", name: "Mechanical & Mfg Systems" },
+            { id: "eee", name: "Electrical & Electronics" },
+            { id: "ise", name: "Industrial Systems" },
+            { id: "cie", name: "Computer Engineering" },
+            { id: "ce", name: "Civil Engineering" },
+            { id: "ee", name: "Electrical Engineering" },
+            { id: "rae", name: "Robotics Engineering" },
+            { id: "die", name: "Digital Electronics" },
+            { id: "dms", name: "Digital Mfg Systems" },
+            { id: "ae", name: "Automotive Engineering" },
         ],
         science: [
-            {id: "cs", name: "Computer Science"},
-            {id: "it", name: "Information Technology"},
-            {id: "ps", name: "Physics"},
-            {id: "est", name: "Environmental Science"},
-            {id: "dst", name: "Digital Science"},
-            {id: "daa", name: "Data Analytics"},
-            {id: "act", name: "Applied Chemistry"},
+            { id: "cs", name: "Computer Science" },
+            { id: "it", name: "Information Technology" },
+            { id: "ps", name: "Physics" },
+            { id: "est", name: "Environmental Science" },
+            { id: "dst", name: "Digital Science" },
+            { id: "daa", name: "Data Analytics" },
+            { id: "act", name: "Applied Chemistry" },
         ],
-        economics: [{id: "econ", name: "Economics"}],
+        economics: [{ id: "econ", name: "Economics" }],
         maritime: [
-            {id: "nao", name: "Naval Architecture"},
-            {id: "ns", name: "Nautical Science"},
-            {id: "mt", name: "Maritime Transportation"},
-            {id: "me", name: "Marine Engineering"},
+            { id: "nao", name: "Naval Architecture" },
+            { id: "ns", name: "Nautical Science" },
+            { id: "mt", name: "Maritime Transportation" },
+            { id: "me", name: "Marine Engineering" },
         ],
     };
 
@@ -139,7 +143,9 @@
     }
 
     function getDeptName(id: string) {
-        const d = organizerDepartments.find((x) => x.id === id || x.name === id);
+        const d = organizerDepartments.find(
+            (x) => x.id === id || x.name === id,
+        );
         return d ? d.name : id || "Select Department";
     }
 
@@ -152,7 +158,7 @@
 
     function toggleDropdown(
         type: "title" | "faculty" | "major" | "dept",
-        e: Event
+        e: Event,
     ) {
         e.stopPropagation();
         const wasOpen =
@@ -214,7 +220,7 @@
         if (errorTimeout) clearTimeout(errorTimeout);
         errorTimeout = setTimeout(() => {
             Object.keys(errorFields).forEach(
-                (k) => (errorFields[k as ErrorKey] = false)
+                (k) => (errorFields[k as ErrorKey] = false),
             );
         }, 3000);
     }
@@ -236,13 +242,16 @@
 
             if (!token || !userId) throw new Error("User not authenticated");
 
-            const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
+            const response = await fetch(
+                `${API_BASE_URL}/api/users/${userId}`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
                 },
-            });
+            );
 
             if (!response.ok) {
                 if (response.status === 401) return goto("/login");
@@ -301,7 +310,8 @@
         let roleChanged = false;
         if (role === "student") {
             roleChanged =
-                faculty !== originalData.faculty || major !== originalData.major;
+                faculty !== originalData.faculty ||
+                major !== originalData.major;
         } else {
             roleChanged = department !== originalData.department;
         }
@@ -314,7 +324,7 @@
         let isValid = true;
 
         Object.keys(errorFields).forEach(
-            (k) => (errorFields[k as ErrorKey] = false)
+            (k) => (errorFields[k as ErrorKey] = false),
         );
 
         // Validate Basic Info
@@ -391,20 +401,20 @@
     }
 </script>
 
-<svelte:window on:click={closeAllDropdowns}/>
+<svelte:window on:click={closeAllDropdowns} />
 
 <div class="app-screen">
     <div class="glass-header">
         <a aria-label="Back" class="back-btn" href={backUrl}>
             <svg
-                    fill="none"
-                    height="24"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="24"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
             >
                 <line x1="19" x2="5" y1="12" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
@@ -421,49 +431,59 @@
                 </div>
 
                 {#if isLoading}
-                    <div style="text-align: center; color: #9ca3af; padding: 40px;">
+                    <div
+                        style="text-align: center; color: #9ca3af; padding: 40px;"
+                    >
                         <p>Loading...</p>
                     </div>
                 {:else}
                     <div class="form-section" transition:slide>
                         <div class="row-group">
                             <div class="form-group" style="flex: 0 0 90px;">
-                                <label class="label" for="title-trigger">Title</label>
+                                <label class="label" for="title-trigger"
+                                    >Title</label
+                                >
                                 <div class="custom-select-container">
                                     <button
-                                            type="button"
-                                            id="title-trigger"
-                                            class="select-trigger {errorFields.title
-                      ? 'error-border'
-                      : ''}"
-                                            class:active={isTitleOpen}
-                                            on:click={(e) => toggleDropdown("title", e)}
+                                        type="button"
+                                        id="title-trigger"
+                                        class="select-trigger {errorFields.title
+                                            ? 'error-border'
+                                            : ''}"
+                                        class:active={isTitleOpen}
+                                        on:click={(e) =>
+                                            toggleDropdown("title", e)}
                                     >
                                         <span>{title || "Title"}</span>
-                                        <div class="arrow-icon" class:rotate={isTitleOpen}>
+                                        <div
+                                            class="arrow-icon"
+                                            class:rotate={isTitleOpen}
+                                        >
                                             <svg
-                                                    width="16"
-                                                    height="16"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    stroke-width="2">
-                                                <path d="M6 9l6 6 6-6"/>
-                                            </svg
+                                                width="16"
+                                                height="16"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
                                             >
+                                                <path d="M6 9l6 6 6-6" />
+                                            </svg>
                                         </div>
                                     </button>
                                     {#if isTitleOpen}
                                         <div
-                                                class="options-list"
-                                                transition:slide={{ duration: 150 }}
-                                                style="z-index: 101;"
+                                            class="options-list"
+                                            transition:slide={{ duration: 150 }}
+                                            style="z-index: 101;"
                                         >
                                             {#each titleList as t}
                                                 <button
-                                                        type="button"
-                                                        class="option-item"
-                                                        on:click={() => selectTitle(t)}>{t}</button
+                                                    type="button"
+                                                    class="option-item"
+                                                    on:click={() =>
+                                                        selectTitle(t)}
+                                                    >{t}</button
                                                 >
                                             {/each}
                                         </div>
@@ -472,34 +492,37 @@
                             </div>
 
                             <div class="form-group" style="flex: 1;">
-                                <label class="label" for="firstname">First Name</label>
+                                <label class="label" for="firstname"
+                                    >First Name</label
+                                >
                                 <div
-                                        class="input-field"
-                                        class:error-border={errorFields.firstName}
+                                    class="input-field"
+                                    class:error-border={errorFields.firstName}
                                 >
                                     <input
-                                            id="firstname"
-                                            type="text"
-                                            bind:value={firstName}
-                                            on:input={clearMessage}
-                                            placeholder="First Name"
+                                        id="firstname"
+                                        type="text"
+                                        bind:value={firstName}
+                                        on:input={clearMessage}
+                                        placeholder="First Name"
                                     />
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label class="label" for="lastname">Last Name</label>
+                            <label class="label" for="lastname">Last Name</label
+                            >
                             <div
-                                    class="input-field"
-                                    class:error-border={errorFields.lastName}
+                                class="input-field"
+                                class:error-border={errorFields.lastName}
                             >
                                 <input
-                                        id="lastname"
-                                        type="text"
-                                        bind:value={lastName}
-                                        on:input={clearMessage}
-                                        placeholder="Last Name"
+                                    id="lastname"
+                                    type="text"
+                                    bind:value={lastName}
+                                    on:input={clearMessage}
+                                    placeholder="Last Name"
                                 />
                             </div>
                         </div>
@@ -507,80 +530,110 @@
                         <div class="form-group">
                             <label class="label" for="email">Email</label>
                             <div class="input-field disabled">
-                                <input id="email" type="email" value={email} disabled/>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    value={email}
+                                    disabled
+                                />
                                 <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="#6b7280"
+                                    stroke-width="2"
+                                >
+                                    <rect
+                                        x="3"
+                                        y="11"
+                                        width="18"
+                                        height="11"
+                                        rx="2"
+                                        ry="2"
+                                    ></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                            </div>
+                        </div>
+
+                        {#if role === "student"}
+                            <div class="form-group" transition:slide|local>
+                                <label class="label" for="nisitId"
+                                    >Nisit ID</label
+                                >
+                                <div class="input-field disabled">
+                                    <input
+                                        id="nisitId"
+                                        type="text"
+                                        value={nisitId}
+                                        disabled
+                                    />
+                                    <svg
                                         width="18"
                                         height="18"
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         stroke="#6b7280"
                                         stroke-width="2"
-                                >
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"
-                                    ></rect>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg
-                                >
-                            </div>
-                        </div>
-
-                        {#if role === "student"}
-                            <div class="form-group" transition:slide|local>
-                                <label class="label" for="nisitId">Nisit ID</label>
-                                <div class="input-field disabled">
-                                    <input id="nisitId" type="text" value={nisitId} disabled/>
-                                    <svg
+                                    >
+                                        <rect
+                                            x="3"
+                                            y="11"
                                             width="18"
-                                            height="18"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="#6b7280"
-                                            stroke-width="2"
-                                    >
-                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"
+                                            height="11"
+                                            rx="2"
+                                            ry="2"
                                         ></rect>
-                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                    </svg
-                                    >
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"
+                                        ></path>
+                                    </svg>
                                 </div>
                             </div>
 
                             <div class="form-group" transition:slide|local>
-                                <label class="label" for="faculty-trigger">Faculty</label>
+                                <label class="label" for="faculty-trigger"
+                                    >Faculty</label
+                                >
                                 <div class="custom-select-container">
                                     <button
-                                            type="button"
-                                            id="faculty-trigger"
-                                            class="select-trigger {errorFields.faculty
-                      ? 'error-border'
-                      : ''}"
-                                            class:active={isFacultyOpen}
-                                            on:click={(e) => toggleDropdown("faculty", e)}
+                                        type="button"
+                                        id="faculty-trigger"
+                                        class="select-trigger {errorFields.faculty
+                                            ? 'error-border'
+                                            : ''}"
+                                        class:active={isFacultyOpen}
+                                        on:click={(e) =>
+                                            toggleDropdown("faculty", e)}
                                     >
                                         <span>{getFacultyName(faculty)}</span>
-                                        <div class="arrow-icon" class:rotate={isFacultyOpen}>
+                                        <div
+                                            class="arrow-icon"
+                                            class:rotate={isFacultyOpen}
+                                        >
                                             <svg
-                                                    width="20"
-                                                    height="20"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    stroke-width="2">
-                                                <path d="M6 9l6 6 6-6"/>
-                                            </svg
+                                                width="20"
+                                                height="20"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
                                             >
+                                                <path d="M6 9l6 6 6-6" />
+                                            </svg>
                                         </div>
                                     </button>
                                     {#if isFacultyOpen}
                                         <div
-                                                class="options-list"
-                                                transition:slide={{ duration: 150 }}
+                                            class="options-list"
+                                            transition:slide={{ duration: 150 }}
                                         >
                                             {#each facultyList as f}
                                                 <button
-                                                        type="button"
-                                                        class="option-item"
-                                                        on:click={() => selectFaculty(f.id)}
+                                                    type="button"
+                                                    class="option-item"
+                                                    on:click={() =>
+                                                        selectFaculty(f.id)}
                                                 >
                                                     {f.name}
                                                 </button>
@@ -591,45 +644,55 @@
                             </div>
 
                             <div class="form-group" transition:slide|local>
-                                <label class="label" for="major-trigger">Major</label>
-                                <div class="custom-select-container" class:disabled={!faculty}>
+                                <label class="label" for="major-trigger"
+                                    >Major</label
+                                >
+                                <div
+                                    class="custom-select-container"
+                                    class:disabled={!faculty}
+                                >
                                     <button
-                                            type="button"
-                                            id="major-trigger"
-                                            class="select-trigger {errorFields.major
-                      ? 'error-border'
-                      : ''}"
-                                            class:active={isMajorOpen}
-                                            disabled={!faculty}
-                                            class:placeholder={!major}
-                                            on:click={(e) => {
-                      if (faculty) toggleDropdown("major", e);
-                    }}
+                                        type="button"
+                                        id="major-trigger"
+                                        class="select-trigger {errorFields.major
+                                            ? 'error-border'
+                                            : ''}"
+                                        class:active={isMajorOpen}
+                                        disabled={!faculty}
+                                        class:placeholder={!major}
+                                        on:click={(e) => {
+                                            if (faculty)
+                                                toggleDropdown("major", e);
+                                        }}
                                     >
                                         <span>{getMajorName(major)}</span>
-                                        <div class="arrow-icon" class:rotate={isMajorOpen}>
+                                        <div
+                                            class="arrow-icon"
+                                            class:rotate={isMajorOpen}
+                                        >
                                             <svg
-                                                    width="20"
-                                                    height="20"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    stroke-width="2">
-                                                <path d="M6 9l6 6 6-6"/>
-                                            </svg
+                                                width="20"
+                                                height="20"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
                                             >
+                                                <path d="M6 9l6 6 6-6" />
+                                            </svg>
                                         </div>
                                     </button>
                                     {#if isMajorOpen}
                                         <div
-                                                class="options-list"
-                                                transition:slide={{ duration: 150 }}
+                                            class="options-list"
+                                            transition:slide={{ duration: 150 }}
                                         >
                                             {#each currentMajors as m}
                                                 <button
-                                                        type="button"
-                                                        class="option-item"
-                                                        on:click={() => selectMajor(m.id)}
+                                                    type="button"
+                                                    class="option-item"
+                                                    on:click={() =>
+                                                        selectMajor(m.id)}
                                                 >
                                                     {m.name}
                                                 </button>
@@ -640,41 +703,50 @@
                             </div>
                         {:else}
                             <div class="form-group" transition:slide|local>
-                                <label class="label" for="dept-trigger">Department</label>
+                                <label class="label" for="dept-trigger"
+                                    >Department</label
+                                >
                                 <div class="custom-select-container">
                                     <button
-                                            type="button"
-                                            id="dept-trigger"
-                                            class="select-trigger {errorFields.department
-                      ? 'error-border'
-                      : ''}"
-                                            class:active={isDeptOpen}
-                                            on:click={(e) => toggleDropdown("dept", e)}
+                                        type="button"
+                                        id="dept-trigger"
+                                        class="select-trigger {errorFields.department
+                                            ? 'error-border'
+                                            : ''}"
+                                        class:active={isDeptOpen}
+                                        on:click={(e) =>
+                                            toggleDropdown("dept", e)}
                                     >
                                         <span>{getDeptName(department)}</span>
-                                        <div class="arrow-icon" class:rotate={isDeptOpen}>
+                                        <div
+                                            class="arrow-icon"
+                                            class:rotate={isDeptOpen}
+                                        >
                                             <svg
-                                                    width="20"
-                                                    height="20"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    stroke-width="2">
-                                                <path d="M6 9l6 6 6-6"/>
-                                            </svg
+                                                width="20"
+                                                height="20"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
                                             >
+                                                <path d="M6 9l6 6 6-6" />
+                                            </svg>
                                         </div>
                                     </button>
                                     {#if isDeptOpen}
                                         <div
-                                                class="options-list"
-                                                transition:slide={{ duration: 150 }}
+                                            class="options-list"
+                                            transition:slide={{ duration: 150 }}
                                         >
                                             {#each organizerDepartments as dept}
                                                 <button
-                                                        type="button"
-                                                        class="option-item"
-                                                        on:click={() => selectDepartment(dept.id)}
+                                                    type="button"
+                                                    class="option-item"
+                                                    on:click={() =>
+                                                        selectDepartment(
+                                                            dept.id,
+                                                        )}
                                                 >
                                                     {dept.name}
                                                 </button>
@@ -689,64 +761,82 @@
                             <div class="password-label-row">
                                 <span class="label">Password</span>
                                 <a
-                                        href="/auth/forgot-password?return_to={$page.url.pathname}"
-                                        class="text-btn">CHANGE</a
+                                    href="/auth/forgot-password?return_to={$page
+                                        .url.pathname}"
+                                    class="text-btn">CHANGE</a
                                 >
                             </div>
 
-                            <div class="input-field disabled" transition:slide|local>
-                                <input type="password" value="••••••••" disabled/>
+                            <div
+                                class="input-field disabled"
+                                transition:slide|local
+                            >
+                                <input
+                                    type="password"
+                                    value="••••••••"
+                                    disabled
+                                />
                                 <svg
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="#6b7280"
-                                        stroke-width="2"
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="#6b7280"
+                                    stroke-width="2"
                                 >
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"
+                                    <rect
+                                        x="3"
+                                        y="11"
+                                        width="18"
+                                        height="11"
+                                        rx="2"
+                                        ry="2"
                                     ></rect>
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg
-                                >
+                                </svg>
                             </div>
                         </div>
 
                         {#if message}
                             <div
-                                    class="message-container {messageType}"
-                                    transition:slide={{ duration: 200 }}
+                                class="message-container {messageType}"
+                                transition:slide={{ duration: 200 }}
                             >
                                 {#if messageType === "error"}
                                     <svg
-                                            style="flex-shrink: 0;"
-                                            width="20"
-                                            height="20"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="2"
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
+                                        style="flex-shrink: 0;"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
                                     >
                                         <circle cx="12" cy="12" r="10"></circle>
-                                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                        <line x1="12" y1="8" x2="12" y2="12"
+                                        ></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"
+                                        ></line>
                                     </svg>
                                 {:else}
                                     <svg
-                                            style="flex-shrink: 0;"
-                                            width="20"
-                                            height="20"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="2"
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
+                                        style="flex-shrink: 0;"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
                                     >
-                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                        <path
+                                            d="M22 11.08V12a10 10 0 1 1-5.93-9.14"
+                                        ></path>
+                                        <polyline points="22 4 12 14.01 9 11.01"
+                                        ></polyline>
                                     </svg>
                                 {/if}
                                 <span>{message}</span>
@@ -754,10 +844,10 @@
                         {/if}
 
                         <button
-                                class="primary-btn"
-                                type="button"
-                                on:click={handleSaveChanges}
-                                disabled={!isFormDirty || isSaving}
+                            class="primary-btn"
+                            type="button"
+                            on:click={handleSaveChanges}
+                            disabled={!isFormDirty || isSaving}
                         >
                             {isSaving ? "SAVING..." : "SAVE CHANGES"}
                         </button>

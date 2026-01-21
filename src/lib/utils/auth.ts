@@ -1,7 +1,9 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const rawEnv = import.meta.env.VITE_API_BASE_URL;
+const envUrl = (rawEnv && rawEnv.trim() !== "") ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+const API_BASE = envUrl.replace(/\/$/, "");
 
 // Response from login/register
 export interface LoginResponse {
@@ -194,10 +196,10 @@ function createAuthStore() {
 
         // Clear ALL localStorage
         localStorage.clear();
-        
+
         // Clear ALL sessionStorage
         sessionStorage.clear();
-        
+
         // Clear ALL cookies
         document.cookie.split(";").forEach((c) => {
             document.cookie = c
@@ -225,12 +227,12 @@ function createAuthStore() {
 
     function forceLogoutAndRedirect() {
         if (!browser) return;
-        
+
         console.log('🚨 Force logout due to error - clearing all storage');
-        
+
         // Clear everything
         clearAllStorageAndCookies();
-        
+
         // Reset store
         set({
             token: null,
@@ -267,7 +269,7 @@ function createAuthStore() {
     // Get current user data
     function getUser(): UserData | null {
         if (!browser) return null;
-        
+
         const storedUser = localStorage.getItem('user_info');
         if (storedUser) {
             try {
@@ -285,9 +287,9 @@ function createAuthStore() {
         if (!browser) return false;
         const token = localStorage.getItem('access_token');
         const expiryStr = localStorage.getItem('token_expiry');
-        
+
         if (!token || !expiryStr) return false;
-        
+
         const expiry = parseInt(expiryStr);
         return !isTokenExpired(expiry);
     }

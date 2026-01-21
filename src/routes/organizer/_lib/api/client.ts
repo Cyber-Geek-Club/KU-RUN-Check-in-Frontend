@@ -5,9 +5,9 @@ import Swal from 'sweetalert2';
 // Use VITE_API_BASE_URL when provided. In dev (no env) use the Vite proxy '/api'.
 const rawApiBase = import.meta.env.VITE_API_BASE_URL;
 const DEFAULT_API_HOST = 'https://reg1.src.ku.ac.th:8005';
-const computedApiBase = rawApiBase
+const computedApiBase = (rawApiBase && rawApiBase.trim() !== "")
   ? rawApiBase.replace(/\/$/, '')
-  : DEFAULT_API_HOST; // Force backend host when VITE_API_BASE_URL is not set
+  : DEFAULT_API_HOST;
 export const API_BASE_URL = computedApiBase;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;

@@ -4,7 +4,10 @@
   import { page } from "$app/stores";
   import { onMount, onDestroy } from "svelte";
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+  const rawEnv = import.meta.env.VITE_API_BASE_URL;
+  const envUrl =
+    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+  const API_BASE = envUrl.replace(/\/$/, "");
 
   let currentStep = 1;
   let isLoading = false;
@@ -37,7 +40,7 @@
   function showMessage(
     msg: string,
     type: "error" | "success" = "error",
-    field: "password" | "confirmPassword" | "" = ""
+    field: "password" | "confirmPassword" | "" = "",
   ) {
     if (messageTimeout) clearTimeout(messageTimeout);
     message = msg;
@@ -59,7 +62,6 @@
     return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(v);
   }
 
-
   async function handleResetPassword(): Promise<void> {
     clearMessage();
     if (isLoading) return;
@@ -70,7 +72,7 @@
       return showMessage(
         "Password must be 8+ chars & include a number.",
         "error",
-        "password"
+        "password",
       );
     if (!confirmPassword)
       return showMessage("Confirm password.", "error", "confirmPassword");
@@ -89,7 +91,7 @@
 
       if (res.ok) {
         currentStep = 2;
-        
+
         // Start countdown to redirect
         redirectInterval = setInterval(() => {
           redirectCountdown--;
@@ -306,7 +308,7 @@
               </span>
             </p>
           </div>
-          
+
           <button
             class="primary-btn"
             style="margin-top: 24px;"

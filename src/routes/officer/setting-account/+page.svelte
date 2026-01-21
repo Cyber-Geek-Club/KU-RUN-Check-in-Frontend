@@ -6,7 +6,10 @@
   import { ROUTES } from "$lib/utils/routes";
   import Swal from "sweetalert2";
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+  const rawEnv = import.meta.env.VITE_API_BASE_URL;
+  const envUrl =
+    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+  const API_BASE_URL = envUrl.replace(/\/$/, "");
 
   // --- User Data ---
   let userId: string = "";
@@ -131,15 +134,18 @@
   }
 
   // --- Computed (OFFICER VERSION) ---
-  $: backUrl = role === "officer" 
-    ? ROUTES.officer.eventList 
-    : role === "student" 
-      ? ROUTES.student.eventList 
-      : "/officer/event-list";
-  $: userInitials = firstName && lastName 
-    ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
-    : "?";
-  $: fullName = firstName && lastName ? `${title} ${firstName} ${lastName}` : "Loading...";
+  $: backUrl =
+    role === "officer"
+      ? ROUTES.officer.eventList
+      : role === "student"
+        ? ROUTES.student.eventList
+        : "/officer/event-list";
+  $: userInitials =
+    firstName && lastName
+      ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+      : "?";
+  $: fullName =
+    firstName && lastName ? `${title} ${firstName} ${lastName}` : "Loading...";
 
   // --- Helper Functions ---
   function getFacultyName(id: string) {
@@ -168,7 +174,7 @@
 
   function toggleDropdown(
     type: "title" | "faculty" | "major" | "dept",
-    e: Event
+    e: Event,
   ) {
     e.stopPropagation();
     const wasOpen =
@@ -227,7 +233,7 @@
     if (errorTimeout) clearTimeout(errorTimeout);
     errorTimeout = setTimeout(() => {
       Object.keys(errorFields).forEach(
-        (k) => (errorFields[k as ErrorKey] = false)
+        (k) => (errorFields[k as ErrorKey] = false),
       );
     }, 3000);
   }
@@ -281,8 +287,8 @@
         nisitId = data.nisit_id || data.nisitId || "";
         faculty = (data.faculty || "").toLowerCase();
         setTimeout(() => {
-            major = (data.major || "").toLowerCase();
-            originalData = { ...originalData, faculty, major };
+          major = (data.major || "").toLowerCase();
+          originalData = { ...originalData, faculty, major };
         }, 100);
       } else {
         department = data.department || "";
@@ -332,7 +338,7 @@
     let isValid = true;
 
     Object.keys(errorFields).forEach(
-      (k) => (errorFields[k as ErrorKey] = false)
+      (k) => (errorFields[k as ErrorKey] = false),
     );
 
     // Validate Basic Info
@@ -401,7 +407,7 @@
       }
 
       showMessage("Settings updated successfully!", "success");
-      
+
       await Swal.fire({
         icon: "success",
         title: "Saved!",
@@ -437,20 +443,23 @@
 
     if (result.isConfirmed) {
       // ✅ Clear ALL storage and cookies
-      if (typeof localStorage !== 'undefined') {
+      if (typeof localStorage !== "undefined") {
         localStorage.clear();
       }
-      if (typeof sessionStorage !== 'undefined') {
+      if (typeof sessionStorage !== "undefined") {
         sessionStorage.clear();
       }
-      if (typeof document !== 'undefined') {
+      if (typeof document !== "undefined") {
         document.cookie.split(";").forEach((c) => {
           document.cookie = c
             .replace(/^ +/, "")
-            .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+            .replace(
+              /=.*/,
+              "=;expires=" + new Date().toUTCString() + ";path=/",
+            );
         });
       }
-      
+
       window.location.href = "/auth/login";
     }
   }
@@ -462,8 +471,16 @@
   <!-- Header -->
   <header class="header">
     <a href={backUrl} class="back-btn" aria-label="Back">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+      >
+        <path d="M19 12H5M12 19l-7-7 7-7" />
       </svg>
     </a>
     <h1 class="header-title">Settings</h1>
@@ -488,24 +505,37 @@
                 <span>{userInitials}</span>
               </div>
             {/if}
-            
           </div>
-          
+
           <div class="profile-info">
             <h2 class="profile-name">{fullName}</h2>
             <p class="profile-email">
               {email}
               {#if isEmailVerified}
                 <span class="verified-badge" title="Email verified">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path
+                      d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+                    />
                   </svg>
                 </span>
               {/if}
             </p>
             <span class="profile-badge role-badge">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
               OFFICER
             </span>
@@ -516,27 +546,48 @@
       <!-- Section Tabs -->
       <nav class="section-tabs">
         {#each sections as sec}
-          <button 
-            class="tab-btn" 
+          <button
+            class="tab-btn"
             class:active={activeSection === sec.id}
-            on:click={() => activeSection = sec.id}
+            on:click={() => (activeSection = sec.id)}
           >
             {#if sec.icon === "user"}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
               </svg>
             {:else if sec.icon === "book"}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 21h18"/>
-                <path d="M9 8h1"/>
-                <path d="M9 12h1"/>
-                <path d="M9 16h1"/>
-                <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M3 21h18" />
+                <path d="M9 8h1" />
+                <path d="M9 12h1" />
+                <path d="M9 16h1" />
+                <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" />
               </svg>
             {:else if sec.icon === "shield"}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
             {/if}
             <span>{sec.label}</span>
@@ -548,9 +599,16 @@
       {#if activeSection === "profile"}
         <section class="settings-section" transition:slide>
           <h3 class="section-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
             </svg>
             Personal Information
           </h3>
@@ -560,18 +618,37 @@
             <div class="form-group small">
               <span class="form-label">Title</span>
               <div class="custom-select">
-                <button type="button" class="select-btn"
-                  class:active={isTitleOpen} class:error={errorFields.title}
-                  on:click={(e) => toggleDropdown("title", e)}>
+                <button
+                  type="button"
+                  class="select-btn"
+                  class:active={isTitleOpen}
+                  class:error={errorFields.title}
+                  on:click={(e) => toggleDropdown("title", e)}
+                >
                   <span class:placeholder={!title}>{title || "Select"}</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class:rotate={isTitleOpen}>
-                    <path d="M6 9l6 6 6-6"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    class:rotate={isTitleOpen}
+                  >
+                    <path d="M6 9l6 6 6-6" />
                   </svg>
                 </button>
                 {#if isTitleOpen}
-                  <div class="select-dropdown" transition:slide={{ duration: 150 }}>
+                  <div
+                    class="select-dropdown"
+                    transition:slide={{ duration: 150 }}
+                  >
                     {#each titleList as t}
-                      <button type="button" class="select-option" on:click={() => selectTitle(t)}>{t}</button>
+                      <button
+                        type="button"
+                        class="select-option"
+                        on:click={() => selectTitle(t)}>{t}</button
+                      >
                     {/each}
                   </div>
                 {/if}
@@ -582,7 +659,13 @@
             <div class="form-group flex-1">
               <label class="form-label" for="firstName">First Name</label>
               <div class="input-wrapper" class:error={errorFields.firstName}>
-                <input id="firstName" type="text" bind:value={firstName} on:input={clearMessage} placeholder="Enter first name" />
+                <input
+                  id="firstName"
+                  type="text"
+                  bind:value={firstName}
+                  on:input={clearMessage}
+                  placeholder="Enter first name"
+                />
               </div>
             </div>
           </div>
@@ -591,7 +674,13 @@
           <div class="form-group">
             <label class="form-label" for="lastName">Last Name</label>
             <div class="input-wrapper" class:error={errorFields.lastName}>
-              <input id="lastName" type="text" bind:value={lastName} on:input={clearMessage} placeholder="Enter last name" />
+              <input
+                id="lastName"
+                type="text"
+                bind:value={lastName}
+                on:input={clearMessage}
+                placeholder="Enter last name"
+              />
             </div>
           </div>
 
@@ -599,14 +688,30 @@
           <div class="form-group">
             <span class="form-label">Email Address</span>
             <div class="input-wrapper disabled">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                />
+                <polyline points="22,6 12,13 2,6" />
               </svg>
               <input type="email" value={email} disabled />
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#6b7280"
+                stroke-width="2"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </div>
             <span class="input-hint">Email cannot be changed</span>
@@ -618,12 +723,19 @@
       {#if activeSection === "academic"}
         <section class="settings-section" transition:slide>
           <h3 class="section-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 21h18"/>
-              <path d="M9 8h1"/>
-              <path d="M9 12h1"/>
-              <path d="M9 16h1"/>
-              <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M3 21h18" />
+              <path d="M9 8h1" />
+              <path d="M9 12h1" />
+              <path d="M9 16h1" />
+              <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16" />
             </svg>
             Department Information
           </h3>
@@ -632,18 +744,40 @@
           <div class="form-group">
             <span class="form-label">Department</span>
             <div class="custom-select">
-              <button type="button" class="select-btn"
-                class:active={isDeptOpen} class:error={errorFields.department}
-                on:click={(e) => toggleDropdown("dept", e)}>
-                <span class:placeholder={!department}>{getDeptName(department)}</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class:rotate={isDeptOpen}>
-                  <path d="M6 9l6 6 6-6"/>
+              <button
+                type="button"
+                class="select-btn"
+                class:active={isDeptOpen}
+                class:error={errorFields.department}
+                on:click={(e) => toggleDropdown("dept", e)}
+              >
+                <span class:placeholder={!department}
+                  >{getDeptName(department)}</span
+                >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class:rotate={isDeptOpen}
+                >
+                  <path d="M6 9l6 6 6-6" />
                 </svg>
               </button>
               {#if isDeptOpen}
-                <div class="select-dropdown" transition:slide={{ duration: 150 }}>
+                <div
+                  class="select-dropdown"
+                  transition:slide={{ duration: 150 }}
+                >
                   {#each organizerDepartments as dept}
-                    <button type="button" class="select-option" on:click={() => selectDepartment(dept.id)}>{dept.name}</button>
+                    <button
+                      type="button"
+                      class="select-option"
+                      on:click={() => selectDepartment(dept.id)}
+                      >{dept.name}</button
+                    >
                   {/each}
                 </div>
               {/if}
@@ -656,8 +790,15 @@
       {#if activeSection === "security"}
         <section class="settings-section" transition:slide>
           <h3 class="section-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
             Security Settings
           </h3>
@@ -666,12 +807,22 @@
           <div class="form-group">
             <div class="form-label-row">
               <span class="form-label">Password</span>
-              <a href="/auth/forgot-password?return_to={$page.url.pathname}" class="link-btn">Change Password</a>
+              <a
+                href="/auth/forgot-password?return_to={$page.url.pathname}"
+                class="link-btn">Change Password</a
+              >
             </div>
             <div class="input-wrapper disabled">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
               <input type="password" value="••••••••••" disabled />
             </div>
@@ -681,9 +832,16 @@
           <div class="info-card">
             <div class="info-row">
               <span class="info-label">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
                 Account Status
               </span>
@@ -691,21 +849,41 @@
             </div>
             <div class="info-row">
               <span class="info-label">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                  <polyline points="22,6 12,13 2,6"/>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                  />
+                  <polyline points="22,6 12,13 2,6" />
                 </svg>
                 Email Verification
               </span>
-              <span class="status-badge" class:verified={isEmailVerified} class:pending={!isEmailVerified}>
-                {isEmailVerified ? 'Verified' : 'Pending'}
+              <span
+                class="status-badge"
+                class:verified={isEmailVerified}
+                class:pending={!isEmailVerified}
+              >
+                {isEmailVerified ? "Verified" : "Pending"}
               </span>
             </div>
             <div class="info-row">
               <span class="info-label">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
                 </svg>
                 Role
               </span>
@@ -715,10 +893,17 @@
 
           <!-- Logout Button -->
           <button class="logout-btn" on:click={handleLogout}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
             Logout
           </button>
@@ -729,15 +914,29 @@
       {#if message}
         <div class="toast {messageType}" transition:slide={{ duration: 200 }}>
           {#if messageType === "error"}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
           {:else}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-              <polyline points="22 4 12 14.01 9 11.01"/>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
             </svg>
           {/if}
           <span>{message}</span>
@@ -746,15 +945,28 @@
 
       <!-- Save Button (Sticky) -->
       <div class="save-bar" class:visible={isFormDirty}>
-        <button class="save-btn" on:click={handleSaveChanges} disabled={isSaving}>
+        <button
+          class="save-btn"
+          on:click={handleSaveChanges}
+          disabled={isSaving}
+        >
           {#if isSaving}
             <div class="btn-spinner"></div>
             Saving...
           {:else}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-              <polyline points="17 21 17 13 7 13 7 21"/>
-              <polyline points="7 3 7 8 15 8"/>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+              />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
             </svg>
             Save Changes
           {/if}
@@ -772,7 +984,11 @@
     padding: 0;
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     min-height: 100vh;
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family:
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
   }
 
   .app-container {
@@ -854,12 +1070,18 @@
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* Profile Card */
   .profile-card {
-    background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+    background: linear-gradient(
+      145deg,
+      rgba(30, 41, 59, 0.9),
+      rgba(15, 23, 42, 0.9)
+    );
     border-radius: 20px;
     padding: 24px;
     margin-bottom: 20px;

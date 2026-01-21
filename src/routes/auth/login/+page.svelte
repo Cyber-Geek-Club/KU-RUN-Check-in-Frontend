@@ -68,7 +68,12 @@
 
     try {
       isSubmitting = true;
-      const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+      const rawEnv = import.meta.env.VITE_API_BASE_URL;
+      const envUrl =
+        rawEnv && rawEnv.trim() !== ""
+          ? rawEnv
+          : "https://reg1.src.ku.ac.th:8005";
+      const base = envUrl.replace(/\/$/, "");
       const API_URL = `${base}/api/users/login`;
       const res = await fetch(API_URL, {
         method: "POST",
@@ -82,7 +87,7 @@
         auth.logout();
         return showError(
           data?.detail ?? "Login failed. Please check your credentials.",
-          "both"
+          "both",
         );
       }
 
@@ -105,8 +110,13 @@
         expires_in: data.expires_in || 3600,
         user_id: data.user_id || data.id || data.user?.id,
         email: data.email || data.user?.email || email,
-        name: data.name || data.user?.name || data.username || data.user?.username || email.split('@')[0],
-        role: userRole
+        name:
+          data.name ||
+          data.user?.name ||
+          data.username ||
+          data.user?.username ||
+          email.split("@")[0],
+        role: userRole,
       };
       // Use auth store - it will handle all localStorage operations
       auth.login(loginResponse);
@@ -140,7 +150,11 @@
           <p class="sub-title">Welcome back! Please enter your details.</p>
         </div>
 
-        <form class="form-section" on:submit|preventDefault={submitLogin} novalidate>
+        <form
+          class="form-section"
+          on:submit|preventDefault={submitLogin}
+          novalidate
+        >
           <div class="form-group">
             <label class="label" for="email">Email</label>
             <div
@@ -238,7 +252,9 @@
             </div>
           {/if}
 
-          <button class="login-button" type="submit" disabled={isSubmitting}> {isSubmitting ? 'LOGGING IN…' : 'LOGIN NOW'} </button>
+          <button class="login-button" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "LOGGING IN…" : "LOGIN NOW"}
+          </button>
           <div class="signup-section">
             <span class="signup-text">Don't have an account?</span>
             <a href="/auth/register" class="signup-link">Sign up</a>

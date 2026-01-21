@@ -4,9 +4,10 @@
   import { endpoints } from "../_lib/api/endpoints";
   import Swal from "sweetalert2";
 
-  const API_BASE_URL = (
-    import.meta.env.VITE_API_BASE_URL || "https://reg1.src.ku.ac.th:8005"
-  ).replace(/\/$/, "");
+  const rawEnv = import.meta.env.VITE_API_BASE_URL;
+  const envUrl =
+    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+  const API_BASE_URL = envUrl.replace(/\/$/, "");
 
   function capitalizeFirstLetter(string: string) {
     if (!string) return "Pending";

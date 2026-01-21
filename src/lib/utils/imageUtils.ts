@@ -4,12 +4,11 @@
  */
 
 // Get base URL from environment
-// Default API host for production when VITE_API_BASE_URL is not set
 const DEFAULT_API_HOST = 'https://reg1.src.ku.ac.th:8005';
+const rawEnv = import.meta.env?.VITE_API_BASE_URL;
+const envUrl = (rawEnv && rawEnv.trim() !== "") ? rawEnv : DEFAULT_API_HOST;
 
-export const API_BASE_URL = (typeof import.meta !== 'undefined'
-  ? import.meta.env?.VITE_API_BASE_URL
-  : '') || DEFAULT_API_HOST;
+export const API_BASE_URL = envUrl.replace(/\/$/, "");
 
 /**
  * Resolve image path to full URL

@@ -14,12 +14,10 @@
   import HolidaySelector from "./_components/HolidaySelector.svelte";
 
   // Default to the production API host when no env var is set
+  const rawEnv = import.meta.env.VITE_API_BASE_URL;
   const envUrl =
-    import.meta.env.VITE_API_BASE_URL || "https://reg1.src.ku.ac.th:8005";
-  const API_BASE_URL = (envUrl || "https://reg1.src.ku.ac.th:8005").replace(
-    /\/$/,
-    "",
-  );
+    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+  const API_BASE_URL = envUrl.replace(/\/$/, "");
 
   const api = axios.create({
     baseURL: API_BASE_URL,

@@ -5,8 +5,11 @@
   import axios from "axios";
 
   // ✅ 1. ตั้งค่า Base URL ให้ถูกต้อง
+  const ENV_API = import.meta.env.VITE_API_BASE_URL;
   const API_BASE_URL = (
-    import.meta.env.VITE_API_BASE_URL || "https://reg1.src.ku.ac.th:8005"
+    ENV_API && ENV_API.trim() !== ""
+      ? ENV_API
+      : "https://reg1.src.ku.ac.th:8005"
   ).replace(/\/$/, "");
   const IMAGE_PLACEHOLDER =
     "https://placehold.co/400x200/94a3b8/ffffff?text=Loading...";

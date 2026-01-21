@@ -7,11 +7,11 @@
   import { endpoints } from "../_lib/api/endpoints";
 
   // API Configuration: prefer env; in dev without env use Vite proxy '/api', otherwise fall back to fixed host
-  const rawApiBase = import.meta.env.VITE_API_BASE_URL;
-  const DEFAULT_API_HOST = "https://reg1.src.ku.ac.th:8005";
-  const API_BASE_URL = rawApiBase
-    ? rawApiBase.replace(/\/$/, "")
-    : DEFAULT_API_HOST; // Force backend host when VITE_API_BASE_URL is not set
+  // API Configuration: prefer env; in dev without env use Vite proxy '/api', otherwise fall back to fixed host
+  const rawEnv = import.meta.env.VITE_API_BASE_URL;
+  const envUrl =
+    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+  const API_BASE_URL = envUrl.replace(/\/$/, "");
 
   const api = axios.create({
     baseURL: API_BASE_URL,

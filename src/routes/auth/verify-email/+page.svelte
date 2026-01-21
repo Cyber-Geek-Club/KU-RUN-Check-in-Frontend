@@ -3,7 +3,10 @@
   import { slide, scale, fade } from "svelte/transition";
   import { onMount } from "svelte";
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+  const rawEnv = import.meta.env.VITE_API_BASE_URL;
+  const envUrl =
+    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+  const API_BASE = envUrl.replace(/\/$/, "");
 
   let verifyStatus: "loading" | "success" | "error" = "loading";
   let message: string = "Verifying your email...";
@@ -26,7 +29,7 @@
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
       const data = await res.json().catch(() => ({}));
 
@@ -40,27 +43,43 @@
           // "message port closed before a response was received" errors
           channel.postMessage("register-verified");
           setTimeout(() => {
-            try { channel.close(); } catch (e) { /* ignore */ }
+            try {
+              channel.close();
+            } catch (e) {
+              /* ignore */
+            }
           }, 100);
         } catch (e) {
-          console.warn('BroadcastChannel not available or failed:', e);
+          console.warn("BroadcastChannel not available or failed:", e);
         }
-        
+
         // Start countdown for auto-redirect
         startCountdown();
       } else {
         verifyStatus = "error";
-        if (data.detail?.includes("expired") || data.message?.includes("expired")) {
-          message = "This verification link has expired. Please request a new one.";
-        } else if (data.detail?.includes("already") || data.message?.includes("already")) {
-          message = "Great news! Your email is already verified. You can log in now.";
+        if (
+          data.detail?.includes("expired") ||
+          data.message?.includes("expired")
+        ) {
+          message =
+            "This verification link has expired. Please request a new one.";
+        } else if (
+          data.detail?.includes("already") ||
+          data.message?.includes("already")
+        ) {
+          message =
+            "Great news! Your email is already verified. You can log in now.";
         } else {
-          message = data.detail || data.message || "Verification failed. Please try again or contact support.";
+          message =
+            data.detail ||
+            data.message ||
+            "Verification failed. Please try again or contact support.";
         }
       }
     } catch (error) {
       verifyStatus = "error";
-      message = "We couldn't connect to the server. Please check your internet connection and try again.";
+      message =
+        "We couldn't connect to the server. Please check your internet connection and try again.";
     }
   });
 
@@ -98,7 +117,9 @@
           </div>
           <div class="title-section" style="text-align: center;" in:slide>
             <h1 class="main-title">Verifying Your Email</h1>
-            <p class="sub-title">Hang tight! We're confirming your email address...</p>
+            <p class="sub-title">
+              Hang tight! We're confirming your email address...
+            </p>
             <div class="loading-dots">
               <span></span><span></span><span></span>
             </div>
@@ -123,22 +144,38 @@
               </svg>
             </div>
           </div>
-          <div class="title-section" style="text-align: center;" in:slide={{ delay: 200 }}>
+          <div
+            class="title-section"
+            style="text-align: center;"
+            in:slide={{ delay: 200 }}
+          >
             <h1 class="main-title" style="color: #10b981;">All Set! ✓</h1>
             <p class="sub-title success-message">
               {message}
             </p>
-            <p class="sub-title" style="margin-top: 20px; color: #d1d5db; font-size: 15px;">
+            <p
+              class="sub-title"
+              style="margin-top: 20px; color: #d1d5db; font-size: 15px;"
+            >
               You're all set to explore KU Run Check-in!
             </p>
           </div>
           <div class="form-section" in:fade={{ delay: 400 }}>
             <div class="countdown-box">
-              <p>Redirecting to login in <strong>{countdown}</strong> seconds...</p>
+              <p>
+                Redirecting to login in <strong>{countdown}</strong> seconds...
+              </p>
             </div>
             <button class="primary-btn" on:click={handleGoToLogin}>
               <span class="btn-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                   <polyline points="10 17 15 12 10 7"></polyline>
                   <line x1="15" y1="12" x2="3" y2="12"></line>
@@ -171,7 +208,11 @@
               </svg>
             </div>
           </div>
-          <div class="title-section" style="text-align: center;" in:slide={{ delay: 200 }}>
+          <div
+            class="title-section"
+            style="text-align: center;"
+            in:slide={{ delay: 200 }}
+          >
             <h1 class="main-title" style="color: #ef4444;">
               Verification Issue
             </h1>
@@ -179,7 +220,10 @@
               {message}
             </p>
             {#if message.includes("already verified")}
-              <p class="sub-title" style="margin-top: 16px; color: #10b981; font-weight: 600;">
+              <p
+                class="sub-title"
+                style="margin-top: 16px; color: #10b981; font-weight: 600;"
+              >
                 ✓ You can proceed to login!
               </p>
             {/if}
@@ -188,7 +232,14 @@
             {#if message.includes("already verified")}
               <button class="primary-btn" on:click={handleGoToLogin}>
                 <span class="btn-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
                     <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                     <polyline points="10 17 15 12 10 7"></polyline>
                     <line x1="15" y1="12" x2="3" y2="12"></line>
@@ -199,8 +250,16 @@
             {:else}
               <button class="primary-btn error-btn" on:click={handleBackToHome}>
                 <span class="btn-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+                    ></path>
                     <polyline points="9 22 9 12 15 12 15 22"></polyline>
                   </svg>
                 </span>
@@ -412,7 +471,9 @@
     align-items: center;
     justify-content: center;
     color: #10b981;
-    box-shadow: 0 0 30px rgba(16, 185, 129, 0.3), 0 0 60px rgba(16, 185, 129, 0.1);
+    box-shadow:
+      0 0 30px rgba(16, 185, 129, 0.3),
+      0 0 60px rgba(16, 185, 129, 0.1);
     animation: success-pulse 2s ease-in-out infinite;
   }
   .error-circle {
@@ -425,7 +486,9 @@
     align-items: center;
     justify-content: center;
     color: #ef4444;
-    box-shadow: 0 0 30px rgba(239, 68, 68, 0.3), 0 0 60px rgba(239, 68, 68, 0.1);
+    box-shadow:
+      0 0 30px rgba(239, 68, 68, 0.3),
+      0 0 60px rgba(239, 68, 68, 0.1);
     animation: error-shake 0.5s ease-in-out;
   }
 
@@ -445,7 +508,7 @@
     border-radius: 50%;
     animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
   }
-  
+
   .loading-dots {
     display: flex;
     justify-content: center;
@@ -467,8 +530,12 @@
   }
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
   @keyframes pulse-ring {
     0% {
@@ -481,20 +548,41 @@
     }
   }
   @keyframes success-pulse {
-    0%, 100% {
-      box-shadow: 0 0 30px rgba(16, 185, 129, 0.3), 0 0 60px rgba(16, 185, 129, 0.1);
+    0%,
+    100% {
+      box-shadow:
+        0 0 30px rgba(16, 185, 129, 0.3),
+        0 0 60px rgba(16, 185, 129, 0.1);
     }
     50% {
-      box-shadow: 0 0 40px rgba(16, 185, 129, 0.5), 0 0 80px rgba(16, 185, 129, 0.2);
+      box-shadow:
+        0 0 40px rgba(16, 185, 129, 0.5),
+        0 0 80px rgba(16, 185, 129, 0.2);
     }
   }
   @keyframes error-shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-    20%, 40%, 60%, 80% { transform: translateX(8px); }
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+      transform: translateX(-8px);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+      transform: translateX(8px);
+    }
   }
   @keyframes loading-bounce {
-    0%, 80%, 100% {
+    0%,
+    80%,
+    100% {
       transform: scale(0);
       opacity: 0.5;
     }
