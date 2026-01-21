@@ -1501,7 +1501,8 @@
       </div>
     </div>
 
-    <div class="ce-grid-layout">
+    <slot />
+    <div class="ce-grid-layout" style="display: none;">
       <div
         class="ce-card ce-img-card"
         class:has-img={formData.imagePreview}
