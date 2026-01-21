@@ -339,6 +339,7 @@
         lockMessage?: string;
         completion_rank?: number;
         total_days?: number;
+        rejoin_count?: number; // จำนวนครั้งที่ rejoin แล้ว (0-5)
     }
 
     // Helper to normalize join/completion code fields coming from API
@@ -888,6 +889,7 @@
                 lockMessage: lockMessage,
                 completion_rank: compRank,
                 total_days: totalValidDays,
+                rejoin_count: p.rejoin_count ?? 0,
             };
 
             if (shouldGoToHistory) history.push(item);
@@ -1366,6 +1368,20 @@
         localStorage.setItem(key, (current + 1).toString());
     }
 
+    // --- REJOIN HELPER FUNCTIONS ---
+    const MAX_REJOIN_COUNT = 5;
+
+    function canRejoin(event: EventItem): boolean {
+        return (
+            event.status === "CANCELED" &&
+            (event.rejoin_count ?? 0) < MAX_REJOIN_COUNT
+        );
+    }
+
+    function getRemainingRejoins(event: EventItem): number {
+        return MAX_REJOIN_COUNT - (event.rejoin_count ?? 0);
+    }
+
     async function handleReJoin(event: EventItem) {
         const token = getToken();
         if (!token) {
@@ -1390,8 +1406,45 @@
             return;
         }
 
+        // Check if user can rejoin
+        if (!canRejoin(event)) {
+            Swal.fire({
+                icon: "warning",
+                title:
+                    lang === "th"
+                        ? "ไม่สามารถกลับเข้าร่วมได้"
+                        : "Cannot Rejoin",
+                text:
+                    lang === "th"
+                        ? "ใช้สิทธิ์กลับเข้าร่วมครบ 5 ครั้งแล้ว"
+                        : "You have used all 5 rejoin attempts",
+            });
+            return;
+        }
+
+        // Show confirmation dialog
+        const remaining = getRemainingRejoins(event);
+        const confirmResult = await Swal.fire({
+            icon: "question",
+            title: lang === "th" ? "ยืนยันการกลับเข้าร่วม" : "Confirm Rejoin",
+            html:
+                lang === "th"
+                    ? `คุณต้องการกลับเข้าร่วมกิจกรรมนี้ใช่หรือไม่?<br><br><span style="color: #f59e0b; font-weight: 600;">เหลือสิทธิ์ ${remaining} ครั้ง</span>`
+                    : `Do you want to rejoin this event?<br><br><span style="color: #f59e0b; font-weight: 600;">${remaining} attempts remaining</span>`,
+            showCancelButton: true,
+            confirmButtonText: lang === "th" ? "ยืนยัน" : "Confirm",
+            cancelButtonText: lang === "th" ? "ยกเลิก" : "Cancel",
+            confirmButtonColor: "#8b5cf6",
+            cancelButtonColor: "#6b7280",
+        });
+
+        if (!confirmResult.isConfirmed) {
+            return;
+        }
+
         Swal.fire({
-            title: lang === "th" ? "กำลังเข้าร่วมใหม่..." : "Joining...",
+            title: lang === "th" ? "กำลังดำเนินการ..." : "Processing...",
+            allowOutsideClick: false,
             didOpen: () => Swal.showLoading(),
         });
 
@@ -1412,27 +1465,36 @@
 
             if (res.ok) {
                 const data = await res.json();
+                const newJoinCode = data.join_code || "";
 
                 // Close modal first
                 closeModal();
 
-                Swal.fire({
+                // Show success with new join code
+                await Swal.fire({
                     icon: "success",
                     title:
                         lang === "th"
-                            ? "เข้าร่วมสำเร็จ"
-                            : "Joined Successfully",
-                    timer: 1500,
-                    showConfirmButton: false,
+                            ? "กลับเข้าร่วมกิจกรรมสำเร็จ!"
+                            : "Rejoin Successful!",
+                    html: newJoinCode
+                        ? lang === "th"
+                            ? `<p style="margin-bottom: 10px;">รหัสใหม่ของคุณ:</p><p style="font-size: 2rem; font-weight: bold; color: #10b981; letter-spacing: 8px;">${newJoinCode}</p>`
+                            : `<p style="margin-bottom: 10px;">Your new code:</p><p style="font-size: 2rem; font-weight: bold; color: #10b981; letter-spacing: 8px;">${newJoinCode}</p>`
+                        : undefined,
+                    confirmButtonText: lang === "th" ? "ตกลง" : "OK",
+                    confirmButtonColor: "#10b981",
                 });
+
                 await loadData();
             } else {
                 const errData = await res.json().catch(() => ({}));
+                // Use Thai error message from backend directly
                 const errMsg =
                     errData.detail ||
                     errData.message ||
                     (lang === "th"
-                        ? "ไม่สามารถเข้าร่วมใหม่ได้"
+                        ? "ไม่สามารถกลับเข้าร่วมได้"
                         : "Cannot rejoin event");
 
                 Swal.fire({
@@ -3812,9 +3874,9 @@
                                 </div>
                             </div>
                         {:else if selectedEvent.status === "CANCELED"}
-                            {@const cancelCount = getCancelCount(
-                                selectedEvent.id,
-                            )}
+                            {@const remainingRejoins =
+                                getRemainingRejoins(selectedEvent)}
+                            {@const canUserRejoin = canRejoin(selectedEvent)}
                             <div
                                 class="cancelled-view"
                                 style="text-align: center; padding: 40px 0; color: #94a3b8;"
@@ -3830,29 +3892,31 @@
                                         : "Event Cancelled"}
                                 </h3>
 
-                                {#if cancelCount < 5}
+                                {#if canUserRejoin}
                                     <p
-                                        style="color: #ef4444; margin-bottom: 15px;"
+                                        style="color: #f59e0b; margin-bottom: 15px; font-weight: 500;"
                                     >
                                         {lang === "th"
-                                            ? `คุณสามารถสมัครใหม่ได้ (จำนวนครั้งที่ยกเลิก: ${cancelCount}/5)`
-                                            : `You can re-join (Cancellation count: ${cancelCount}/5)`}
+                                            ? `เหลือสิทธิ์กลับเข้าร่วม ${remainingRejoins} ครั้ง`
+                                            : `${remainingRejoins} rejoin attempts remaining`}
                                     </p>
                                     <button
-                                        class="action-btn"
-                                        style="background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 30px; cursor: pointer; font-size: 1rem;"
+                                        class="rejoin-btn"
+                                        style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); color: white; border: none; padding: 12px 28px; border-radius: 30px; cursor: pointer; font-size: 1rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);"
                                         on:click={() =>
                                             handleReJoin(selectedEvent!)}
                                     >
-                                        {lang === "th"
-                                            ? "สมัครใหม่อีกครั้ง"
-                                            : "Re-Join Event"}
+                                        🔄 {lang === "th"
+                                            ? "กลับเข้าร่วมอีกครั้ง"
+                                            : "Rejoin Event"}
                                     </button>
                                 {:else}
-                                    <p style="color: #ef4444;">
+                                    <p
+                                        style="color: #ef4444; font-weight: 500;"
+                                    >
                                         {lang === "th"
-                                            ? "คุณยกเลิกครบกำหนด 5 ครั้งแล้ว ไม่สามารถสมัครใหม่ได้ในวันนี้"
-                                            : "You have reached the cancellation limit (5 times). Cannot re-join today."}
+                                            ? "ใช้สิทธิ์กลับเข้าร่วมครบ 5 ครั้งแล้ว"
+                                            : "You have used all 5 rejoin attempts"}
                                     </p>
                                 {/if}
                             </div>
