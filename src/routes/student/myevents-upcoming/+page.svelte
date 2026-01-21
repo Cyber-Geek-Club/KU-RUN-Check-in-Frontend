@@ -709,8 +709,8 @@
                 return `${hours}:${minutes}`;
             };
 
-            const startTimeStr = extractTimeRaw(startIso);
-            const endTimeStr = extractTimeRaw(endIso);
+            const startTimeStr = ev.start_time || extractTimeRaw(startIso);
+            const endTimeStr = ev.end_time || extractTimeRaw(endIso);
 
             // Parse date ให้ถูกต้องโดยพิจารณา timezone
             const parseDateOnly = (isoStr: string): Date | null => {
