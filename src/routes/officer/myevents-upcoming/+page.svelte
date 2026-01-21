@@ -1334,7 +1334,8 @@
     function canRejoin(event: EventItem): boolean {
         return (
             event.status === "CANCELED" &&
-            (event.rejoin_count ?? 0) < MAX_REJOIN_COUNT
+            (event.rejoin_count ?? 0) < MAX_REJOIN_COUNT &&
+            !event.isLocked // ถ้ากิจกรรมเลยเวลา (isLocked) จะไม่ให้ rejoin
         );
     }
 
@@ -3832,6 +3833,15 @@
                                             ? "กลับเข้าร่วมอีกครั้ง"
                                             : "Rejoin Event"}
                                     </button>
+                                {:else if selectedEvent.isLocked}
+                                    <p
+                                        style="color: #6b7280; font-weight: 500;"
+                                    >
+                                        {selectedEvent.lockMessage ||
+                                            (lang === "th"
+                                                ? "กิจกรรมนี้สิ้นสุดแล้ว"
+                                                : "This event has ended")}
+                                    </p>
                                 {:else}
                                     <p
                                         style="color: #ef4444; font-weight: 500;"

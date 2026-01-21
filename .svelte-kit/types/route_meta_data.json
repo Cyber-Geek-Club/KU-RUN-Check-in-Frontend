@@ -9,10 +9,49 @@
 	"/officer/monthly-reward": [],
 	"/officer/myevents-upcoming": [],
 	"/officer/setting-account": [],
-	"/organizer": [],
-	"/organizer/create-event": [],
-	"/organizer/logs": [],
-	"/organizer/monthly-reward": [],
+	"/organizer": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/create-event": [
+		"src/routes/organizer/+layout.ts",
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/create-event/capacity": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/create-event/general": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/create-event/rewards": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/create-event/summary": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/events": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/events/[id]": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/logs": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/rewards": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/settings": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/unlock": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/verify-code": [
+		"src/routes/organizer/+layout.ts"
+	],
+	"/organizer/verify-proof": [
+		"src/routes/organizer/+layout.ts"
+	],
 	"/student": [],
 	"/student/event-list": [],
 	"/student/monthly-reward": [],
