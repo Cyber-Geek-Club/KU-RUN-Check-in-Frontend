@@ -15,8 +15,8 @@
 
   // Default to the production API host when no env var is set
   const envUrl =
-    import.meta.env.VITE_API_BASE_URL || "http://158.108.102.14:8001";
-  const API_BASE_URL = (envUrl || "http://158.108.102.14:8001").replace(
+    import.meta.env.VITE_API_BASE_URL || "https://158.108.102.14:8001";
+  const API_BASE_URL = (envUrl || "https://158.108.102.14:8001").replace(
     /\/$/,
     "",
   );
