@@ -1367,28 +1367,93 @@
     }
 
     async function handleReJoin(event: EventItem) {
-        // Logic เหมือน CheckInEvent แต่ทำผ่านปุ่ม Re-Join
+        const token = getToken();
+        if (!token) {
+            Swal.fire(
+                t[lang].alert_error,
+                t[lang].alert_session_expired,
+                "error",
+            );
+            return;
+        }
+
+        // Must have participation_id for cancelled events
+        if (!event.participation_id) {
+            Swal.fire({
+                icon: "error",
+                title: lang === "th" ? "เกิดข้อผิดพลาด" : "Error",
+                text:
+                    lang === "th"
+                        ? "ไม่พบข้อมูลการเข้าร่วม กรุณารีเฟรชหน้าจอ"
+                        : "Participation data not found. Please refresh.",
+            });
+            return;
+        }
+
         Swal.fire({
             title: lang === "th" ? "กำลังเข้าร่วมใหม่..." : "Joining...",
             didOpen: () => Swal.showLoading(),
         });
 
-        const res = await CheckInEvent(event.id);
-        Swal.close();
+        try {
+            // Use rejoin endpoint to reset cancelled participation
+            const res = await fetch(
+                `${BASE_URL}/api/participations/${event.participation_id}/rejoin`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
 
-        if (res) {
-            // Close modal first
-            closeModal();
+            Swal.close();
 
+            if (res.ok) {
+                const data = await res.json();
+
+                // Close modal first
+                closeModal();
+
+                Swal.fire({
+                    icon: "success",
+                    title:
+                        lang === "th"
+                            ? "เข้าร่วมสำเร็จ"
+                            : "Joined Successfully",
+                    timer: 1500,
+                    showConfirmButton: false,
+                });
+                await loadData();
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                const errMsg =
+                    errData.detail ||
+                    errData.message ||
+                    (lang === "th"
+                        ? "ไม่สามารถเข้าร่วมใหม่ได้"
+                        : "Cannot rejoin event");
+
+                Swal.fire({
+                    icon: "error",
+                    title: lang === "th" ? "เกิดข้อผิดพลาด" : "Error",
+                    text: errMsg,
+                });
+            }
+        } catch (e: any) {
+            Swal.close();
+            console.error("Rejoin error:", e);
             Swal.fire({
-                icon: "success",
-                title: lang === "th" ? "เข้าร่วมสำเร็จ" : "Joined Successfully",
-                timer: 1500,
-                showConfirmButton: false,
+                icon: "error",
+                title: lang === "th" ? "เกิดข้อผิดพลาด" : "Error",
+                text:
+                    e.message ||
+                    (lang === "th"
+                        ? "การเชื่อมต่อล้มเหลว"
+                        : "Connection failed"),
             });
-            await loadData();
         }
-        // Note: CheckInEvent already shows error via Swal.fire if res is null
     }
 
     // --- DASHBOARD STATE ---
