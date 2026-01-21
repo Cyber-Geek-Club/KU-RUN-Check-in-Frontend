@@ -1,30 +1,10 @@
 <script lang="ts">
   import { onMount, afterUpdate, onDestroy, tick } from "svelte";
-  import axios from "axios";
+  import { api, API_BASE_URL } from "../_lib/api/client";
   import Swal from "sweetalert2";
   import { endpoints } from "../_lib/api/endpoints"; //
   import { resolveImageUrl } from "$lib/utils/imageUtils";
 
-  // ===== API Configuration =====
-  // ใช้ client instance ที่อาจจะมีการ config interceptors ไว้แล้วในโปรเจคจริง หรือสร้างใหม่ที่นี่
-  const API_BASE_URL = (
-    import.meta.env.VITE_API_BASE_URL &&
-    import.meta.env.VITE_API_BASE_URL.trim() !== ""
-      ? import.meta.env.VITE_API_BASE_URL
-      : "https://reg1.src.ku.ac.th:8005"
-  ).replace(/\/$/, "");
-
-  if (
-    !(
-      import.meta.env.VITE_API_BASE_URL &&
-      import.meta.env.VITE_API_BASE_URL.trim() !== ""
-    )
-  ) {
-    console.warn(
-      "[rewards] VITE_API_BASE_URL not set — falling back to",
-      API_BASE_URL,
-    );
-  }
   const IMAGE_PLACEHOLDER =
     "https://placehold.co/400x200/94a3b8/ffffff?text=Loading...";
   const BADGE_PLACEHOLDER = "https://placehold.co/64x64/94a3b8/ffffff?text=";
@@ -47,17 +27,6 @@
     }
     Swal.fire({ icon: "error", title: lang.error, text: detail });
   }
-
-  const api = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: 30000,
-  });
-
-  api.interceptors.request.use((config) => {
-    const token = localStorage.getItem("access_token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
 
   // ===== Types (ปรับให้ตรงกับ Backend Pydantic Schemas) =====
   interface Event {

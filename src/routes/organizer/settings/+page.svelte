@@ -1,29 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import axios from "axios";
   import Swal from "sweetalert2";
   import { fade, slide } from "svelte/transition";
-
-  // --- 1. API Configuration (FIXED) ---
-  // ใส่ Default URL เพื่อป้องกันการยิงเข้า localhost:5173
-  // ใส่ Default URL เพื่อป้องกันการยิงเข้า localhost:5173
-  const rawEnv = import.meta.env.VITE_API_BASE_URL;
-  const envUrl =
-    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
-  const API_BASE_URL = envUrl.replace(/\/$/, "");
-
-  const api = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: 30000,
-  });
-
-  api.interceptors.request.use((config) => {
-    if (typeof localStorage !== "undefined") {
-      const token = localStorage.getItem("access_token");
-      if (token) config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  });
+  import { api, API_BASE_URL } from "../_lib/api/client";
 
   // --- Language ---
   import { writable } from "svelte/store";

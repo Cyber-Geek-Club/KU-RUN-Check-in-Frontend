@@ -1,39 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import axios from "axios";
+  import { onMount, onDestroy } from "svelte";
   import jsQR from "jsqr";
 
   // ✅ Import API Endpoints
   import { endpoints } from "../_lib/api/endpoints";
-
-  // API Configuration: prefer env; in dev without env use Vite proxy '/api', otherwise fall back to fixed host
-  // API Configuration: prefer env; in dev without env use Vite proxy '/api', otherwise fall back to fixed host
-  const rawEnv = import.meta.env.VITE_API_BASE_URL;
-  const envUrl =
-    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
-  const API_BASE_URL = envUrl.replace(/\/$/, "");
-
-  const api = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: 30000,
-  });
-
-  api.interceptors.request.use((config) => {
-    const token = localStorage.getItem("access_token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
-
-  // ✅ เพิ่ม Interceptor เพื่อจัดการ 404 เงียบๆ
-  api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response && error.response.status === 404) {
-        return Promise.reject(error);
-      }
-      return Promise.reject(error);
-    },
-  );
+  import { api, API_BASE_URL } from "../_lib/api/client";
 
   // Language
   type Language = "th" | "en";

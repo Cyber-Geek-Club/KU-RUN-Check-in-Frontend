@@ -1,40 +1,9 @@
 <script lang="ts">
-  import axios from "axios";
   import { onMount } from "svelte";
+  import { api, API_BASE_URL } from "../_lib/api/client";
 
   // ✅ Import API Endpoints
   import { endpoints } from "../_lib/api/endpoints";
-
-  // API Configuration
-  const rawEnv = import.meta.env.VITE_API_BASE_URL;
-  const envUrl =
-    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
-  const API_BASE_URL = envUrl.replace(/\/$/, "");
-
-  const api = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: 30000,
-  });
-
-  // Attach Token if available
-  api.interceptors.request.use((config) => {
-    if (typeof localStorage !== "undefined") {
-      const token = localStorage.getItem("access_token");
-      if (token) config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  });
-
-  // Handle 404 silently
-  api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response && error.response.status === 404) {
-        return Promise.reject(error);
-      }
-      return Promise.reject(error);
-    },
-  );
 
   // Language Setup
   type Language = "th" | "en";

@@ -2,27 +2,10 @@
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import Swal from "sweetalert2";
-  import axios from "axios";
+  import { api, API_BASE_URL } from "../_lib/api/client";
 
-  // ✅ 1. ตั้งค่า Base URL ให้ถูกต้อง
-  const ENV_API = import.meta.env.VITE_API_BASE_URL;
-  const API_BASE_URL = (
-    ENV_API && ENV_API.trim() !== ""
-      ? ENV_API
-      : "https://reg1.src.ku.ac.th:8005"
-  ).replace(/\/$/, "");
   const IMAGE_PLACEHOLDER =
     "https://placehold.co/400x200/94a3b8/ffffff?text=Loading...";
-  const api = axios.create({
-    baseURL: API_BASE_URL,
-    timeout: 30000,
-    headers: { "Content-Type": "application/json" },
-  });
-  api.interceptors.request.use((config) => {
-    const token = localStorage.getItem("access_token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
 
   // ---------- Performance helpers ----------
   const CACHE_TTL = 60 * 1000; // 60s
