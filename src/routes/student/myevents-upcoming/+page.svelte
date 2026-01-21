@@ -1346,6 +1346,47 @@
         }
     }
 
+    // --- RE-JOIN LOGIC ---
+    function getCancelCountKey(eventId: number) {
+        const userId = getUserIdFromToken() || "guest";
+        const today = new Date().toISOString().split("T")[0];
+        return `cancel_count_${userId}_${eventId}_${today}`;
+    }
+
+    function getCancelCount(eventId: number): number {
+        if (typeof localStorage === "undefined") return 0;
+        const key = getCancelCountKey(eventId);
+        return parseInt(localStorage.getItem(key) || "0", 10);
+    }
+
+    function incrementCancelCount(eventId: number) {
+        if (typeof localStorage === "undefined") return;
+        const key = getCancelCountKey(eventId);
+        const current = getCancelCount(eventId);
+        localStorage.setItem(key, (current + 1).toString());
+    }
+
+    async function handleReJoin(event: EventItem) {
+        // Logic เหมือน CheckInEvent แต่ทำผ่านปุ่ม Re-Join
+        Swal.fire({
+            title: lang === "th" ? "กำลังเข้าร่วมใหม่..." : "Joining...",
+            didOpen: () => Swal.showLoading(),
+        });
+
+        const res = await CheckInEvent(event.id);
+        Swal.close();
+
+        if (res) {
+            Swal.fire({
+                icon: "success",
+                title: lang === "th" ? "เข้าร่วมสำเร็จ" : "Joined Successfully",
+                timer: 1500,
+                showConfirmButton: false,
+            });
+            await loadData();
+        }
+    }
+
     // --- DASHBOARD STATE ---
     let showDashboardModal = false;
     let dashboardEvent: EventItem | null = null;
@@ -1614,6 +1655,8 @@
 
             if (res.ok) {
                 // Update local state
+                incrementCancelCount(eventToCancel.id); // Add this line
+
                 upcomingEvents = upcomingEvents.filter(
                     (e) => e.participation_id !== participationId,
                 );
@@ -3700,6 +3743,9 @@
                                 </div>
                             </div>
                         {:else if selectedEvent.status === "CANCELED"}
+                            {@const cancelCount = getCancelCount(
+                                selectedEvent.id,
+                            )}
                             <div
                                 class="cancelled-view"
                                 style="text-align: center; padding: 40px 0; color: #94a3b8;"
@@ -3709,11 +3755,37 @@
                                 >
                                     🚫
                                 </div>
-                                <h3>
+                                <h3 style="margin-bottom: 20px;">
                                     {lang === "th"
-                                        ? "กิจกรรมถูกยกเลิก (สมัครใหม่ในวันถัดไป)"
-                                        : "Event Cancelled (Please register again next day)"}
+                                        ? "กิจกรรมถูกยกเลิก"
+                                        : "Event Cancelled"}
                                 </h3>
+
+                                {#if cancelCount < 5}
+                                    <p
+                                        style="color: #ef4444; margin-bottom: 15px;"
+                                    >
+                                        {lang === "th"
+                                            ? `คุณสามารถสมัครใหม่ได้ (จำนวนครั้งที่ยกเลิก: ${cancelCount}/5)`
+                                            : `You can re-join (Cancellation count: ${cancelCount}/5)`}
+                                    </p>
+                                    <button
+                                        class="action-btn"
+                                        style="background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 30px; cursor: pointer; font-size: 1rem;"
+                                        on:click={() =>
+                                            handleReJoin(selectedEvent)}
+                                    >
+                                        {lang === "th"
+                                            ? "สมัครใหม่อีกครั้ง"
+                                            : "Re-Join Event"}
+                                    </button>
+                                {:else}
+                                    <p style="color: #ef4444;">
+                                        {lang === "th"
+                                            ? "คุณยกเลิกครบกำหนด 5 ครั้งแล้ว ไม่สามารถสมัครใหม่ได้ในวันนี้"
+                                            : "You have reached the cancellation limit (5 times). Cannot re-join today."}
+                                    </p>
+                                {/if}
                             </div>
                         {/if}
                     </div>
