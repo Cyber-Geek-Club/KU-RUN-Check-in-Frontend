@@ -727,6 +727,7 @@
                 const [y, m, d] = part.split("-").map(Number);
                 return new Date(y, m - 1, d);
             };
+            
 
             const projectStartDate = parseDateOnly(startIso);
             const projectEndDate = parseDateOnly(endIso);
