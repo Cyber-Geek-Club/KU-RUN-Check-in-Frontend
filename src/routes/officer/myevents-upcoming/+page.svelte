@@ -692,8 +692,8 @@
                 return `${hours}:${minutes}`;
             };
 
-            const startTimeStr = extractTimeRaw(startIso);
-            const endTimeStr = extractTimeRaw(endIso);
+            const startTimeStr = ev.start_time || extractTimeRaw(startIso);
+            const endTimeStr = ev.end_time || extractTimeRaw(endIso);
 
             // Parse date ให้ถูกต้องโดยพิจารณา timezone
             const parseDateOnly = (isoStr: string): Date | null => {
@@ -803,7 +803,13 @@
                     }
                 }
             } else if (uiStatus === "CHECKED_OUT") {
-                isLocked = false; // บังคับให้ไม่ Lock เพื่อให้กดเปิด QR Code ได้
+                if (isTimeOver) {
+                    isLocked = true;
+                    lockMessage =
+                        lang === "th" ? "หมดเวลากิจกรรม" : "Time's up";
+                } else {
+                    isLocked = false;
+                }
             } else if (isBeforeTime) {
                 isLocked = true;
                 lockMessage = lang === "th" ? "ยังไม่ถึงเวลา" : "Not yet time";

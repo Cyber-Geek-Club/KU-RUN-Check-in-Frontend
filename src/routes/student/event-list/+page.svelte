@@ -349,22 +349,28 @@
       const newEvents = apiData
         .filter((item: any) => {
           // [FIX] Filter: ไม่แสดงกิจกรรมที่เลยเวลาสิ้นสุดแล้ว (รวมเวลาด้วย)
-          if (item.event_end_date && item.end_time) {
-            // [FIX] Valid datetime construction
-            const datePart = item.event_end_date.split("T")[0]; // Ensure YYYY-MM-DD
-            const timePart = item.end_time.trim();
-            // Handle potentially missing seconds or format issues by letting Date parse standard ISO
-            const endDateTime = new Date(`${datePart}T${timePart}`);
+          let effectiveEndDate: Date | null = null;
 
-            // Check if date is valid
-            if (!isNaN(endDateTime.getTime())) {
-              if (now > endDateTime) return false;
+          if (item.event_end_date) {
+            // 1. Try explicit end_time
+            if (item.end_time) {
+              const datePart = item.event_end_date.split("T")[0];
+              effectiveEndDate = new Date(`${datePart}T${item.end_time}`);
             }
-          } else if (item.event_end_date) {
-            // Fallback: ถ้าไม่มี end_time ให้เช็คแค่วันจบเท่านั้น
-            const endDate = new Date(item.event_end_date);
-            endDate.setHours(23, 59, 59, 999);
-            if (now > endDate) return false;
+            // 2. Try time inside event_end_date if it contains T (ISO format)
+            else if (item.event_end_date.includes("T")) {
+              effectiveEndDate = new Date(item.event_end_date);
+            }
+            // 3. Fallback: End of day
+            else {
+              const d = new Date(item.event_end_date);
+              d.setHours(23, 59, 59, 999);
+              effectiveEndDate = d;
+            }
+          }
+
+          if (effectiveEndDate && !isNaN(effectiveEndDate.getTime())) {
+            if (now > effectiveEndDate) return false;
           }
           return true;
         })
