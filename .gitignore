@@ -32,11 +32,7 @@ node_modules/
 build/
 dist/
 
-# Environment variables (กันรหัสหลุด)
 
-.env.local
-.env.*
-!.env.example
 
 # OS Generated files (ไฟล์ขยะระบบ)
 .DS_Store
