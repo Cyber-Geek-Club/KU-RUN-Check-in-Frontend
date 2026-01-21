@@ -3694,6 +3694,7 @@
                                         class="action-btn"
                                         style="background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 30px; cursor: pointer; font-size: 1rem;"
                                         on:click={() =>
+                                            selectedEvent &&
                                             handleReJoin(selectedEvent)}
                                     >
                                         {lang === "th"
