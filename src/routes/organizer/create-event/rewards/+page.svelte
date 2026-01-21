@@ -22,8 +22,15 @@
   
   onMount(() => {
     const storeData = $eventForm as any;
-    if (storeData.totalRewards) {
-      ce_formData = { ...storeData };
+    // โหลดข้อมูลทั้งหมดจาก Store ทันที เพื่อให้ totalSlots ถูกดึงเข้ามาด้วย
+    ce_formData = {
+        ...ce_formData, // ค่า default
+        ...storeData    // ทับด้วยค่าจาก store (รวมถึง totalSlots และ rewards ที่เคยกรอกไว้)
+    };
+    
+    // หาก rewards ใน store ว่างเปล่า ให้กำหนดค่าเริ่มต้นให้มี 1 ช่องเสมอ
+    if (!ce_formData.rewards || ce_formData.rewards.length === 0) {
+        ce_formData.rewards = [{ name: '', requirement: null }];
     }
   });
   
