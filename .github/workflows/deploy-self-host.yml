@@ -42,22 +42,22 @@ jobs:
           # Build
           pnpm run build
 
-          # Stop old PM2
-          pm2 describe $PM2_NAME 2>$null
-          if ($LASTEXITCODE -eq 0) {
+          # Delete old PM2 process if exists (ignore errors)
+          $pmList = pm2 jlist 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue
+          $exists = $pmList | Where-Object { $_.name -eq $PM2_NAME }
+          if ($exists) {
+              Write-Host "Stopping existing PM2 process: $PM2_NAME"
               pm2 delete $PM2_NAME
           }
 
-          # Start SvelteKit Preview with PM2
-          pm2 start "pnpm run preview -- --host 127.0.0.1 --port $PORT" `
-            --name $PM2_NAME `
-            --max-memory-restart 500M `
-            --time
+          # Start SvelteKit with PM2 using node adapter
+          Write-Host "Starting $PM2_NAME on port $PORT..."
+          $env:PORT = $PORT
+          $env:HOST = "127.0.0.1"
+          pm2 start build/index.js --name $PM2_NAME --max-memory-restart 500M --time
 
           # Save PM2
           pm2 save --force
 
           # Status
           pm2 status
-
-          
