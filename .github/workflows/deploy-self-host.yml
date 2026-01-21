@@ -42,13 +42,10 @@ jobs:
           # Build
           pnpm run build
 
-          # Delete old PM2 process if exists (ignore errors)
-          $pmList = pm2 jlist 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue
-          $exists = $pmList | Where-Object { $_.name -eq $PM2_NAME }
-          if ($exists) {
-              Write-Host "Stopping existing PM2 process: $PM2_NAME"
-              pm2 delete $PM2_NAME
-          }
+          # Delete old PM2 process (ignore if doesn't exist)
+          Write-Host "Stopping any existing PM2 process: $PM2_NAME"
+          pm2 delete $PM2_NAME 2>$null
+          Start-Sleep -Seconds 2
 
           # Start SvelteKit with PM2 using node adapter
           Write-Host "Starting $PM2_NAME on port $PORT..."
