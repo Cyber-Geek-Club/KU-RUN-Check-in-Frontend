@@ -11,7 +11,7 @@ export default defineConfig({
 		proxy: {
 			// เมื่อไหร่ก็ตามที่ Frontend ยิงไปที่ /api
 			'/api': {
-				target: 'https://158.108.102.14:8005', // ให้ส่งต่อไปที่ localhost แทน
+				target: 'https://reg1.src.ku.ac.th:8005', // ให้ส่งต่อไปที่ localhost แทน
 				changeOrigin: true,
 				secure: true,
 			}

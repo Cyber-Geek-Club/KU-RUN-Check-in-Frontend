@@ -7,7 +7,7 @@
   // --- 1. API Configuration (FIXED) ---
   // ใส่ Default URL เพื่อป้องกันการยิงเข้า localhost:5173
   const API_BASE_URL = (
-    import.meta.env.VITE_API_BASE_URL || "https://158.108.102.14:8005"
+    import.meta.env.VITE_API_BASE_URL || "https://reg1.src.ku.ac.th:8005"
   ).replace(/\/$/, "");
 
   const api = axios.create({

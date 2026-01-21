@@ -5,7 +5,7 @@
 
 // Get base URL from environment
 // Default API host for production when VITE_API_BASE_URL is not set
-const DEFAULT_API_HOST = 'https://158.108.102.14:8005';
+const DEFAULT_API_HOST = 'https://reg1.src.ku.ac.th:8005';
 
 export const API_BASE_URL = (typeof import.meta !== 'undefined'
   ? import.meta.env?.VITE_API_BASE_URL

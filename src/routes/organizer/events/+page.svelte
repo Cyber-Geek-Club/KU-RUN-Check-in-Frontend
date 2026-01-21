@@ -6,7 +6,7 @@
 
   // ✅ 1. ตั้งค่า Base URL ให้ถูกต้อง
   const API_BASE_URL = (
-    import.meta.env.VITE_API_BASE_URL || "https://158.108.102.14:8005"
+    import.meta.env.VITE_API_BASE_URL || "https://reg1.src.ku.ac.th:8005"
   ).replace(/\/$/, "");
   const IMAGE_PLACEHOLDER =
     "https://placehold.co/400x200/94a3b8/ffffff?text=Loading...";

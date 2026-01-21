@@ -11,7 +11,7 @@
     import.meta.env.VITE_API_BASE_URL &&
     import.meta.env.VITE_API_BASE_URL.trim() !== ""
       ? import.meta.env.VITE_API_BASE_URL
-      : "https://158.108.102.14:8005"
+      : "https://reg1.src.ku.ac.th:8005"
   ).replace(/\/$/, "");
 
   if (
