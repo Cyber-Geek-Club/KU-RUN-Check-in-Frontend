@@ -1,25 +1,25 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import axios from 'axios';
-  import jsQR from 'jsqr';
-  
+  import { onMount, onDestroy } from "svelte";
+  import axios from "axios";
+  import jsQR from "jsqr";
+
   // ✅ Import API Endpoints
-  import { endpoints } from '../_lib/api/endpoints';
+  import { endpoints } from "../_lib/api/endpoints";
 
   // API Configuration: prefer env; in dev without env use Vite proxy '/api', otherwise fall back to fixed host
   const rawApiBase = import.meta.env.VITE_API_BASE_URL;
-  const DEFAULT_API_HOST = 'http://158.108.102.14:8001';
+  const DEFAULT_API_HOST = "http://158.108.102.14:8001";
   const API_BASE_URL = rawApiBase
-    ? rawApiBase.replace(/\/$/, '')
+    ? rawApiBase.replace(/\/$/, "")
     : DEFAULT_API_HOST; // Force backend host when VITE_API_BASE_URL is not set
 
   const api = axios.create({
     baseURL: API_BASE_URL,
     timeout: 30000,
   });
-  
+
   api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem("access_token");
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   });
@@ -29,21 +29,21 @@
     (response) => response,
     (error) => {
       if (error.response && error.response.status === 404) {
-         return Promise.reject(error);
+        return Promise.reject(error);
       }
       return Promise.reject(error);
-    }
+    },
   );
-  
+
   // Language
   type Language = "th" | "en";
   let currentLang: Language = "th";
-  
+
   if (typeof localStorage !== "undefined") {
     const saved = localStorage.getItem("app_language");
     if (saved === "th" || saved === "en") currentLang = saved;
   }
-  
+
   const translations = {
     th: {
       checkIn: "เช็คอิน",
@@ -96,13 +96,13 @@
       pointCameraAtQR: "Point camera at participant's QR code",
     },
   };
-  
+
   $: lang = translations[currentLang];
-  
+
   // State
   let verifyActionMode: "checkin" | "checkout" = "checkin";
   let verifyMode: "pin" | "qr" = "pin";
-  
+
   // ✅ [เพิ่ม] State สำหรับเลือกประเภทกิจกรรม (Single/Multi)
   let eventTypeMode: "single" | "multi" = "single";
 
@@ -113,19 +113,22 @@
   let lastParticipantName = "";
   let verifyErrorMessage = "";
   let verifyErrorIndex: number | null = null;
-  
+
   // ✅ [ลบ] eventsList, selectedEventId, dropdownOpen, dropdownRef ออก เพราะไม่ใช้แล้ว
 
   // Check-in mode: 'multi' => check-in daily, 'single' => single-day check-in
-  let checkInMode: 'multi' | 'single' = (import.meta.env.VITE_CHECKIN_MODE === 'single' ? 'single' : 'multi');
+  let checkInMode: "multi" | "single" =
+    import.meta.env.VITE_CHECKIN_MODE === "single" ? "single" : "multi";
   if (!import.meta.env.VITE_CHECKIN_MODE) {
-    console.info('VITE_CHECKIN_MODE not set — defaulting to "multi" (check-in-daily)');
+    console.info(
+      'VITE_CHECKIN_MODE not set — defaulting to "multi" (check-in-daily)',
+    );
   }
-  
+
   // ✅ [แก้ไข 1] PIN Mode: เหลือ 5 ช่อง
   let pins = ["", "", "", "", ""];
   let pinInputRefs: HTMLInputElement[] = [];
-  
+
   // QR Mode
   let videoRef: HTMLVideoElement;
   let canvasRef: HTMLCanvasElement;
@@ -135,7 +138,7 @@
   let qrSuccessShow = false;
   let scanInterval: any;
   let animationFrameId: number;
-  
+
   // Functions
   function switchActionMode(mode: "checkin" | "checkout") {
     verifyActionMode = mode;
@@ -151,12 +154,12 @@
     clearPins();
     verifyErrorMessage = "";
   }
-  
+
   function switchVerifyMode(mode: "pin" | "qr") {
     verifyMode = mode;
     clearPins();
     verifyErrorMessage = "";
-    
+
     if (mode === "qr") {
       setTimeout(() => startCamera(), 100);
     } else {
@@ -165,56 +168,56 @@
   }
 
   // ✅ [ลบ] handleEventSelect, toggleDropdown, selectEventById ออก
-  
+
   function clearPins() {
     pins = ["", "", "", "", ""]; // ✅ 5 ช่อง
     verifyErrorMessage = "";
     verifyErrorIndex = null;
     pinInputRefs[0]?.focus();
   }
-  
+
   function handlePinInput(index: number, event: Event) {
     const input = event.target as HTMLInputElement;
     const value = input.value;
-    
+
     if (value && !/^\d$/.test(value)) {
       pins[index] = "";
       return;
     }
-    
+
     pins[index] = value;
-    
+
     // ✅ [แก้ไข 2] เลื่อน focus: index < 4 (เพราะช่องสุดท้ายคือ index 4)
     if (value && index < 4) {
       pinInputRefs[index + 1]?.focus();
     }
-    
-    if (autoCheckIn && pins.every(p => p !== "")) {
+
+    if (autoCheckIn && pins.every((p) => p !== "")) {
       handleVerifyPin();
     }
   }
-  
+
   function handlePinKeydown(index: number, event: KeyboardEvent) {
     if (event.key === "Backspace" && !pins[index] && index > 0) {
       pinInputRefs[index - 1]?.focus();
     }
   }
-  
+
   function handlePinFocus(index: number) {
     verifyErrorMessage = "";
     verifyErrorIndex = null;
   }
-  
+
   async function handleVerifyPin() {
     const code = pins.join("");
     // ✅ [แก้ไข 3] ตรวจสอบความยาว 5 หลัก
     if (code.length !== 5) return;
-    
-    verifyCode(code, 'pin');
+
+    verifyCode(code, "pin");
   }
 
   // ✅ Unified Verification Logic with Real API
-  async function verifyCode(code: string, type: 'pin' | 'qr') {
+  async function verifyCode(code: string, type: "pin" | "qr") {
     if (isVerifying) return;
 
     isVerifying = true;
@@ -223,19 +226,21 @@
 
     try {
       // ✅ เลือก Endpoint ตามโหมดที่ผู้ใช้เลือก (Single หรือ Multi)
-      let endpoint = '';
-      if (verifyActionMode === 'checkout') {
+      let endpoint = "";
+      if (verifyActionMode === "checkout") {
         endpoint = endpoints.participations.checkoutByCode;
       } else {
-         // ถ้าเป็น Check-in ให้ดูว่าเลือก Activity (Single) หรือ Project (Multi/Daily) จาก Toggle
-         endpoint = eventTypeMode === 'multi' 
-          ? endpoints.participations.checkInDaily 
-          : endpoints.participations.checkIn;
+        // ถ้าเป็น Check-in ให้ดูว่าเลือก Activity (Single) หรือ Project (Multi/Daily) จาก Toggle
+        endpoint =
+          eventTypeMode === "multi"
+            ? endpoints.participations.checkInDaily
+            : endpoints.participations.checkIn;
       }
-      
-      const payload = type === 'pin' 
-          ? { code, join_code: code, type: 'pin' } 
-          : { qr_data: code, join_code: code, type: 'qr' };
+
+      const payload =
+        type === "pin"
+          ? { code, join_code: code, type: "pin" }
+          : { qr_data: code, join_code: code, type: "qr" };
 
       // Try primary endpoint, and if check-in returns 422 try the alternate check-in endpoint.
       let response;
@@ -243,15 +248,22 @@
         response = await api.post(endpoint, payload);
       } catch (err: any) {
         const status = err?.response?.status;
-        
+
         // ✅ [แก้ไขจุดที่ 1] เพิ่มเงื่อนไข status === 404 และ 400 เพื่อให้สลับ API อัตโนมัติเมื่อหาไม่เจอ
         // Only attempt automatic fallback for check-in actions when backend rejects (422, 404, or 400)
-        if (verifyActionMode === 'checkin' && (status === 422 || status === 404 || status === 400)) {
-          const altEndpoint = endpoint === endpoints.participations.checkInDaily
-            ? endpoints.participations.checkIn
-            : endpoints.participations.checkInDaily;
+        if (
+          verifyActionMode === "checkin" &&
+          (status === 422 || status === 404 || status === 400)
+        ) {
+          const altEndpoint =
+            endpoint === endpoints.participations.checkInDaily
+              ? endpoints.participations.checkIn
+              : endpoints.participations.checkInDaily;
           try {
-            console.log("Primary endpoint failed, trying alternate:", altEndpoint); // Optional log
+            console.log(
+              "Primary endpoint failed, trying alternate:",
+              altEndpoint,
+            ); // Optional log
             response = await api.post(altEndpoint, payload);
           } catch (err2: any) {
             // rethrow so outer catch handles it
@@ -263,151 +275,166 @@
       }
 
       // Success
-      lastParticipantName = response.data.participant_name || 
-                            response.data.user?.name || 
-                            "Participant";
+      lastParticipantName =
+        response.data.participant_name ||
+        response.data.user?.name ||
+        "Participant";
 
       if (verifyActionMode === "checkout") {
         lastCheckOutSuccess = true;
-        setTimeout(() => { lastCheckOutSuccess = false; }, 3000);
+        setTimeout(() => {
+          lastCheckOutSuccess = false;
+        }, 3000);
       } else {
         lastVerifySuccess = true;
-        setTimeout(() => { lastVerifySuccess = false; }, 3000);
+        setTimeout(() => {
+          lastVerifySuccess = false;
+        }, 3000);
       }
 
       // แสดง Success ใน QR Mode ด้วย
-      if (type === 'qr') {
-          qrSuccessShow = true;
-          setTimeout(() => { 
-              qrSuccessShow = false; 
-              // Resume scanning
-              if (verifyMode === 'qr' && !scanning) {
-                  scanning = true;
-                  requestAnimationFrame(scanFrame);
-              } else if (verifyMode === 'qr') {
-                  requestAnimationFrame(scanFrame);
-              }
-          }, 2000);
+      if (type === "qr") {
+        qrSuccessShow = true;
+        setTimeout(() => {
+          qrSuccessShow = false;
+          // Resume scanning
+          if (verifyMode === "qr" && !scanning) {
+            scanning = true;
+            requestAnimationFrame(scanFrame);
+          } else if (verifyMode === "qr") {
+            requestAnimationFrame(scanFrame);
+          }
+        }, 2000);
       }
 
-      if (type === 'pin') clearPins();
-
+      if (type === "pin") clearPins();
     } catch (error: any) {
       // ✅ [ลบ] Logic การ Lookup ผ่าน selectedEventId ออก เพราะเราไม่มี Event Select แล้ว
-      verifyErrorMessage = error.response?.data?.message || error.response?.data?.detail || lang.invalidCode;
-      if (type === 'pin') verifyErrorIndex = 0;
-      
+      verifyErrorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.detail ||
+        lang.invalidCode;
+      if (type === "pin") verifyErrorIndex = 0;
+
       // QR Error: Delay slightly before rescanning
-      if (type === 'qr') {
-          setTimeout(() => {
-              if (verifyMode === 'qr') requestAnimationFrame(scanFrame);
-          }, 1500);
+      if (type === "qr") {
+        setTimeout(() => {
+          if (verifyMode === "qr") requestAnimationFrame(scanFrame);
+        }, 1500);
       }
     } finally {
-      if (type === 'pin') isVerifying = false;
+      if (type === "pin") isVerifying = false;
       // QR mode resets isVerifying after delay in success block or immediately in error
-      if (type === 'qr' && verifyErrorMessage) isVerifying = false;
-      if (type === 'qr' && !verifyErrorMessage) {
-           setTimeout(() => { isVerifying = false; }, 2000);
+      if (type === "qr" && verifyErrorMessage) isVerifying = false;
+      if (type === "qr" && !verifyErrorMessage) {
+        setTimeout(() => {
+          isVerifying = false;
+        }, 2000);
       }
     }
   }
-  
+
   // ✅ QR Scanner (Improved Error Handling)
   async function startCamera() {
     cameraError = "";
-    
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        cameraError = "ไม่พบกล้องในอุปกรณ์นี้";
-        return;
+      cameraError = "ไม่พบกล้องในอุปกรณ์นี้";
+      return;
     }
 
     try {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }
+          video: { facingMode: "environment" },
         });
       } catch (e) {
         console.warn("Environment camera failed, trying fallback");
         stream = await navigator.mediaDevices.getUserMedia({
-          video: true
+          video: true,
         });
       }
-      
+
       if (videoRef && stream) {
         videoRef.srcObject = stream;
         videoRef.setAttribute("playsinline", "true");
-        
+
         videoRef.onloadedmetadata = () => {
-            videoRef.play().then(() => {
-                scanning = true;
-                requestAnimationFrame(scanFrame);
-            }).catch(e => {
-                console.error("Video play error:", e);
-                cameraError = lang.cameraAccessDenied;
+          videoRef
+            .play()
+            .then(() => {
+              scanning = true;
+              requestAnimationFrame(scanFrame);
+            })
+            .catch((e) => {
+              console.error("Video play error:", e);
+              cameraError = lang.cameraAccessDenied;
             });
         };
       }
     } catch (error: any) {
-      if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-          cameraError = "ไม่พบกล้อง";
-      } else if (error.name === 'NotAllowedError') {
-          cameraError = "กรุณาอนุญาตให้เข้าถึงกล้อง";
+      if (
+        error.name === "NotFoundError" ||
+        error.name === "DevicesNotFoundError"
+      ) {
+        cameraError = "ไม่พบกล้อง";
+      } else if (error.name === "NotAllowedError") {
+        cameraError = "กรุณาอนุญาตให้เข้าถึงกล้อง";
       } else {
-          cameraError = lang.cameraAccessDenied;
+        cameraError = lang.cameraAccessDenied;
       }
     }
   }
-  
+
   function stopCamera() {
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
       stream = null;
     }
     scanning = false;
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
   }
-  
+
   function scanFrame() {
     if (!videoRef || !canvasRef || !scanning) return;
-    
+
     // Pause checking if verification is in progress
     if (isVerifying || qrSuccessShow) {
-       animationFrameId = requestAnimationFrame(scanFrame);
-       return;
+      animationFrameId = requestAnimationFrame(scanFrame);
+      return;
     }
 
     const canvas = canvasRef;
     const video = videoRef;
-    
+
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        if (!ctx) return;
-        
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: "dontInvert",
-        });
-        
-        if (code && code.data) {
-            verifyCode(code.data, 'qr');
-            return;
-        }
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert",
+      });
+
+      if (code && code.data) {
+        verifyCode(code.data, "qr");
+        return;
+      }
     }
-    
+
     animationFrameId = requestAnimationFrame(scanFrame);
   }
-  
+
   onMount(() => {
     pinInputRefs[0]?.focus();
     // ✅ [ลบ] ส่วนโหลด Event List ออก
   });
-  
+
   onDestroy(() => {
     stopCamera();
     // ✅ [ลบ] event listener ของ dropdown ออก
@@ -417,74 +444,164 @@
 <div class="vc-container">
   <div class="vc-main-card">
     <div class="vc-action-selector">
-      <button class="vc-action-tab" class:active={verifyActionMode === "checkin"} on:click={() => switchActionMode("checkin")}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button
+        class="vc-action-tab"
+        class:active={verifyActionMode === "checkin"}
+        on:click={() => switchActionMode("checkin")}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
           <polyline points="10 17 15 12 10 7" />
           <line x1="15" y1="12" x2="3" y2="12" />
         </svg>
         <span>{lang.checkIn}</span>
       </button>
-      
-      <button class="vc-action-tab checkout" class:active={verifyActionMode === "checkout"} on:click={() => switchActionMode("checkout")}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+      <button
+        class="vc-action-tab checkout"
+        class:active={verifyActionMode === "checkout"}
+        on:click={() => switchActionMode("checkout")}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
           <polyline points="16 17 21 12 16 7" />
           <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
         <span>{lang.checkOut}</span>
       </button>
-      
-      <div class="vc-action-slider" class:checkout={verifyActionMode === "checkout"}></div>
+
+      <div
+        class="vc-action-slider"
+        class:checkout={verifyActionMode === "checkout"}
+      ></div>
     </div>
 
     {#if verifyActionMode === "checkin"}
       <div class="vc-type-selector">
-        <button class="vc-type-tab" class:active={eventTypeMode === "single"} on:click={() => switchEventTypeMode("single")}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            <span>{lang.typeSingle}</span>
+        <button
+          class="vc-type-tab"
+          class:active={eventTypeMode === "single"}
+          on:click={() => switchEventTypeMode("single")}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>{lang.typeSingle}</span>
         </button>
 
-        <button class="vc-type-tab multi" class:active={eventTypeMode === "multi"} on:click={() => switchEventTypeMode("multi")}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            <span>{lang.typeMulti}</span>
+        <button
+          class="vc-type-tab multi"
+          class:active={eventTypeMode === "multi"}
+          on:click={() => switchEventTypeMode("multi")}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span>{lang.typeMulti}</span>
         </button>
 
-        <div class="vc-type-slider" class:multi={eventTypeMode === "multi"}></div>
+        <div
+          class="vc-type-slider"
+          class:multi={eventTypeMode === "multi"}
+        ></div>
       </div>
     {/if}
 
     <div class="vc-card-header">
-      <div class="vc-icon-wrapper" class:checkout={verifyActionMode === "checkout"}>
+      <div
+        class="vc-icon-wrapper"
+        class:checkout={verifyActionMode === "checkout"}
+      >
         <div class="vc-icon-bg"></div>
         {#if verifyActionMode === "checkout"}
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
         {:else}
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         {/if}
       </div>
-      <h2 class="vc-title">{verifyActionMode === "checkout" ? lang.participantCheckOut : lang.participantCheckIn}</h2>
-      <p class="vc-subtitle">{verifyActionMode === "checkout" ? lang.verifyParticipantCodeOut : lang.verifyParticipantCode}</p>
+      <h2 class="vc-title">
+        {verifyActionMode === "checkout"
+          ? lang.participantCheckOut
+          : lang.participantCheckIn}
+      </h2>
+      <p class="vc-subtitle">
+        {verifyActionMode === "checkout"
+          ? lang.verifyParticipantCodeOut
+          : lang.verifyParticipantCode}
+      </p>
     </div>
 
-    <div class="vc-mode-selector" class:checkout={verifyActionMode === "checkout"}>
-      <button class="vc-mode-tab" class:active={verifyMode === "pin"} class:checkout={verifyActionMode === "checkout"} on:click={() => switchVerifyMode("pin")}>
+    <div
+      class="vc-mode-selector"
+      class:checkout={verifyActionMode === "checkout"}
+    >
+      <button
+        class="vc-mode-tab"
+        class:active={verifyMode === "pin"}
+        class:checkout={verifyActionMode === "checkout"}
+        on:click={() => switchVerifyMode("pin")}
+      >
         <div class="vc-mode-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <rect x="3" y="3" width="7" height="7"></rect>
             <rect x="14" y="3" width="7" height="7"></rect>
             <rect x="14" y="14" width="7" height="7"></rect>
@@ -494,9 +611,21 @@
         <span>{lang.pinCode}</span>
       </button>
 
-      <button class="vc-mode-tab" class:active={verifyMode === "qr"} class:checkout={verifyActionMode === "checkout"} on:click={() => switchVerifyMode("qr")}>
+      <button
+        class="vc-mode-tab"
+        class:active={verifyMode === "qr"}
+        class:checkout={verifyActionMode === "checkout"}
+        on:click={() => switchVerifyMode("qr")}
+      >
         <div class="vc-mode-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
             <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
             <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
@@ -507,18 +636,33 @@
         <span>{lang.scanQR}</span>
       </button>
 
-      <div class="vc-mode-slider" class:qr={verifyMode === "qr"} class:checkout={verifyActionMode === "checkout"}></div>
+      <div
+        class="vc-mode-slider"
+        class:qr={verifyMode === "qr"}
+        class:checkout={verifyActionMode === "checkout"}
+      ></div>
     </div>
 
     {#if lastVerifySuccess}
       <div class="vc-success">
         <div class="vc-success-check">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+          >
             <path d="M20 6L9 17l-5-5" />
           </svg>
         </div>
         <div class="vc-success-info">
-          <span class="vc-success-label">{currentLang === "th" ? "เช็คอินสำเร็จ" : "Check-in Successful"}</span>
+          <span class="vc-success-label"
+            >{currentLang === "th"
+              ? "เช็คอินสำเร็จ"
+              : "Check-in Successful"}</span
+          >
           <span class="vc-success-name">{lastParticipantName}</span>
         </div>
       </div>
@@ -527,7 +671,14 @@
     {#if lastCheckOutSuccess}
       <div class="vc-success checkout">
         <div class="vc-success-check checkout">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+          >
             <path d="M20 6L9 17l-5-5" />
           </svg>
         </div>
@@ -542,35 +693,65 @@
       <div class="vc-pin-mode" class:active={verifyMode === "pin"}>
         <div class="vc-auto-toggle">
           <div class="vc-auto-info">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
             </svg>
-            <span>{verifyActionMode === "checkout" ? (currentLang === "th" ? "Auto Check Out" : "Auto Check Out") : (currentLang === "th" ? "Auto Check In" : "Auto Check In")}</span>
+            <span
+              >{verifyActionMode === "checkout"
+                ? currentLang === "th"
+                  ? "Auto Check Out"
+                  : "Auto Check Out"
+                : currentLang === "th"
+                  ? "Auto Check In"
+                  : "Auto Check In"}</span
+            >
           </div>
           <button
             class="vc-switch"
             class:checkout={verifyActionMode === "checkout"}
             class:on={autoCheckIn}
-            on:click={() => { autoCheckIn = !autoCheckIn; clearPins(); }}
+            on:click={() => {
+              autoCheckIn = !autoCheckIn;
+              clearPins();
+            }}
             aria-pressed={autoCheckIn}
-            title={
-              autoCheckIn
-                ? (verifyActionMode === 'checkout'
-                    ? (currentLang === 'th' ? 'ปิด Auto Check Out' : 'Disable Auto Check Out')
-                    : (currentLang === 'th' ? 'ปิด Auto Check In' : 'Disable Auto Check In'))
-                : (verifyActionMode === 'checkout'
-                    ? (currentLang === 'th' ? 'เปิด Auto Check Out' : 'Enable Auto Check Out')
-                    : (currentLang === 'th' ? 'เปิด Auto Check In' : 'Enable Auto Check In'))
-            }
-            aria-label={
-              autoCheckIn
-                ? (verifyActionMode === 'checkout'
-                    ? (currentLang === 'th' ? 'ปิด Auto Check Out' : 'Disable Auto Check Out')
-                    : (currentLang === 'th' ? 'ปิด Auto Check In' : 'Disable Auto Check In'))
-                : (verifyActionMode === 'checkout'
-                    ? (currentLang === 'th' ? 'เปิด Auto Check Out' : 'Enable Auto Check Out')
-                    : (currentLang === 'th' ? 'เปิด Auto Check In' : 'Enable Auto Check In'))
-            }
+            title={autoCheckIn
+              ? verifyActionMode === "checkout"
+                ? currentLang === "th"
+                  ? "ปิด Auto Check Out"
+                  : "Disable Auto Check Out"
+                : currentLang === "th"
+                  ? "ปิด Auto Check In"
+                  : "Disable Auto Check In"
+              : verifyActionMode === "checkout"
+                ? currentLang === "th"
+                  ? "เปิด Auto Check Out"
+                  : "Enable Auto Check Out"
+                : currentLang === "th"
+                  ? "เปิด Auto Check In"
+                  : "Enable Auto Check In"}
+            aria-label={autoCheckIn
+              ? verifyActionMode === "checkout"
+                ? currentLang === "th"
+                  ? "ปิด Auto Check Out"
+                  : "Disable Auto Check Out"
+                : currentLang === "th"
+                  ? "ปิด Auto Check In"
+                  : "Disable Auto Check In"
+              : verifyActionMode === "checkout"
+                ? currentLang === "th"
+                  ? "เปิด Auto Check Out"
+                  : "Enable Auto Check Out"
+                : currentLang === "th"
+                  ? "เปิด Auto Check In"
+                  : "Enable Auto Check In"}
           >
             <span class="vc-switch-knob"></span>
           </button>
@@ -579,8 +760,25 @@
         <div class="vc-pin-area">
           <div class="vc-pin-row">
             {#each pins as pin, i}
-              <div class="vc-pin-cell" class:filled={pin !== ""} class:checkout={verifyActionMode === "checkout"} class:error={verifyErrorIndex !== null && (verifyErrorMessage ? true : verifyErrorIndex === i)}>
-                <input type="text" inputmode="numeric" maxlength="1" class="vc-pin-input" bind:value={pins[i]} bind:this={pinInputRefs[i]} on:input={(e) => handlePinInput(i, e)} on:keydown={(e) => handlePinKeydown(i, e)} on:focus={() => handlePinFocus(i)} disabled={isVerifying} />
+              <div
+                class="vc-pin-cell"
+                class:filled={pin !== ""}
+                class:checkout={verifyActionMode === "checkout"}
+                class:error={verifyErrorIndex !== null &&
+                  (verifyErrorMessage ? true : verifyErrorIndex === i)}
+              >
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="1"
+                  class="vc-pin-input"
+                  bind:value={pins[i]}
+                  bind:this={pinInputRefs[i]}
+                  on:input={(e) => handlePinInput(i, e)}
+                  on:keydown={(e) => handlePinKeydown(i, e)}
+                  on:focus={() => handlePinFocus(i)}
+                  disabled={isVerifying}
+                />
               </div>
             {/each}
           </div>
@@ -588,7 +786,14 @@
 
         {#if verifyErrorMessage && verifyMode === "pin"}
           <div class="vc-error-msg">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="8" x2="12" y2="12"></line>
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -598,19 +803,42 @@
         {/if}
 
         <div class="vc-submit-wrapper" class:hidden={autoCheckIn}>
-          <button class="vc-submit" class:checkout={verifyActionMode === "checkout"} on:click={handleVerifyPin} disabled={isVerifying || pins.some((p) => p === "") || autoCheckIn}>
+          <button
+            class="vc-submit"
+            class:checkout={verifyActionMode === "checkout"}
+            on:click={handleVerifyPin}
+            disabled={isVerifying || pins.some((p) => p === "") || autoCheckIn}
+          >
             {#if isVerifying}
               <span class="vc-loader"></span>
-              <span>{currentLang === "th" ? "กำลังตรวจสอบ..." : "Verifying..."}</span>
+              <span
+                >{currentLang === "th"
+                  ? "กำลังตรวจสอบ..."
+                  : "Verifying..."}</span
+              >
             {:else if verifyActionMode === "checkout"}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
               </svg>
               <span>{lang.checkOut}</span>
             {:else}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>{lang.checkIn}</span>
@@ -621,15 +849,23 @@
         {#if isVerifying && autoCheckIn}
           <div class="vc-verifying">
             <span class="vc-loader lg"></span>
-            <span>{currentLang === "th" ? "กำลังตรวจสอบรหัส..." : "Verifying code..."}</span>
+            <span
+              >{currentLang === "th"
+                ? "กำลังตรวจสอบรหัส..."
+                : "Verifying code..."}</span
+            >
           </div>
         {/if}
 
         <p class="vc-hint">
           {#if autoCheckIn}
-            {lang.enterDigitCode} • {verifyActionMode === "checkout" ? lang.autoCheckOutEnabled : lang.autoCheckInEnabled}
+            {lang.enterDigitCode} • {verifyActionMode === "checkout"
+              ? lang.autoCheckOutEnabled
+              : lang.autoCheckInEnabled}
           {:else}
-            {lang.enterDigitCode} • {verifyActionMode === "checkout" ? lang.pressCheckOut : lang.pressCheckIn}
+            {lang.enterDigitCode} • {verifyActionMode === "checkout"
+              ? lang.pressCheckOut
+              : lang.pressCheckIn}
           {/if}
         </p>
       </div>
@@ -638,45 +874,97 @@
         <div class="vc-scanner">
           {#if cameraError}
             <div class="vc-camera-err">
-              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+              <svg
+                width="56"
+                height="56"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+              >
+                <path
+                  d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"
+                />
                 <circle cx="12" cy="13" r="4" />
                 <line x1="1" y1="1" x2="23" y2="23" />
               </svg>
               <p>{cameraError}</p>
               <button class="vc-retry" on:click={startCamera}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <path d="M23 4v6h-6M1 20v-6h6" />
-                  <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+                  <path
+                    d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"
+                  />
                 </svg>
                 Try Again
               </button>
             </div>
           {:else}
-            <video bind:this={videoRef} class="vc-video" playsinline muted></video>
+            <video
+              bind:this={videoRef}
+              class="vc-video"
+              autoplay
+              playsinline
+              muted
+            ></video>
             <canvas bind:this={canvasRef} class="vc-canvas"></canvas>
 
             <div class="vc-scan-overlay">
-              <div class="vc-scan-frame" class:active={scanning && !isVerifying && !qrSuccessShow} class:success={qrSuccessShow} class:checkout={verifyActionMode === "checkout"}>
+              <div
+                class="vc-scan-frame"
+                class:active={scanning && !isVerifying && !qrSuccessShow}
+                class:success={qrSuccessShow}
+                class:checkout={verifyActionMode === "checkout"}
+              >
                 <span class="vc-frame-corner tl"></span>
                 <span class="vc-frame-corner tr"></span>
                 <span class="vc-frame-corner bl"></span>
                 <span class="vc-frame-corner br"></span>
                 {#if scanning && !isVerifying && !qrSuccessShow}
-                  <div class="vc-scan-beam" class:checkout={verifyActionMode === "checkout"}></div>
+                  <div
+                    class="vc-scan-beam"
+                    class:checkout={verifyActionMode === "checkout"}
+                  ></div>
                 {/if}
               </div>
 
               {#if qrSuccessShow}
-                <div class="vc-qr-success" class:checkout={verifyActionMode === "checkout"}>
-                  <div class="vc-qr-success-icon" class:checkout={verifyActionMode === "checkout"}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                <div
+                  class="vc-qr-success"
+                  class:checkout={verifyActionMode === "checkout"}
+                >
+                  <div
+                    class="vc-qr-success-icon"
+                    class:checkout={verifyActionMode === "checkout"}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                    >
                       <path d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
                   <span class="vc-qr-success-text">{lastParticipantName}</span>
-                  <span class="vc-qr-success-label" class:checkout={verifyActionMode === "checkout"}>
-                    {verifyActionMode === "checkout" ? (currentLang === "th" ? "เช็คเอาท์สำเร็จ!" : "Check-out Success!") : (currentLang === "th" ? "เช็คอินสำเร็จ!" : "Check-in Success!")}
+                  <span
+                    class="vc-qr-success-label"
+                    class:checkout={verifyActionMode === "checkout"}
+                  >
+                    {verifyActionMode === "checkout"
+                      ? currentLang === "th"
+                        ? "เช็คเอาท์สำเร็จ!"
+                        : "Check-out Success!"
+                      : currentLang === "th"
+                        ? "เช็คอินสำเร็จ!"
+                        : "Check-in Success!"}
                   </span>
                 </div>
               {/if}
@@ -688,15 +976,35 @@
                 <span>Verifying...</span>
               </div>
             {:else if qrSuccessShow}
-              <div class="vc-scan-status success" class:checkout={verifyActionMode === "checkout"}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <div
+                class="vc-scan-status success"
+                class:checkout={verifyActionMode === "checkout"}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                >
                   <path d="M5 13l4 4L19 7"></path>
                 </svg>
-                <span>{verifyActionMode === "checkout" ? "Check-out OK!" : "Check-in OK!"}</span>
+                <span
+                  >{verifyActionMode === "checkout"
+                    ? "Check-out OK!"
+                    : "Check-in OK!"}</span
+                >
               </div>
             {:else if scanning}
-              <div class="vc-scan-status active" class:checkout={verifyActionMode === "checkout"}>
-                <span class="vc-pulse-dot" class:checkout={verifyActionMode === "checkout"}></span>
+              <div
+                class="vc-scan-status active"
+                class:checkout={verifyActionMode === "checkout"}
+              >
+                <span
+                  class="vc-pulse-dot"
+                  class:checkout={verifyActionMode === "checkout"}
+                ></span>
                 <span>Scanning...</span>
               </div>
             {/if}
@@ -705,7 +1013,14 @@
 
         {#if verifyErrorMessage && verifyMode === "qr"}
           <div class="vc-error-msg">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <circle cx="12" cy="12" r="10" />
               <path d="M12 8v4m0 4h.01" />
             </svg>
@@ -784,7 +1099,7 @@
     top: 0.5rem;
     left: 0.5rem;
     /* ✅ แก้ไข: ลบ Padding (0.5rem) และครึ่งหนึ่งของ Gap (0.25rem) ออกจาก 50% */
-    width: calc(50% - 0.5rem - 0.25rem); 
+    width: calc(50% - 0.5rem - 0.25rem);
     height: calc(100% - 1rem);
     background: linear-gradient(135deg, #10b981, #059669);
     border-radius: 12px;
@@ -804,7 +1119,7 @@
     --vc-type-gap: 0.5rem;
     --vc-type-pad-vertical: 0.45rem;
     --vc-type-pad-horizontal: 0.7rem; /* ค่านี้สำคัญ */
-    
+
     position: relative;
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -813,10 +1128,10 @@
     padding: var(--vc-type-pad-vertical) var(--vc-type-pad-horizontal);
     border-radius: 12px;
     margin-bottom: 1.5rem;
-    border: 1px solid rgba(255,255,255,0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     overflow: hidden;
   }
-  
+
   .vc-type-tab {
     position: relative;
     z-index: 2;
@@ -834,17 +1149,19 @@
     cursor: pointer;
     transition: all 0.3s;
   }
-  
-  .vc-type-tab.active { color: #fff; }
-  
- .vc-type-slider {
+
+  .vc-type-tab.active {
+    color: #fff;
+  }
+
+  .vc-type-slider {
     position: absolute;
     top: var(--vc-type-pad-vertical);
     left: var(--vc-type-pad-horizontal);
-    
+
     /* ✅ แก้ไข: คำนวณความกว้างให้พอดีโดยลบ Padding แนวนอนออกด้วย */
     width: calc(50% - var(--vc-type-pad-horizontal) - (var(--vc-type-gap) / 2));
-    
+
     height: calc(100% - (var(--vc-type-pad-vertical) * 2));
     background: #334155;
     border-radius: 8px;
@@ -852,9 +1169,9 @@
     z-index: 1;
   }
 
-  .vc-type-slider.multi { 
+  .vc-type-slider.multi {
     /* ✅ แก้ไข: เลื่อนไป 100% ของตัวเอง + Gap */
-    transform: translateX(calc(100% + var(--vc-type-gap))); 
+    transform: translateX(calc(100% + var(--vc-type-gap)));
   }
 
   .vc-type-tab {
@@ -909,13 +1226,21 @@
   .vc-icon-bg {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1));
+    background: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.2),
+      rgba(5, 150, 105, 0.1)
+    );
     border-radius: 50%;
     animation: pulse-ring 2s infinite;
   }
 
   .vc-icon-wrapper.checkout .vc-icon-bg {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1));
+    background: linear-gradient(
+      135deg,
+      rgba(245, 158, 11, 0.2),
+      rgba(217, 119, 6, 0.1)
+    );
   }
 
   .vc-icon-wrapper svg {
@@ -1011,7 +1336,11 @@
     left: 0.5rem;
     width: calc(50% - 0.25rem);
     height: calc(100% - 1rem);
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1));
+    background: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.2),
+      rgba(5, 150, 105, 0.1)
+    );
     border: 1px solid rgba(16, 185, 129, 0.3);
     border-radius: 12px;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1023,7 +1352,11 @@
   }
 
   .vc-mode-slider.checkout {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1));
+    background: linear-gradient(
+      135deg,
+      rgba(245, 158, 11, 0.2),
+      rgba(217, 119, 6, 0.1)
+    );
     border-color: rgba(245, 158, 11, 0.3);
   }
 
@@ -1033,7 +1366,11 @@
     align-items: center;
     gap: 1rem;
     padding: 1.25rem 1.5rem;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.05));
+    background: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.15),
+      rgba(5, 150, 105, 0.05)
+    );
     border: 1px solid rgba(16, 185, 129, 0.3);
     border-radius: 16px;
     margin-bottom: 2rem;
@@ -1041,7 +1378,11 @@
   }
 
   .vc-success.checkout {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.05));
+    background: linear-gradient(
+      135deg,
+      rgba(245, 158, 11, 0.15),
+      rgba(217, 119, 6, 0.05)
+    );
     border-color: rgba(245, 158, 11, 0.3);
   }
 
@@ -1093,11 +1434,13 @@
     position: relative;
   }
 
-  .vc-pin-mode, .vc-qr-mode {
+  .vc-pin-mode,
+  .vc-qr-mode {
     display: none;
   }
 
-  .vc-pin-mode.active, .vc-qr-mode.active {
+  .vc-pin-mode.active,
+  .vc-qr-mode.active {
     display: block;
   }
 
@@ -1366,10 +1709,34 @@
     border-color: rgba(255, 255, 255, 0.3);
   }
 
-  .vc-frame-corner.tl { top: 0; left: 0; border-top: 3px solid; border-left: 3px solid; border-radius: 16px 0 0 0; }
-  .vc-frame-corner.tr { top: 0; right: 0; border-top: 3px solid; border-right: 3px solid; border-radius: 0 16px 0 0; }
-  .vc-frame-corner.bl { bottom: 0; left: 0; border-bottom: 3px solid; border-left: 3px solid; border-radius: 0 0 0 16px; }
-  .vc-frame-corner.br { bottom: 0; right: 0; border-bottom: 3px solid; border-right: 3px solid; border-radius: 0 0 16px 0; }
+  .vc-frame-corner.tl {
+    top: 0;
+    left: 0;
+    border-top: 3px solid;
+    border-left: 3px solid;
+    border-radius: 16px 0 0 0;
+  }
+  .vc-frame-corner.tr {
+    top: 0;
+    right: 0;
+    border-top: 3px solid;
+    border-right: 3px solid;
+    border-radius: 0 16px 0 0;
+  }
+  .vc-frame-corner.bl {
+    bottom: 0;
+    left: 0;
+    border-bottom: 3px solid;
+    border-left: 3px solid;
+    border-radius: 0 0 0 16px;
+  }
+  .vc-frame-corner.br {
+    bottom: 0;
+    right: 0;
+    border-bottom: 3px solid;
+    border-right: 3px solid;
+    border-radius: 0 0 16px 0;
+  }
 
   .vc-scan-frame.active .vc-frame-corner {
     border-color: #10b981;
@@ -1513,38 +1880,75 @@
 
   /* ANIMATIONS */
   @keyframes pulse-ring {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.8; }
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 0.8;
+    }
   }
 
   @keyframes slideDown {
-    from { transform: translateY(-10px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from {
+      transform: translateY(-10px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
 
   @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-5px);
+    }
+    75% {
+      transform: translateX(5px);
+    }
   }
 
   @keyframes scan {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(100%); }
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(100%);
+    }
   }
 
   @keyframes scaleIn {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 
   /* RESPONSIVE */
