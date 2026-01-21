@@ -1377,6 +1377,9 @@
         Swal.close();
 
         if (res) {
+            // Close modal first
+            closeModal();
+
             Swal.fire({
                 icon: "success",
                 title: lang === "th" ? "เข้าร่วมสำเร็จ" : "Joined Successfully",
@@ -1385,6 +1388,7 @@
             });
             await loadData();
         }
+        // Note: CheckInEvent already shows error via Swal.fire if res is null
     }
 
     // --- DASHBOARD STATE ---
