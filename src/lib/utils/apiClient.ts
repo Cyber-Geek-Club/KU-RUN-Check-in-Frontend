@@ -273,6 +273,7 @@ export async function deleteParticipantSnapshot(
     }
 }
 
+// Export for use in +page.ts load functions
 // ===== User Statistics =====
 export interface UserStatistics {
     total_distance_km?: number | null;
