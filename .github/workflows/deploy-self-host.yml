@@ -20,8 +20,8 @@ jobs:
           # ================= CONFIG =================
           $PROJECT_PATH = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
           $PM2_NAME = "ku-run-frontend"
-          $PORT = 3000  # กำหนด Port ที่ต้องการรัน
-          $ORIGIN = "http://localhost:3000" # <-- แก้เป็นโดเมนจริงของคุณ เช่น https://ku-run.com
+          $PORT = 3000
+          $ORIGIN = "http://localhost:3000"
           # ==========================================
 
           Write-Host "Starting Deployment to $PROJECT_PATH..."
@@ -40,29 +40,73 @@ jobs:
           git reset --hard origin/master
 
           # 3. Install & Build
-          Write-Host "Installing dependencies & Building..."
+          Write-Host "Installing dependencies..."
           pnpm install --frozen-lockfile
+          
+          Write-Host "Building project..."
           pnpm run build
 
-          # 4. Manage PM2 Process
-          Write-Host "Configuring PM2..."
-          
-          # Check if process exists and delete it to ensure clean env vars
-          pm2 describe $PM2_NAME | Out-Null
+          # 4. Verify build output
+          if (-not (Test-Path "build\index.js")) {
+              Write-Error "Build failed! build/index.js not found"
+              Get-ChildItem build -ErrorAction SilentlyContinue
+              exit 1
+          }
+
+          Write-Host "Build successful! Files in build folder:"
+          Get-ChildItem build
+
+          # 5. Stop existing PM2 process
+          Write-Host "Managing PM2 process..."
+          pm2 describe $PM2_NAME 2>$null
           if ($LASTEXITCODE -eq 0) {
-              Write-Host "Process found. Deleting to apply new config..."
+              Write-Host "Stopping existing process..."
+              pm2 stop $PM2_NAME
               pm2 delete $PM2_NAME
           }
 
-          # START command for SvelteKit (adapter-node)
-          # Note: Passing Environment Variables for SvelteKit
-          Write-Host "Starting process..."
+          # 6. Create ecosystem config file
+          Write-Host "Creating PM2 ecosystem config..."
           
-          # ใช้ --env เพื่อส่งค่า PORT, ORIGIN, NODE_ENV เข้าไป
-          # build/index.js คือไฟล์ที่ adapter-node สร้างขึ้น
-          pm2 start "build/index.js" --name "$PM2_NAME" --watch --ignore-watch="node_modules .git .svelte-kit" --env PORT=$PORT,ORIGIN=$ORIGIN,NODE_ENV=production
-          
-          # Save PM2 state
-          pm2 save
+          $ecosystemContent = @"
+          module.exports = {
+            apps: [{
+              name: '$PM2_NAME',
+              script: 'build/index.js',
+              cwd: '$PROJECT_PATH',
+              instances: 1,
+              exec_mode: 'fork',
+              env: {
+                NODE_ENV: 'production',
+                PORT: $PORT,
+                ORIGIN: '$ORIGIN'
+              },
+              watch: false,
+              max_memory_restart: '500M',
+              error_file: 'logs/error.log',
+              out_file: 'logs/output.log',
+              log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+              merge_logs: true
+            }]
+          };
+          "@
 
-          Write-Host "Deployment Complete!"
+          # Create logs directory if not exists
+          if (-not (Test-Path "logs")) {
+              New-Item -ItemType Directory -Path "logs"
+          }
+
+          # Save ecosystem file
+          $ecosystemContent | Out-File -FilePath "ecosystem.config.cjs" -Encoding utf8 -Force
+
+          # 7. Start PM2 with ecosystem file
+          Write-Host "Starting PM2 process..."
+          pm2 start ecosystem.config.cjs
+          
+          # 8. Save PM2 state
+          pm2 save --force
+
+          # 9. Show status
+          Write-Host "`n=== Deployment Complete! ===`n"
+          pm2 status
+          pm2 logs $PM2_NAME --lines 20 --nostream
