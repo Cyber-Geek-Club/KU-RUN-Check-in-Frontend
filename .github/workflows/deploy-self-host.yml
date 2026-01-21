@@ -7,12 +7,12 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          clean: false 
+          clean: false
 
       - name: Deploy Script
         shell: powershell
@@ -20,93 +20,42 @@ jobs:
           # ================= CONFIG =================
           $PROJECT_PATH = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend"
           $PM2_NAME = "ku-run-frontend"
-          $PORT = 3000
-          $ORIGIN = "http://localhost:3000"
+          $PORT = 4173
           # ==========================================
 
-          Write-Host "Starting Deployment to $PROJECT_PATH..."
+          Write-Host "Deploying to $PROJECT_PATH"
 
-          # 1. Navigate to project directory
-          if (Test-Path $PROJECT_PATH) {
-              Set-Location $PROJECT_PATH
-          } else {
-              Write-Error "Project Path not found: $PROJECT_PATH"
+          if (-not (Test-Path $PROJECT_PATH)) {
+              Write-Error "Project path not found"
               exit 1
           }
 
-          # 2. Pull & Reset Code
-          Write-Host "Pulling latest code..."
+          Set-Location $PROJECT_PATH
+
+          # Pull latest code
           git fetch origin master
           git reset --hard origin/master
 
-          # 3. Install & Build
-          Write-Host "Installing dependencies..."
+          # Install deps
           pnpm install --frozen-lockfile
-          
-          Write-Host "Building project..."
+
+          # Build
           pnpm run build
 
-          # 4. Verify build output
-          if (-not (Test-Path "build\index.js")) {
-              Write-Error "Build failed! build/index.js not found"
-              Get-ChildItem build -ErrorAction SilentlyContinue
-              exit 1
-          }
-
-          Write-Host "Build successful! Files in build folder:"
-          Get-ChildItem build
-
-          # 5. Stop existing PM2 process
-          Write-Host "Managing PM2 process..."
+          # Stop old PM2
           pm2 describe $PM2_NAME 2>$null
           if ($LASTEXITCODE -eq 0) {
-              Write-Host "Stopping existing process..."
-              pm2 stop $PM2_NAME
               pm2 delete $PM2_NAME
           }
 
-          # 6. Create ecosystem config file
-          Write-Host "Creating PM2 ecosystem config..."
-          
-          $ecosystemContent = @"
-          module.exports = {
-            apps: [{
-              name: '$PM2_NAME',
-              script: 'build/index.js',
-              cwd: '$PROJECT_PATH',
-              instances: 1,
-              exec_mode: 'fork',
-              env: {
-                NODE_ENV: 'production',
-                PORT: $PORT,
-                ORIGIN: '$ORIGIN'
-              },
-              watch: false,
-              max_memory_restart: '500M',
-              error_file: 'logs/error.log',
-              out_file: 'logs/output.log',
-              log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-              merge_logs: true
-            }]
-          };
-          "@
+          # Start SvelteKit Preview with PM2
+          pm2 start "pnpm run preview -- --host 127.0.0.1 --port $PORT" `
+            --name $PM2_NAME `
+            --max-memory-restart 500M `
+            --time
 
-          # Create logs directory if not exists
-          if (-not (Test-Path "logs")) {
-              New-Item -ItemType Directory -Path "logs"
-          }
-
-          # Save ecosystem file
-          $ecosystemContent | Out-File -FilePath "ecosystem.config.cjs" -Encoding utf8 -Force
-
-          # 7. Start PM2 with ecosystem file
-          Write-Host "Starting PM2 process..."
-          pm2 start ecosystem.config.cjs
-          
-          # 8. Save PM2 state
+          # Save PM2
           pm2 save --force
 
-          # 9. Show status
-          Write-Host "`n=== Deployment Complete! ===`n"
+          # Status
           pm2 status
-          pm2 logs $PM2_NAME --lines 20 --nostream
