@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 // กำหนด URL API
 // Use VITE_API_BASE_URL when provided. In dev (no env) use the Vite proxy '/api'.
 const rawApiBase = import.meta.env.VITE_API_BASE_URL;
-const DEFAULT_API_HOST = 'http://158.108.102.14:8001';
+const DEFAULT_API_HOST = 'https://158.108.102.14:8005';
 const computedApiBase = rawApiBase
   ? rawApiBase.replace(/\/$/, '')
   : DEFAULT_API_HOST; // Force backend host when VITE_API_BASE_URL is not set
@@ -66,7 +66,7 @@ api.interceptors.response.use(
 
       // 👉 ถ้าเจอ 401: ให้ลอง Refresh Token ก่อน (อย่าเพิ่ง Logout)
       if (status === 401 && !originalRequest._retry) {
-        
+
         if (isRefreshing) {
           return new Promise(function (resolve, reject) {
             failedQueue.push({ resolve, reject });
@@ -103,7 +103,7 @@ api.interceptors.response.use(
             console.log('🔄 Token refreshed successfully');
             localStorage.setItem('access_token', data.access_token);
             if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
-            
+
             api.defaults.headers.common['Authorization'] = 'Bearer ' + data.access_token;
             originalRequest.headers.Authorization = 'Bearer ' + data.access_token;
 
@@ -123,7 +123,7 @@ api.interceptors.response.use(
       if (status === 401 || status === 403) {
         return handleLogout(error);
       }
-      
+
       console.warn(`⚠️ API Error ${status}: ${error.response?.statusText || 'Unknown'}`);
       return Promise.reject(error);
     }
@@ -143,7 +143,7 @@ api.interceptors.response.use(
 // ✅ 3. ฟังก์ชัน Logout แบบมี Popup ค้างไว้
 function handleLogout(error: any) {
   console.error('❌ Session expired. Logging out...');
-  
+
   if (typeof window !== 'undefined') {
     Swal.fire({
       title: '<span style="color: #f87171">Session Expired</span>',
@@ -162,7 +162,7 @@ function handleLogout(error: any) {
       window.location.href = '/auth/login';
     });
   }
-  
+
   return Promise.reject(error);
 }
 

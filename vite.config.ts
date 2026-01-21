@@ -4,6 +4,10 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
+		headers: {
+			// Allow camera, microphone, and geolocation
+			'Permissions-Policy': 'camera=*, microphone=*, geolocation=*'
+		},
 		proxy: {
 			// เมื่อไหร่ก็ตามที่ Frontend ยิงไปที่ /api
 			'/api': {

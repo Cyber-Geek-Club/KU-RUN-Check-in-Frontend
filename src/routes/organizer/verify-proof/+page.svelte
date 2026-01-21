@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { api } from '../_lib/api/client';
-  import { endpoints } from '../_lib/api/endpoints';
-  import Swal from 'sweetalert2';
-  
+  import { onMount, onDestroy } from "svelte";
+  import { api } from "../_lib/api/client";
+  import { endpoints } from "../_lib/api/endpoints";
+  import Swal from "sweetalert2";
 
-  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://158.108.102.14:8001").replace(/\/$/, "");
+  const API_BASE_URL = (
+    import.meta.env.VITE_API_BASE_URL || "https://158.108.102.14:8005"
+  ).replace(/\/$/, "");
 
   function capitalizeFirstLetter(string: string) {
     if (!string) return "Pending";
@@ -14,33 +15,48 @@
 
   function getApiImageUrl(path: string): string {
     if (!path) return "";
-    if (path.startsWith("http")) return path; // ถ้ามี http อยู่แล้วใช้ได้เลย
+
+    // Helper: upgrade http to https if page is served over HTTPS
+    const ensureHttps = (url: string) => {
+      if (
+        typeof window !== "undefined" &&
+        window.location.protocol === "https:"
+      ) {
+        return url.replace(/^http:\/\//i, "https://");
+      }
+      return url;
+    };
+
+    if (path.startsWith("http")) {
+      // Upgrade to HTTPS if needed to avoid Mixed Content errors
+      return ensureHttps(path);
+    }
 
     // ลบ / ตัวหน้าออกถ้ามี
-    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    const cleanPath = path.startsWith("/") ? path.substring(1) : path;
 
     // If the path already contains api/ (e.g. api/uploads/...), don't add another /api/
-    if (cleanPath.startsWith('api/')) {
-      return `${API_BASE_URL}/${cleanPath}`;
+    if (cleanPath.startsWith("api/")) {
+      return ensureHttps(`${API_BASE_URL}/${cleanPath}`);
     }
 
     // If path already begins with uploads/, use /api/uploads/
-    if (cleanPath.startsWith('uploads/')) {
-      return `${API_BASE_URL}/api/${cleanPath}`;
+    if (cleanPath.startsWith("uploads/")) {
+      return ensureHttps(`${API_BASE_URL}/api/${cleanPath}`);
     }
 
     // Otherwise assume it's a relative file path and put it under /api/uploads/
-    return `${API_BASE_URL}/api/uploads/${cleanPath}`;
+    return ensureHttps(`${API_BASE_URL}/api/uploads/${cleanPath}`);
   }
   // --- Language ---
   type Language = "th" | "en";
   let currentLang: Language = "th";
-  
+
   if (typeof localStorage !== "undefined") {
     const saved = localStorage.getItem("app_language");
     if (saved === "th" || saved === "en") currentLang = saved;
   }
-  
+
   const translations = {
     // ... (คงเดิม ไม่ต้องแก้)
     th: {
@@ -112,9 +128,9 @@
       viewImage: "View Image",
     },
   };
-  
+
   $: lang = translations[currentLang];
-  
+
   // --- Interfaces ---
   interface Event {
     id: string;
@@ -129,7 +145,7 @@
     image: string;
     pendingCount?: number;
   }
-  
+
   interface Submission {
     id: string | number;
     runnerName: string;
@@ -143,28 +159,28 @@
     actualDistance?: number;
     userId?: number | string | null;
   }
-  
+
   interface Statistics {
     total: number;
     pending: number;
     approvedToday: number;
     rejectedToday: number;
   }
-  
+
   // --- State ---
-  let view: 'events' | 'submissions' = 'events';
+  let view: "events" | "submissions" = "events";
   let events: Event[] = [];
   let selectedEvent: Event | null = null;
   let submissions: Submission[] = [];
   let loading = false;
   // Cache user profiles fetched from /api/users/{id}
   const userCache: Record<string, any> = {};
-  
+
   // Event Selection
   let eventsPage = 1;
   const eventsPerPage = 9;
   let showEventsPageDropdown = false;
-  
+
   // Filters
   let searchQuery = "";
   let batchFilter = "";
@@ -172,48 +188,52 @@
   let statusFilter = "Pending";
   let fromDate = "";
   let toDate = "";
-  
+
   // Filter dropdowns
   let showStatusDropdown = false;
   let showFromDateDropdown = false;
   let showToDateDropdown = false;
-  
+
   // Submissions pagination
   let submissionsPage = 1;
   const submissionsPerPage = 12;
   let showSubmissionsPageDropdown = false;
-  
+
   // Auto-refresh
   let autoRefreshEnabled = false;
   let autoRefreshInterval: any;
   let isConnected = false;
   let newSubmissionsCount = 0;
-  
+
   // Image modal
   let showImageModal = false;
   let modalImageUrl = "";
-  
+
   // Available dates
   let availableDates: { value: string; display: string }[] = [];
-  
+
   // Statistics
   let statistics: Statistics = {
     total: 0,
     pending: 0,
     approvedToday: 0,
-    rejectedToday: 0
+    rejectedToday: 0,
   };
-  
+
   // --- Computed ---
-  $: paginatedEvents = events.slice((eventsPage - 1) * eventsPerPage, eventsPage * eventsPerPage);
+  $: paginatedEvents = events.slice(
+    (eventsPage - 1) * eventsPerPage,
+    eventsPage * eventsPerPage,
+  );
   $: totalEventsPages = Math.ceil(events.length / eventsPerPage);
-  
-  $: filteredSubmissions = submissions.filter(sub => {
+
+  $: filteredSubmissions = submissions.filter((sub) => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      const match = sub.runnerName.toLowerCase().includes(q) ||
-                    sub.email.toLowerCase().includes(q) ||
-                    sub.odySd.toLowerCase().includes(q);
+      const match =
+        sub.runnerName.toLowerCase().includes(q) ||
+        sub.email.toLowerCase().includes(q) ||
+        sub.odySd.toLowerCase().includes(q);
       if (!match) return false;
     }
     if (batchFilter && batchFilter.length === 2) {
@@ -223,7 +243,11 @@
       const stdPart = sub.odySd.substring(2, 8);
       if (!stdPart.includes(stdIdFilter)) return false;
     }
-    if (statusFilter !== "All" && sub.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
+    if (
+      statusFilter !== "All" &&
+      sub.status.toLowerCase() !== statusFilter.toLowerCase()
+    )
+      return false;
     if (fromDate || toDate) {
       const nd = normalizeToLocalDate(sub.submittedAt);
       const subDate = nd ? formatDateYYYYMMDD(nd) : null;
@@ -233,17 +257,21 @@
     }
     return true;
   });
-  
+
   $: sortedSubmissions = [...filteredSubmissions].sort((a, b) => {
-    return new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime();
+    return (
+      new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+    );
   });
-  
+
   $: paginatedSubmissions = sortedSubmissions.slice(
     (submissionsPage - 1) * submissionsPerPage,
-    submissionsPage * submissionsPerPage
+    submissionsPage * submissionsPerPage,
   );
-  
-  $: totalSubmissionsPages = Math.ceil(sortedSubmissions.length / submissionsPerPage);
+
+  $: totalSubmissionsPages = Math.ceil(
+    sortedSubmissions.length / submissionsPerPage,
+  );
   $: totalSubmissions = sortedSubmissions.length;
 
   // Helper: normalize a date string to a Date at local midnight
@@ -256,8 +284,8 @@
 
   function formatDateYYYYMMDD(dateObj: Date) {
     const y = dateObj.getFullYear();
-    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const dd = String(dateObj.getDate()).padStart(2, '0');
+    const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const dd = String(dateObj.getDate()).padStart(2, "0");
     return `${y}-${m}-${dd}`;
   }
 
@@ -265,54 +293,63 @@
   $: isSingleDayEvent = (() => {
     if (!selectedEvent || !selectedEvent.startDate) return false;
     const s = normalizeToLocalDate(selectedEvent.startDate);
-    const e = normalizeToLocalDate(selectedEvent.endDate || selectedEvent.startDate);
+    const e = normalizeToLocalDate(
+      selectedEvent.endDate || selectedEvent.startDate,
+    );
     if (!s || !e) return false;
     return formatDateYYYYMMDD(s) === formatDateYYYYMMDD(e);
   })();
-  
+
   // --- Functions ---
-  
+
   function formatTimestamp(timestamp: string): string {
     if (!timestamp) return "-";
     const date = new Date(timestamp);
-    
+
     // เช็คว่าวันที่ถูกต้องหรือไม่
     if (isNaN(date.getTime())) return "-";
 
     // ✅ ใช้ format เดียวกับ Events (Day Month Year + Time)
     return date.toLocaleDateString(currentLang === "th" ? "th-TH" : "en-GB", {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
     });
   }
 
   function escapeHtml(input: any): string {
-    if (input === null || input === undefined) return '';
+    if (input === null || input === undefined) return "";
     return String(input)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
-  function formatDateRange(event: Event | undefined | null, lang: Language): string {
+  function formatDateRange(
+    event: Event | undefined | null,
+    lang: Language,
+  ): string {
     if (!event || !event.startDate) return "";
     const start = new Date(event.startDate);
     const end = new Date(event.endDate || event.startDate);
     const locale = lang === "th" ? "th-TH" : "en-GB";
-    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
-    
+    const options: Intl.DateTimeFormatOptions = {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    };
+
     if (start.toDateString() === end.toDateString()) {
       return start.toLocaleDateString(locale, options);
     }
     return `${start.toLocaleDateString(locale, options)} - ${end.toLocaleDateString(locale, options)}`;
   }
-  
+
   function translateStatus(status: string): string {
     const map: any = {
       Active: currentLang === "th" ? "เปิดใช้งาน" : "Active",
@@ -321,35 +358,43 @@
     };
     return map[status] || status;
   }
-  
+
   function calculateStatistics() {
     statistics.total = submissions.length;
-    statistics.pending = submissions.filter(s => s.status === "Pending").length;
-    
+    statistics.pending = submissions.filter(
+      (s) => s.status === "Pending",
+    ).length;
+
     const today = new Date().toDateString();
-    statistics.approvedToday = submissions.filter(s => {
-      const actionDate = s.updatedAt ? new Date(s.updatedAt).toDateString() : new Date(s.submittedAt).toDateString();
+    statistics.approvedToday = submissions.filter((s) => {
+      const actionDate = s.updatedAt
+        ? new Date(s.updatedAt).toDateString()
+        : new Date(s.submittedAt).toDateString();
       return s.status === "Approved" && actionDate === today;
     }).length;
-    statistics.rejectedToday = submissions.filter(s => {
-        const actionDate = s.updatedAt ? new Date(s.updatedAt).toDateString() : new Date(s.submittedAt).toDateString();
+    statistics.rejectedToday = submissions.filter((s) => {
+      const actionDate = s.updatedAt
+        ? new Date(s.updatedAt).toDateString()
+        : new Date(s.submittedAt).toDateString();
       return s.status === "Rejected" && actionDate === today;
     }).length;
   }
-  
+
   // --- API Functions ---
 
- async function loadEvents() {
+  async function loadEvents() {
     loading = true;
     try {
       let userId = "";
-      if (typeof localStorage !== 'undefined') {
-        const userInfo = localStorage.getItem('user_info');
+      if (typeof localStorage !== "undefined") {
+        const userInfo = localStorage.getItem("user_info");
         if (userInfo) {
           try {
             const user = JSON.parse(userInfo);
             userId = user.id;
-          } catch (e) { console.error("Error parsing user_info:", e); }
+          } catch (e) {
+            console.error("Error parsing user_info:", e);
+          }
         }
       }
 
@@ -361,7 +406,7 @@
       }
 
       const response = await api.get(endpoints.events.list);
-      console.log("Events Data:", response.data); 
+      console.log("Events Data:", response.data);
 
       if (response.data && Array.isArray(response.data)) {
         events = response.data.map((e: any) => ({
@@ -369,19 +414,29 @@
           title: e.title,
           description: e.description,
           location: e.location,
-          
+
           // ✅ แก้ไขตรงนี้: เพิ่ม e.event_date และ e.event_end_date ตาม JSON ที่ให้มา
-          startDate: e.event_date || e.start_date || e.startDate || new Date().toISOString(),
-          endDate: e.event_end_date || e.end_date || e.endDate || new Date().toISOString(),
-          
+          startDate:
+            e.event_date ||
+            e.start_date ||
+            e.startDate ||
+            new Date().toISOString(),
+          endDate:
+            e.event_end_date ||
+            e.end_date ||
+            e.endDate ||
+            new Date().toISOString(),
+
           startTime: e.start_time || e.startTime || "",
           endTime: e.end_time || e.endTime || "",
-          
+
           status: e.is_active ? "Active" : "Closed", // ปรับ Status ตาม JSON (is_active)
-          
+
           // JSON มี banner_image_url เราก็ดึงมาใช้
-          image: getApiImageUrl(e.banner_image_url || e.cover_image_url || e.image || ""),
-          
+          image: getApiImageUrl(
+            e.banner_image_url || e.cover_image_url || e.image || "",
+          ),
+
           pendingCount: e.pending_proof_count || e.pending_count || 0,
           organizer: e.created_by || null,
           details: null,
@@ -394,123 +449,170 @@
         events = [];
       }
     } catch (error: any) {
-      console.warn('❌ loadEvents Error:', error);
+      console.warn("❌ loadEvents Error:", error);
       events = [];
     } finally {
       loading = false;
     }
   }
-  
+
   async function selectEvent(event: Event) {
     // Debugging: ensure selectedEvent has a proper image
-    console.log('selectEvent called, event:', event);
-    const ensuredImage = event.image && event.image !== ""
-      ? event.image
-      : getApiImageUrl((event as any).banner_image_url || (event as any).cover_image_url || (event as any).image || "");
+    console.log("selectEvent called, event:", event);
+    const ensuredImage =
+      event.image && event.image !== ""
+        ? event.image
+        : getApiImageUrl(
+            (event as any).banner_image_url ||
+              (event as any).cover_image_url ||
+              (event as any).image ||
+              "",
+          );
     selectedEvent = { ...event, image: ensuredImage };
-    console.log('selectedEvent.image ->', selectedEvent.image);
-    view = 'submissions';
+    console.log("selectedEvent.image ->", selectedEvent.image);
+    view = "submissions";
     statusFilter = "Pending";
     await loadSubmissions(event.id);
   }
-  
- async function loadSubmissions(eventId: string) {
+
+  async function loadSubmissions(eventId: string) {
     loading = true;
     try {
       // เรียก API
-      const response = await api.get(endpoints.participations.listByEvent(eventId));
+      const response = await api.get(
+        endpoints.participations.listByEvent(eventId),
+      );
       console.log("Submissions Data:", response.data);
 
       // ✅ [แก้ไข 1] รองรับโครงสร้างข้อมูลแบบ { proofs: [...] }
       const rawData = response.data;
-      const dataList = Array.isArray(rawData) ? rawData : (rawData.proofs || []);
+      const dataList = Array.isArray(rawData) ? rawData : rawData.proofs || [];
 
-        if (Array.isArray(dataList)) {
-          submissions = dataList.map((item: any) => {
-            const userObj = item.user || {};
-            
-            // ✅ [แก้ไข 2] ดึงวันที่จาก proof_submitted_at (ตาม JSON)
-            const rawDate = item.proof_submitted_at || item.created_at || item.createdAt || new Date().toISOString();
+      if (Array.isArray(dataList)) {
+        submissions = dataList.map((item: any) => {
+          const userObj = item.user || {};
 
-            // ✅ [แก้ไข 3] แปลง Status "proof_submitted" -> "Pending" เพื่อให้ Filter ทำงานได้
-            let mappedStatus = item.status;
-            if (mappedStatus === 'proof_submitted') {
-                mappedStatus = 'Pending';
-            } else {
-                mappedStatus = capitalizeFirstLetter(mappedStatus);
-            }
+          // ✅ [แก้ไข 2] ดึงวันที่จาก proof_submitted_at (ตาม JSON)
+          const rawDate =
+            item.proof_submitted_at ||
+            item.created_at ||
+            item.createdAt ||
+            new Date().toISOString();
 
-            return {
-              // ✅ [แก้ไข 4] Map ชื่อตัวแปรให้ตรงกับ JSON
-              id: item.participation_id || item.id, 
-              runnerName: userObj.full_name || userObj.display_name || item.runner_name || "Unknown",
-              // Try many common keys used by different backends (nisit_id, nisitId, student_id, studentId)
-              odySd: userObj.nisit_id || userObj.nisitId || userObj.student_id || userObj.studentId || item.student_id || item.nisit_id || item.odySd || "-",
-              email: userObj.email || item.email || "-",
-              
-              // ✅ [แก้ไข 5] ใช้ proof_image_url
-              proofImage: getApiImageUrl(item.proof_image_url || item.proof_url || item.image_url || ""),
-              
-              status: mappedStatus,
-              
-              submittedAt: rawDate,
-              updatedAt: item.updated_at || rawDate,
-              
-              // ✅ [แก้ไข 6] ใช้ strava_link และ actual_distance_km
-              stravaLink: item.strava_link || item.strava_url || null,
-              actualDistance: parseFloat(item.actual_distance_km || item.distance || "0"),
-              // keep user id if available so we can fetch UserReward after verify
-              userId: userObj.id || item.user_id || item.userId || null,
-            };
-          });
+          // ✅ [แก้ไข 3] แปลง Status "proof_submitted" -> "Pending" เพื่อให้ Filter ทำงานได้
+          let mappedStatus = item.status;
+          if (mappedStatus === "proof_submitted") {
+            mappedStatus = "Pending";
+          } else {
+            mappedStatus = capitalizeFirstLetter(mappedStatus);
+          }
+
+          return {
+            // ✅ [แก้ไข 4] Map ชื่อตัวแปรให้ตรงกับ JSON
+            id: item.participation_id || item.id,
+            runnerName:
+              userObj.full_name ||
+              userObj.display_name ||
+              item.runner_name ||
+              "Unknown",
+            // Try many common keys used by different backends (nisit_id, nisitId, student_id, studentId)
+            odySd:
+              userObj.nisit_id ||
+              userObj.nisitId ||
+              userObj.student_id ||
+              userObj.studentId ||
+              item.student_id ||
+              item.nisit_id ||
+              item.odySd ||
+              "-",
+            email: userObj.email || item.email || "-",
+
+            // ✅ [แก้ไข 5] ใช้ proof_image_url
+            proofImage: getApiImageUrl(
+              item.proof_image_url || item.proof_url || item.image_url || "",
+            ),
+
+            status: mappedStatus,
+
+            submittedAt: rawDate,
+            updatedAt: item.updated_at || rawDate,
+
+            // ✅ [แก้ไข 6] ใช้ strava_link และ actual_distance_km
+            stravaLink: item.strava_link || item.strava_url || null,
+            actualDistance: parseFloat(
+              item.actual_distance_km || item.distance || "0",
+            ),
+            // keep user id if available so we can fetch UserReward after verify
+            userId: userObj.id || item.user_id || item.userId || null,
+          };
+        });
         // Prefetch user profiles for submissions (when userId present)
         try {
-          const userIds = Array.from(new Set(submissions.map(s => s.userId).filter((x): x is string | number => Boolean(x))));
-          await Promise.all(userIds.map(async (uid: string | number) => {
-            const key = String(uid);
-            if (userCache[key] !== undefined) return;
-            try {
-              const res = await api.get(endpoints.users.getById(uid as string | number));
-              userCache[key] = res.data;
-            } catch (e) {
-              console.warn('Failed to fetch user profile', uid, e);
-              userCache[key] = null;
-            }
-          }));
+          const userIds = Array.from(
+            new Set(
+              submissions
+                .map((s) => s.userId)
+                .filter((x): x is string | number => Boolean(x)),
+            ),
+          );
+          await Promise.all(
+            userIds.map(async (uid: string | number) => {
+              const key = String(uid);
+              if (userCache[key] !== undefined) return;
+              try {
+                const res = await api.get(
+                  endpoints.users.getById(uid as string | number),
+                );
+                userCache[key] = res.data;
+              } catch (e) {
+                console.warn("Failed to fetch user profile", uid, e);
+                userCache[key] = null;
+              }
+            }),
+          );
 
           // Merge cached nisit_id/email into submissions when missing
-          submissions = submissions.map(s => {
-            const key = String(s.userId || '');
+          submissions = submissions.map((s) => {
+            const key = String(s.userId || "");
             const u = userCache[key];
-            const nisitFromCache = u ? (u.nisit_id || u.nisitId || null) : null;
-            const emailFromCache = u ? (u.email || null) : null;
+            const nisitFromCache = u ? u.nisit_id || u.nisitId || null : null;
+            const emailFromCache = u ? u.email || null : null;
             return {
               ...s,
-              odySd: (s.odySd && s.odySd !== '-') ? s.odySd : (nisitFromCache || '-') ,
-              email: (s.email && s.email !== '-') ? s.email : (emailFromCache || '-')
+              odySd:
+                s.odySd && s.odySd !== "-" ? s.odySd : nisitFromCache || "-",
+              email:
+                s.email && s.email !== "-" ? s.email : emailFromCache || "-",
             } as Submission;
           });
         } catch (e) {
-          console.warn('User prefetch failed', e);
+          console.warn("User prefetch failed", e);
         }
       } else {
-          submissions = [];
+        submissions = [];
       }
-      
+
       // Filter วันที่ — prefer event date range when available
       if (selectedEvent && selectedEvent.startDate) {
         const start = normalizeToLocalDate(selectedEvent.startDate)!;
-        const end = normalizeToLocalDate(selectedEvent.endDate || selectedEvent.startDate)!;
+        const end = normalizeToLocalDate(
+          selectedEvent.endDate || selectedEvent.startDate,
+        )!;
         const datesArr: string[] = [];
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           // push local YYYY-MM-DD
           datesArr.push(formatDateYYYYMMDD(new Date(d)));
         }
-        availableDates = datesArr.map(d => ({
+        availableDates = datesArr.map((d) => ({
           value: d,
-          display: new Date(d).toLocaleDateString(currentLang === "th" ? "th-TH" : "en-GB", {
-            day: '2-digit', month: 'short', year: 'numeric'
-          })
+          display: new Date(d).toLocaleDateString(
+            currentLang === "th" ? "th-TH" : "en-GB",
+            {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            },
+          ),
         }));
 
         // If event is single-day, preselect that date
@@ -519,44 +621,54 @@
           toDate = availableDates[0].value;
         }
       } else {
-        const dates = [...new Set(submissions.map(s => s.submittedAt.split('T')[0]))];
-        availableDates = dates.sort().reverse().map(d => ({
-          value: d,
-          display: new Date(d).toLocaleDateString(currentLang === "th" ? "th-TH" : "en-GB", {
-            day: '2-digit', month: 'short', year: 'numeric'
-          })
-        }));
+        const dates = [
+          ...new Set(submissions.map((s) => s.submittedAt.split("T")[0])),
+        ];
+        availableDates = dates
+          .sort()
+          .reverse()
+          .map((d) => ({
+            value: d,
+            display: new Date(d).toLocaleDateString(
+              currentLang === "th" ? "th-TH" : "en-GB",
+              {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              },
+            ),
+          }));
       }
 
       calculateStatistics();
     } catch (error) {
-      console.warn('Failed to load submissions:', error);
+      console.warn("Failed to load submissions:", error);
       submissions = [];
       calculateStatistics();
     } finally {
       loading = false;
     }
   }
-  
-  async function verifyParticipationAPI(
-    pid: string | number,
-    approved: boolean,
-    reason: string = ""
-  ) {
-    const payload: any = { participation_id: pid, approved };
-    if (!approved) payload.rejection_reason = reason;
 
-    try {
+  async function verifyParticipationAPI(
+    pid: string | number,
+    approved: boolean,
+    reason: string = "",
+  ) {
+    const payload: any = { participation_id: pid, approved };
+    if (!approved) payload.rejection_reason = reason;
+
+    try {
       // ❌ ผิด:
-      // const res = await api.post("/api/participations/verify", payload);
+      // const res = await api.post("/api/participations/verify", payload);
 
       // ✅ ถูกต้อง:
-      const res = await api.post(endpoints.participations.verify, payload);
-      return res.data;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || "Verification failed");
-    }
-  }
+      const res = await api.post(endpoints.participations.verify, payload);
+      return res.data;
+    } catch (err: any) {
+      throw new Error(err.response?.data?.message || "Verification failed");
+    }
+  }
 
   // Fetch UserReward records for a user (used after approval)
   async function fetchUserRewards(userId: number | string | null) {
@@ -565,11 +677,11 @@
       const res = await api.get(endpoints.rewards.getByUser(userId));
       return res.data || [];
     } catch (err) {
-      console.warn('Failed to fetch user rewards:', err);
+      console.warn("Failed to fetch user rewards:", err);
       return [];
     }
   }
-  
+
   async function onApproveSubmission(sub: Submission) {
     const stravaInfo = sub.stravaLink
       ? `<div class="info-row"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink: 0;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg><span>Strava: <a href="${sub.stravaLink}" target="_blank" style="color: #f97316;">${sub.stravaLink}</a></span></div>`
@@ -580,10 +692,12 @@
 
     const htmlContent = `<div class="reject-container"><p class="helper-text">Are you sure you want to verify this proof?</p><div class="approve-card"><div class="ac-avatar"><span class="ac-placeholder">${sub.runnerName.charAt(0).toUpperCase()}</span></div><div class="card-content"><span class="rj-title">${sub.runnerName}</span><span class="rj-desc">Submitted: ${new Date(sub.submittedAt).toLocaleString(currentLang === "th" ? "th-TH" : "en-GB", { timeZone: "Asia/Bangkok" })}</span></div></div><div class="approve-info"><div class="info-row"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink: 0;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Status changes to <b>COMPLETED</b></span></div>${stravaInfo}${distanceInfo}<div class="info-row"><svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink: 0;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>System auto-assigns rewards</span></div></div></div>`;
 
-    const styleContent = "<style>.reject-container { padding: 10px 0; text-align: left; }.helper-text { color: #94a3b8; font-size: 14px; margin-bottom: 20px; text-align: center; }.approve-card { display: flex; align-items: center; gap: 16px; background: rgba(16, 185, 129, 0.08); border: 2px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 20px; }.ac-avatar { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3)); display: flex; align-items: center; justify-content: center; border: 2px solid rgba(16, 185, 129, 0.4); }.ac-placeholder { color: #10b981; font-size: 24px; font-weight: 700; text-transform: uppercase; }.card-content { flex: 1; display: flex; flex-direction: column; gap: 6px; }.rj-title { font-size: 16px; font-weight: 600; color: #f8fafc; }.rj-desc { font-size: 13px; color: #94a3b8; }.approve-info { background: rgba(30, 41, 59, 0.6); border: 2px solid rgba(71, 85, 105, 0.3); border-radius: 12px; padding: 16px; }.info-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; color: #cbd5e1; font-size: 14px; }.info-row svg { color: #10b981; }.info-row:not(:last-child) { border-bottom: 1px solid rgba(71, 85, 105, 0.2); }.info-row b { color: #10b981; font-weight: 600; }.swal-clean-popup-reject { background: #1e293b !important; border: 1px solid rgba(71, 85, 105, 0.3) !important; border-radius: 16px !important; padding: 24px !important; }.swal2-html-container { margin: 0 !important; }.swal2-validation-message { background: rgba(239, 68, 68, 0.1) !important; border: 2px solid rgba(239, 68, 68, 0.4) !important; border-radius: 12px !important; color: #fca5a5 !important; font-size: 14px !important; font-weight: 500 !important; padding: 12px 16px !important; margin: 16px 0 0 0 !important; display: none !important; align-items: center !important; gap: 8px !important; }@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }@keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }.swal2-validation-message.show { display: flex !important; animation: slideDown 0.3s ease !important; }.swal2-validation-message.hide { animation: fadeOut 0.3s ease !important; }.swal2-validation-message::before { content: \"\"; display: inline-block; width: 20px; height: 20px; background: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23fca5a5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'/%3E%3C/svg%3E\") no-repeat center; background-size: contain; flex-shrink: 0; }</style>";
+    const styleContent =
+      "<style>.reject-container { padding: 10px 0; text-align: left; }.helper-text { color: #94a3b8; font-size: 14px; margin-bottom: 20px; text-align: center; }.approve-card { display: flex; align-items: center; gap: 16px; background: rgba(16, 185, 129, 0.08); border: 2px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 20px; }.ac-avatar { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3)); display: flex; align-items: center; justify-content: center; border: 2px solid rgba(16, 185, 129, 0.4); }.ac-placeholder { color: #10b981; font-size: 24px; font-weight: 700; text-transform: uppercase; }.card-content { flex: 1; display: flex; flex-direction: column; gap: 6px; }.rj-title { font-size: 16px; font-weight: 600; color: #f8fafc; }.rj-desc { font-size: 13px; color: #94a3b8; }.approve-info { background: rgba(30, 41, 59, 0.6); border: 2px solid rgba(71, 85, 105, 0.3); border-radius: 12px; padding: 16px; }.info-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; color: #cbd5e1; font-size: 14px; }.info-row svg { color: #10b981; }.info-row:not(:last-child) { border-bottom: 1px solid rgba(71, 85, 105, 0.2); }.info-row b { color: #10b981; font-weight: 600; }.swal-clean-popup-reject { background: #1e293b !important; border: 1px solid rgba(71, 85, 105, 0.3) !important; border-radius: 16px !important; padding: 24px !important; }.swal2-html-container { margin: 0 !important; }.swal2-validation-message { background: rgba(239, 68, 68, 0.1) !important; border: 2px solid rgba(239, 68, 68, 0.4) !important; border-radius: 12px !important; color: #fca5a5 !important; font-size: 14px !important; font-weight: 500 !important; padding: 12px 16px !important; margin: 16px 0 0 0 !important; display: none !important; align-items: center !important; gap: 8px !important; }@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }@keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }.swal2-validation-message.show { display: flex !important; animation: slideDown 0.3s ease !important; }.swal2-validation-message.hide { animation: fadeOut 0.3s ease !important; }.swal2-validation-message::before { content: \"\"; display: inline-block; width: 20px; height: 20px; background: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23fca5a5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'/%3E%3C/svg%3E\") no-repeat center; background-size: contain; flex-shrink: 0; }</style>";
 
     Swal.fire({
-      title: '<span style="color: #10b981; font-size: 22px; font-weight: 600;">Approve Submission</span>',
+      title:
+        '<span style="color: #10b981; font-size: 22px; font-weight: 600;">Approve Submission</span>',
       html: htmlContent + styleContent,
       showCancelButton: true,
       confirmButtonColor: "#10b981",
@@ -611,15 +725,18 @@
       if (res.isConfirmed) {
         // ✅ อัปเดต UI ทันที: ลบการ์ดออก และ เพิ่มสถิติอนุมัติ
         // ใช้ filter เพื่อเอา ID ที่ตรงกันออก (Convert to string to be safe)
-        submissions = submissions.filter((s) => String(s.id) !== String(sub.id));
-        
+        submissions = submissions.filter(
+          (s) => String(s.id) !== String(sub.id),
+        );
+
         // Update stats locally to reflect immediate change
         statistics.total--;
         statistics.pending--;
         statistics.approvedToday++;
-        
+
         Swal.fire({
-          title: '<span style="color: #10b981; font-weight: 600;">Verified!</span>',
+          title:
+            '<span style="color: #10b981; font-weight: 600;">Verified!</span>',
           html: '<p style="color: #94a3b8; font-size: 14px;">Participation has been approved successfully.</p>',
           icon: "success",
           timer: 2000,
@@ -628,18 +745,23 @@
           background: "#1e293b",
           iconColor: "#10b981",
         });
-          // After confirmation, try to fetch any UserReward records created for this user
-          (async () => {
-            try {
-              const uid = sub.userId || null;
-              if (!uid) return;
-              const userRewards = await fetchUserRewards(uid);
-              if (Array.isArray(userRewards) && userRewards.length > 0) {
-                const cards = userRewards.map((r: any) => {
-                  const when = r.rewarded_at || r.created_at || r.awarded_at || '';
-                  const whenFmt = when ? formatTimestamp(when) : '-';
-                  const title = (r.name || r.reward_name || r.title || '').toString().trim() || 'Unnamed reward';
-                  const badge = (r.badge_image_url || r.image_url || '');
+        // After confirmation, try to fetch any UserReward records created for this user
+        (async () => {
+          try {
+            const uid = sub.userId || null;
+            if (!uid) return;
+            const userRewards = await fetchUserRewards(uid);
+            if (Array.isArray(userRewards) && userRewards.length > 0) {
+              const cards = userRewards
+                .map((r: any) => {
+                  const when =
+                    r.rewarded_at || r.created_at || r.awarded_at || "";
+                  const whenFmt = when ? formatTimestamp(when) : "-";
+                  const title =
+                    (r.name || r.reward_name || r.title || "")
+                      .toString()
+                      .trim() || "Unnamed reward";
+                  const badge = r.badge_image_url || r.image_url || "";
                   return `
                     <div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);">
                       <div style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#0f172a;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.04);">
@@ -651,40 +773,41 @@
                       </div>
                     </div>
                   `;
-                }).join('');
+                })
+                .join("");
 
-                Swal.fire({
-                  title: 'Assigned Rewards',
-                  html: `
+              Swal.fire({
+                title: "Assigned Rewards",
+                html: `
                     <div style="text-align:left; max-height:320px; overflow:auto; padding:8px 4px; display:flex;flex-direction:column;gap:8px;">
                       ${cards}
                     </div>
                   `,
-                  icon: 'info',
-                  background: '#0b1220',
-                  color: '#fff',
-                  width: 520,
-                  confirmButtonColor: '#10b981'
-                });
-              } else {
-                Swal.fire({
-                  title: 'Assigned Rewards',
-                  html: `<div style="text-align:center;padding:18px;color:#94a3b8;">No rewards were assigned.</div>`,
-                  icon: 'info',
-                  background: '#0b1220',
-                  color: '#fff',
-                  width: 520,
-                  confirmButtonColor: '#10b981'
-                });
-              }
-            } catch (e) {
-              console.warn('Error fetching user rewards after approve:', e);
+                icon: "info",
+                background: "#0b1220",
+                color: "#fff",
+                width: 520,
+                confirmButtonColor: "#10b981",
+              });
+            } else {
+              Swal.fire({
+                title: "Assigned Rewards",
+                html: `<div style="text-align:center;padding:18px;color:#94a3b8;">No rewards were assigned.</div>`,
+                icon: "info",
+                background: "#0b1220",
+                color: "#fff",
+                width: 520,
+                confirmButtonColor: "#10b981",
+              });
             }
-          })();
+          } catch (e) {
+            console.warn("Error fetching user rewards after approve:", e);
+          }
+        })();
       }
     });
   }
-  
+
   async function onRejectSubmission(sub: Submission) {
     const htmlContent =
       '<div class="reject-container"><p class="helper-text">Please select a reason for rejection:</p><label class="reject-card"><input type="radio" name="rj_reason" value="Unclear image / Unreadable" checked><div class="card-content"><div class="icon-wrapper unclear"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></div><div class="text-wrapper"><span class="rj-title">Unclear Image</span><span class="rj-desc">Photo is blurry, dark, or data is unreadable.</span></div></div></label><label class="reject-card"><input type="radio" name="rj_reason" value="Incorrect distance or duration"><div class="card-content"><div class="icon-wrapper incorrect"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><div class="text-wrapper"><span class="rj-title">Incorrect Data</span><span class="rj-desc">Distance or time does not match requirements.</span></div></div></label><label class="reject-card"><input type="radio" name="rj_reason" value="Duplicate submission"><div class="card-content"><div class="icon-wrapper duplicate"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></div><div class="text-wrapper"><span class="rj-title">Duplicate</span><span class="rj-desc">This proof has already been submitted.</span></div></div></label><label class="reject-card"><input type="radio" name="rj_reason" value="other"><div class="card-content"><div class="icon-wrapper other"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></div><div class="text-wrapper"><span class="rj-title">Other Reason</span><span class="rj-desc">Specify a custom reason below.</span></div></div></label><div id="other-input-container" class="other-box"><textarea id="other-reason-text" class="custom-textarea" placeholder="Please type the reason here..." rows="4"></textarea></div></div>';
@@ -693,12 +816,14 @@
       '<style>.reject-container { padding: 10px 0; text-align: left; }.helper-text { color: #94a3b8; font-size: 14px; margin-bottom: 16px; text-align: center; }.reject-card { display: block; background: rgba(30, 41, 59, 0.6); border: 2px solid rgba(71, 85, 105, 0.3); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; position: relative; }.reject-card:hover { background: rgba(30, 41, 59, 0.8); border-color: rgba(239, 68, 68, 0.4); transform: translateX(4px); }.reject-card input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }.reject-card input[type="radio"]:checked ~ .card-content { opacity: 1; }.reject-card input[type="radio"]:checked ~ .card-content .icon-wrapper { background: rgba(239, 68, 68, 0.15); border-color: #ef4444; }.reject-card input[type="radio"]:checked ~ .card-content .rj-title { color: #f87171; }.reject-card:has(input[type="radio"]:checked) { background: rgba(239, 68, 68, 0.08); border-color: #ef4444; }.card-content { display: flex; align-items: center; gap: 14px; opacity: 0.7; transition: opacity 0.2s; }.icon-wrapper { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 2px solid transparent; transition: all 0.2s; }.icon-wrapper.unclear { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }.icon-wrapper.incorrect { background: rgba(239, 68, 68, 0.1); color: #ef4444; }.icon-wrapper.duplicate { background: rgba(168, 85, 247, 0.1); color: #a855f7; }.icon-wrapper.other { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }.text-wrapper { flex: 1; display: flex; flex-direction: column; gap: 4px; }.rj-title { font-size: 15px; font-weight: 600; color: #f8fafc; transition: color 0.2s; }.rj-desc { font-size: 13px; color: #94a3b8; line-height: 1.4; }.other-box { max-height: 0; overflow: hidden; opacity: 0; transition: all 0.3s ease; margin-top: 0; width: 100%; box-sizing: border-box; }.other-box.visible { max-height: 200px; opacity: 1; margin-top: 12px; }.custom-textarea { width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.8); border: 2px solid rgba(71, 85, 105, 0.4); border-radius: 12px; padding: 12px 14px; color: #f8fafc; font-size: 14px; font-family: inherit; resize: vertical; min-height: 100px; transition: all 0.2s; }.custom-textarea:focus { outline: none; border-color: #ef4444; background: rgba(15, 23, 42, 0.95); }.custom-textarea::placeholder { color: #64748b; }.swal-clean-popup-reject { background: #1e293b !important; border: 1px solid rgba(71, 85, 105, 0.3) !important; border-radius: 16px !important; padding: 24px !important; }.swal2-html-container { margin: 0 !important; }</style>';
 
     const result = await Swal.fire({
-      title: '<span style="color: #f87171; font-size: 22px; font-weight: 600;">Reject Submission</span>',
+      title:
+        '<span style="color: #f87171; font-size: 22px; font-weight: 600;">Reject Submission</span>',
       html: htmlContent + styleContent,
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
       cancelButtonColor: "#475569",
-      confirmButtonText: '<span style="font-weight: 600;">Confirm Reject</span>',
+      confirmButtonText:
+        '<span style="font-weight: 600;">Confirm Reject</span>',
       cancelButtonText: "Cancel",
       customClass: {
         popup: "swal-clean-popup-reject",
@@ -709,7 +834,9 @@
       didOpen: () => {
         const radios = document.querySelectorAll('input[name="rj_reason"]');
         const otherContainer = document.getElementById("other-input-container");
-        const textArea = document.getElementById("other-reason-text") as HTMLTextAreaElement;
+        const textArea = document.getElementById(
+          "other-reason-text",
+        ) as HTMLTextAreaElement;
 
         radios.forEach((radio) => {
           radio.addEventListener("change", (e: any) => {
@@ -724,13 +851,19 @@
         });
       },
       preConfirm: () => {
-        const selected = document.querySelector('input[name="rj_reason"]:checked') as HTMLInputElement;
-        if (!selected) return Swal.showValidationMessage("Please select a reason");
+        const selected = document.querySelector(
+          'input[name="rj_reason"]:checked',
+        ) as HTMLInputElement;
+        if (!selected)
+          return Swal.showValidationMessage("Please select a reason");
 
         let finalReason = selected.value;
         if (finalReason === "other") {
-          const textVal = (document.getElementById("other-reason-text") as HTMLTextAreaElement).value.trim();
-          if (!textVal) return Swal.showValidationMessage("Please specify the reason.");
+          const textVal = (
+            document.getElementById("other-reason-text") as HTMLTextAreaElement
+          ).value.trim();
+          if (!textVal)
+            return Swal.showValidationMessage("Please specify the reason.");
           finalReason = textVal;
         }
 
@@ -738,7 +871,7 @@
         return verifyParticipationAPI(sub.id, false, finalReason).catch(
           (error) => {
             Swal.showValidationMessage(`Error: ${error.message}`);
-          }
+          },
         );
       },
     });
@@ -746,14 +879,15 @@
     if (result.value) {
       // ✅ อัปเดต UI ทันที
       submissions = submissions.filter((s) => String(s.id) !== String(sub.id));
-      
+
       // Update stats locally
       statistics.total--;
       statistics.pending--;
       statistics.rejectedToday++;
 
       Swal.fire({
-        title: '<span style="color: #f87171; font-weight: 600;">Rejected!</span>',
+        title:
+          '<span style="color: #f87171; font-weight: 600;">Rejected!</span>',
         html: '<p style="color: #94a3b8; font-size: 14px;">The submission has been rejected successfully.</p>',
         icon: "success",
         timer: 2000,
@@ -764,14 +898,14 @@
       });
     }
   }
-  
+
   function backToEventsList() {
-    view = 'events';
+    view = "events";
     selectedEvent = null;
     submissions = [];
     resetFilters();
   }
-  
+
   function resetFilters() {
     searchQuery = "";
     batchFilter = "";
@@ -787,15 +921,15 @@
     modalImageUrl = imageUrl;
     showImageModal = true;
   }
-  
+
   function closeImageModal() {
     showImageModal = false;
     modalImageUrl = "";
   }
-  
+
   function toggleAutoRefresh() {
     autoRefreshEnabled = !autoRefreshEnabled;
-    
+
     if (autoRefreshEnabled) {
       isConnected = true;
       autoRefreshInterval = setInterval(async () => {
@@ -815,26 +949,26 @@
       }
     }
   }
-  
+
   async function refreshSubmissions() {
     if (selectedEvent) {
       await loadSubmissions(selectedEvent.id);
       newSubmissionsCount = 0;
     }
   }
-  
+
   function prevEventsPage() {
     if (eventsPage > 1) eventsPage--;
   }
-  
+
   function nextEventsPage() {
     if (eventsPage < totalEventsPages) eventsPage++;
   }
-  
+
   function prevSubmissionsPage() {
     if (submissionsPage > 1) submissionsPage--;
   }
-  
+
   function nextSubmissionsPage() {
     if (submissionsPage < totalSubmissionsPages) submissionsPage++;
   }
@@ -843,7 +977,7 @@
     submissionsPage = page;
     showSubmissionsPageDropdown = false;
   }
-  
+
   function closeAllDropdowns() {
     showStatusDropdown = false;
     showFromDateDropdown = false;
@@ -851,28 +985,28 @@
     showEventsPageDropdown = false;
     showSubmissionsPageDropdown = false;
   }
-  
+
   onMount(async () => {
     // Pre-check for access_token before loading events
-    if (typeof localStorage !== 'undefined') {
-      const token = localStorage.getItem('access_token');
-      if (!token || token.trim() === '') {
-        console.warn('[Auth] No token found, redirecting to login');
-        window.location.href = '/auth/login';
+    if (typeof localStorage !== "undefined") {
+      const token = localStorage.getItem("access_token");
+      if (!token || token.trim() === "") {
+        console.warn("[Auth] No token found, redirecting to login");
+        window.location.href = "/auth/login";
         return;
       }
-      console.log('[Auth] Token found:', token.substring(0, 20) + '...');
+      console.log("[Auth] Token found:", token.substring(0, 20) + "...");
     }
-    
+
     // Try to load events and handle auth errors
     try {
       await loadEvents();
     } catch (error) {
-      console.error('[Auth] Failed to load events:', error);
+      console.error("[Auth] Failed to load events:", error);
       // If loadEvents fails, it will handle the redirect internally
     }
   });
-  
+
   onDestroy(() => {
     if (autoRefreshInterval) {
       clearInterval(autoRefreshInterval);
@@ -883,12 +1017,12 @@
 <svelte:window on:click={closeAllDropdowns} />
 
 <div class="proof-verification-container">
-  {#if view === 'events'}
+  {#if view === "events"}
     <div class="events-view">
       <div class="page-header">
         <!-- Header texts removed per UX request -->
       </div>
-      
+
       {#if loading}
         <div class="loading-state">
           <div class="spinner"></div>
@@ -896,8 +1030,19 @@
         </div>
       {:else if paginatedEvents.length === 0}
         <div class="empty-state">
-          <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          <svg
+            width="64"
+            height="64"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
           </svg>
           <p>{lang.noEventsFound}</p>
         </div>
@@ -906,56 +1051,124 @@
           {#each paginatedEvents as event (event.id)}
             <div class="event-card">
               <div class="event-image-wrapper">
-                <img 
-                  src={event.image || "https://placehold.co/400x200/1e293b/64748b?text=No+Image"} 
-                  alt={event.title} 
-                  class="event-image" 
+                <img
+                  src={event.image ||
+                    "https://placehold.co/400x200/1e293b/64748b?text=No+Image"}
+                  alt={event.title}
+                  class="event-image"
                   loading="lazy"
-                  on:error={(e: globalThis.Event) => { const img = e.currentTarget as HTMLImageElement; img.src = "https://placehold.co/400x200/1e293b/64748b?text=Image+Unavailable"; }}
+                  on:error={(e: globalThis.Event) => {
+                    const img = e.currentTarget as HTMLImageElement;
+                    img.src =
+                      "https://placehold.co/400x200/1e293b/64748b?text=Image+Unavailable";
+                  }}
                 />
                 {#if event.pendingCount && event.pendingCount > 0}
-                  <div class="pending-badge-overlay">{event.pendingCount} Pending</div>
+                  <div class="pending-badge-overlay">
+                    {event.pendingCount} Pending
+                  </div>
                 {/if}
-                <div class="event-status-badge" class:active={event.status === "Active"} class:closed={event.status === "Closed"} class:draft={event.status === "Draft"}>
+                <div
+                  class="event-status-badge"
+                  class:active={event.status === "Active"}
+                  class:closed={event.status === "Closed"}
+                  class:draft={event.status === "Draft"}
+                >
                   {translateStatus(event.status)}
                 </div>
               </div>
-              
+
               <div class="event-card-body">
                 <h3 class="event-title">{event.title}</h3>
                 {#if event.description}
-                  <p class="event-description">{event.description.substring(0, 80)}{event.description.length > 80 ? "..." : ""}</p>
+                  <p class="event-description">
+                    {event.description.substring(0, 80)}{event.description
+                      .length > 80
+                      ? "..."
+                      : ""}
+                  </p>
                 {/if}
-                
+
                 <div class="event-meta">
                   <div class="meta-item">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <svg
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      ></path>
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                      ></path>
                     </svg>
                     <span>{event.location}</span>
                   </div>
-                  
+
                   <div class="meta-item">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    <svg
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      ></path>
                     </svg>
                     <span>{formatDateRange(event, currentLang)}</span>
                   </div>
-                  
+
                   {#if event.startTime && event.endTime}
                     <div class="meta-item">
-                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      <svg
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        ></path>
                       </svg>
                       <span>{event.startTime} - {event.endTime}</span>
                     </div>
                   {/if}
                 </div>
 
-                <button class="btn-view-submissions" on:click={() => selectEvent(event)}>
-                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <button
+                  class="btn-view-submissions"
+                  on:click={() => selectEvent(event)}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
                   </svg>
                   {lang.verifySubmissions}
                 </button>
@@ -967,40 +1180,110 @@
         {#if totalEventsPages > 1}
           <div class="pagination-wrapper">
             <div class="pagination-controls">
-                <button class="page-btn" aria-label="Previous events page" on:click={prevEventsPage} disabled={eventsPage === 1}>
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+              <button
+                class="page-btn"
+                aria-label="Previous events page"
+                on:click={prevEventsPage}
+                disabled={eventsPage === 1}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 19l-7-7 7-7"
+                  ></path>
                 </svg>
               </button>
-              
+
               <div class="page-select-wrapper">
-                <button class="page-indicator-box" on:click|stopPropagation={() => (showEventsPageDropdown = !showEventsPageDropdown)}>
+                <button
+                  class="page-indicator-box"
+                  on:click|stopPropagation={() =>
+                    (showEventsPageDropdown = !showEventsPageDropdown)}
+                >
                   <span class="current-page">{eventsPage}</span>
                   <span class="sep">/</span>
                   <span class="total-page">{totalEventsPages}</span>
-                  <svg class="dropdown-arrow" class:flipped={showEventsPageDropdown} width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path>
+                  <svg
+                    class="dropdown-arrow"
+                    class:flipped={showEventsPageDropdown}
+                    width="12"
+                    height="12"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="3"
+                      d="M19 9l-7 7-7-7"
+                    ></path>
                   </svg>
                 </button>
-                  {#if showEventsPageDropdown}
-                    <div class="page-dropdown-list" role="menu" tabindex="0" on:click|stopPropagation on:keydown={(e: globalThis.KeyboardEvent) => { /* keyboard support for menu container */ }}>
+                {#if showEventsPageDropdown}
+                  <div
+                    class="page-dropdown-list"
+                    role="menu"
+                    tabindex="0"
+                    on:click|stopPropagation
+                    on:keydown={(e: globalThis.KeyboardEvent) => {
+                      /* keyboard support for menu container */
+                    }}
+                  >
                     {#each Array(totalEventsPages) as _, i}
-                      <button class="page-option" class:active={eventsPage === i + 1} on:click={() => { eventsPage = i + 1; showEventsPageDropdown = false; }}>
+                      <button
+                        class="page-option"
+                        class:active={eventsPage === i + 1}
+                        on:click={() => {
+                          eventsPage = i + 1;
+                          showEventsPageDropdown = false;
+                        }}
+                      >
                         Page {i + 1}
                       </button>
                     {/each}
                   </div>
                 {/if}
               </div>
-              
-              <button class="page-btn" aria-label="Next events page" on:click={nextEventsPage} disabled={eventsPage === totalEventsPages}>
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+
+              <button
+                class="page-btn"
+                aria-label="Next events page"
+                on:click={nextEventsPage}
+                disabled={eventsPage === totalEventsPages}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  ></path>
                 </svg>
               </button>
             </div>
             <div class="page-info">
-              {lang.showingResults} {(eventsPage - 1) * eventsPerPage + 1} - {Math.min(eventsPage * eventsPerPage, events.length)} {lang.of} {events.length}
+              {lang.showingResults}
+              {(eventsPage - 1) * eventsPerPage + 1} - {Math.min(
+                eventsPage * eventsPerPage,
+                events.length,
+              )}
+              {lang.of}
+              {events.length}
             </div>
           </div>
         {/if}
@@ -1010,235 +1293,547 @@
     <div class="submissions-view">
       <div class="submissions-top">
         <div class="submissions-header">
-        <button class="btn-back" on:click={backToEventsList}>
-          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-          </svg>
-          {lang.backToEvents}
-        </button>
-        
-        <!-- Banner image removed from logs view per UX request -->
-
-        <div class="header-info">
-          <h1>{selectedEvent?.title}</h1>
-          <div class="event-meta-small">
-            <span>
-              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              </svg>
-              {selectedEvent?.location}
-            </span>
-            <span>
-              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-              </svg>
-              {formatDateRange(selectedEvent, currentLang)}
-            </span>
-            {#if selectedEvent?.startTime && selectedEvent?.endTime}
-              <span>
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                {selectedEvent.startTime} - {selectedEvent.endTime}
-              </span>
-            {/if}
-            <span class="status-badge-inline" class:active={selectedEvent?.status === "Active"}>
-              {translateStatus(selectedEvent?.status || '')}
-            </span>
-          </div>
-        </div>
-        
-        <div class="header-actions">
-          <div class="realtime-controls">
-            {#if newSubmissionsCount > 0}
-              <button class="btn-new-logs" on:click={refreshSubmissions}>
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                </svg>
-                {newSubmissionsCount} New
-              </button>
-            {/if}
-            <button 
-              class="btn-auto-refresh" 
-              class:active={autoRefreshEnabled} 
-              on:click={toggleAutoRefresh}
-              title={autoRefreshEnabled ? "Auto-refresh ON" : "Auto-refresh OFF"}
+          <button class="btn-back" on:click={backToEventsList}>
+            <svg
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-              </svg>
-              {#if isConnected}<span class="live-dot"></span>{/if}
-            </button>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 19l-7-7 7-7"
+              ></path>
+            </svg>
+            {lang.backToEvents}
+          </button>
+
+          <!-- Banner image removed from logs view per UX request -->
+
+          <div class="header-info">
+            <h1>{selectedEvent?.title}</h1>
+            <div class="event-meta-small">
+              <span>
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  stroke-width="2.5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  ></path>
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  ></path>
+                </svg>
+                {selectedEvent?.location}
+              </span>
+              <span>
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  stroke-width="2.5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  ></path>
+                </svg>
+                {formatDateRange(selectedEvent, currentLang)}
+              </span>
+              {#if selectedEvent?.startTime && selectedEvent?.endTime}
+                <span>
+                  <svg
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    stroke-width="2.5"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
+                  </svg>
+                  {selectedEvent.startTime} - {selectedEvent.endTime}
+                </span>
+              {/if}
+              <span
+                class="status-badge-inline"
+                class:active={selectedEvent?.status === "Active"}
+              >
+                {translateStatus(selectedEvent?.status || "")}
+              </span>
+            </div>
+          </div>
+
+          <div class="header-actions">
+            <div class="realtime-controls">
+              {#if newSubmissionsCount > 0}
+                <button class="btn-new-logs" on:click={refreshSubmissions}>
+                  <svg
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    stroke-width="2.5"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    ></path>
+                  </svg>
+                  {newSubmissionsCount} New
+                </button>
+              {/if}
+              <button
+                class="btn-auto-refresh"
+                class:active={autoRefreshEnabled}
+                on:click={toggleAutoRefresh}
+                title={autoRefreshEnabled
+                  ? "Auto-refresh ON"
+                  : "Auto-refresh OFF"}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  stroke-width="2.5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  ></path>
+                </svg>
+                {#if isConnected}<span class="live-dot"></span>{/if}
+              </button>
+            </div>
           </div>
         </div>
-        </div>
-        
+
         <div class="stats-dashboard">
-        <div class="stat-card" style="border-color: rgba(59, 130, 246, 0.3);">
-          <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1);">
-            <svg width="24" height="24" fill="none" stroke="#3b82f6" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
+          <div class="stat-card" style="border-color: rgba(59, 130, 246, 0.3);">
+            <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1);">
+              <svg
+                width="24"
+                height="24"
+                fill="none"
+                stroke="#3b82f6"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                ></path>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{statistics.total}</div>
+              <div class="stat-label">{lang.totalSubmissions}</div>
+            </div>
           </div>
-          <div class="stat-info">
-            <div class="stat-value">{statistics.total}</div>
-            <div class="stat-label">{lang.totalSubmissions}</div>
+
+          <div class="stat-card" style="border-color: rgba(245, 158, 11, 0.3);">
+            <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1);">
+              <svg
+                width="24"
+                height="24"
+                fill="none"
+                stroke="#f59e0b"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{statistics.pending}</div>
+              <div class="stat-label">{lang.pendingReview}</div>
+            </div>
           </div>
-        </div>
-        
-        <div class="stat-card" style="border-color: rgba(245, 158, 11, 0.3);">
-          <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1);">
-            <svg width="24" height="24" fill="none" stroke="#f59e0b" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
+
+          <div class="stat-card" style="border-color: rgba(16, 185, 129, 0.3);">
+            <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1);">
+              <svg
+                width="24"
+                height="24"
+                fill="none"
+                stroke="#10b981"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{statistics.approvedToday}</div>
+              <div class="stat-label">{lang.approvedToday}</div>
+            </div>
           </div>
-          <div class="stat-info">
-            <div class="stat-value">{statistics.pending}</div>
-            <div class="stat-label">{lang.pendingReview}</div>
+
+          <div class="stat-card" style="border-color: rgba(239, 68, 68, 0.3);">
+            <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1);">
+              <svg
+                width="24"
+                height="24"
+                fill="none"
+                stroke="#ef4444"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{statistics.rejectedToday}</div>
+              <div class="stat-label">{lang.rejectedToday}</div>
+            </div>
           </div>
-        </div>
-        
-        <div class="stat-card" style="border-color: rgba(16, 185, 129, 0.3);">
-          <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1);">
-            <svg width="24" height="24" fill="none" stroke="#10b981" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{statistics.approvedToday}</div>
-            <div class="stat-label">{lang.approvedToday}</div>
-          </div>
-        </div>
-        
-        <div class="stat-card" style="border-color: rgba(239, 68, 68, 0.3);">
-          <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1);">
-            <svg width="24" height="24" fill="none" stroke="#ef4444" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{statistics.rejectedToday}</div>
-            <div class="stat-label">{lang.rejectedToday}</div>
-          </div>
-        </div>
         </div>
 
         <div class="filter-section">
-        <div class="search-box">
-          <svg class="search-icon" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-          <input type="text" placeholder={lang.searchPlaceholder} bind:value={searchQuery} class="search-input" />
-        </div>
-        
-        <div class="nisit-filters">
-          <input 
-            type="text" 
-            placeholder={lang.batch} 
-            maxlength="2" 
-            bind:value={batchFilter} 
-            on:input={(e: globalThis.Event) => { const tgt = e.currentTarget as HTMLInputElement; batchFilter = tgt.value.replace(/\D/g, ""); }}
-            class="nisit-input"
-          />
-          <input 
-            type="text" 
-            placeholder={lang.stdId} 
-            maxlength="6" 
-            bind:value={stdIdFilter} 
-            on:input={(e: globalThis.Event) => { const tgt = e.currentTarget as HTMLInputElement; stdIdFilter = tgt.value.replace(/\D/g, ""); }}
-            class="nisit-input"
-          />
-        </div>
+          <div class="search-box">
+            <svg
+              class="search-icon"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              ></path>
+            </svg>
+            <input
+              type="text"
+              placeholder={lang.searchPlaceholder}
+              bind:value={searchQuery}
+              class="search-input"
+            />
+          </div>
 
-        <div class="filter-dropdown" class:dropdown-open={showStatusDropdown}>
-          <button class="filter-trigger" on:click|stopPropagation={() => {
-            const wasOpen = showStatusDropdown;
-            closeAllDropdowns();
-            showStatusDropdown = !wasOpen;
-          }}>
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+          <div class="nisit-filters">
+            <input
+              type="text"
+              placeholder={lang.batch}
+              maxlength="2"
+              bind:value={batchFilter}
+              on:input={(e: globalThis.Event) => {
+                const tgt = e.currentTarget as HTMLInputElement;
+                batchFilter = tgt.value.replace(/\D/g, "");
+              }}
+              class="nisit-input"
+            />
+            <input
+              type="text"
+              placeholder={lang.stdId}
+              maxlength="6"
+              bind:value={stdIdFilter}
+              on:input={(e: globalThis.Event) => {
+                const tgt = e.currentTarget as HTMLInputElement;
+                stdIdFilter = tgt.value.replace(/\D/g, "");
+              }}
+              class="nisit-input"
+            />
+          </div>
+
+          <div class="filter-dropdown" class:dropdown-open={showStatusDropdown}>
+            <button
+              class="filter-trigger"
+              on:click|stopPropagation={() => {
+                const wasOpen = showStatusDropdown;
+                closeAllDropdowns();
+                showStatusDropdown = !wasOpen;
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                ></path>
+              </svg>
+              <span>{statusFilter === "All" ? lang.all : statusFilter}</span>
+              <svg
+                class="chevron"
+                class:rotated={showStatusDropdown}
+                width="12"
+                height="12"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M19 9l-7 7-7-7"
+                ></path>
+              </svg>
+            </button>
+            {#if showStatusDropdown}
+              <div class="filter-menu">
+                <button
+                  class="filter-option"
+                  class:selected={statusFilter === "All"}
+                  on:click|stopPropagation={() => {
+                    statusFilter = "All";
+                    showStatusDropdown = false;
+                  }}>{lang.all}</button
+                >
+                <button
+                  class="filter-option"
+                  class:selected={statusFilter === "Pending"}
+                  on:click|stopPropagation={() => {
+                    statusFilter = "Pending";
+                    showStatusDropdown = false;
+                  }}>{lang.pending}</button
+                >
+                <button
+                  class="filter-option"
+                  class:selected={statusFilter === "Approved"}
+                  on:click|stopPropagation={() => {
+                    statusFilter = "Approved";
+                    showStatusDropdown = false;
+                  }}>{lang.approved}</button
+                >
+                <button
+                  class="filter-option"
+                  class:selected={statusFilter === "Rejected"}
+                  on:click|stopPropagation={() => {
+                    statusFilter = "Rejected";
+                    showStatusDropdown = false;
+                  }}>{lang.rejected}</button
+                >
+              </div>
+            {/if}
+          </div>
+
+          <div class="date-filters">
+            <div
+              class="date-input-group"
+              class:dropdown-open={showFromDateDropdown}
+            >
+              <span class="filter-label">{lang.from}:</span>
+              <div class="custom-date-dropdown">
+                <button
+                  class="custom-date-trigger"
+                  disabled={isSingleDayEvent}
+                  on:click|stopPropagation={() => {
+                    const wasOpen = showFromDateDropdown;
+                    closeAllDropdowns();
+                    showFromDateDropdown = !wasOpen;
+                  }}
+                  title={isSingleDayEvent ? "Single-day event" : ""}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    ></path>
+                  </svg>
+                  <span
+                    >{fromDate
+                      ? availableDates.find((d) => d.value === fromDate)
+                          ?.display || fromDate
+                      : lang.selectDate}</span
+                  >
+                  <svg
+                    class="chevron"
+                    class:rotated={showFromDateDropdown}
+                    width="10"
+                    height="10"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    ></path>
+                  </svg>
+                </button>
+                {#if showFromDateDropdown}
+                  <div
+                    class="custom-date-menu"
+                    role="menu"
+                    tabindex="0"
+                    on:click|stopPropagation
+                    on:keydown={(e: globalThis.KeyboardEvent) => {
+                      /* keyboard support for menu container */
+                    }}
+                  >
+                    {#each availableDates as date}
+                      <button
+                        class="date-option"
+                        class:selected={fromDate === date.value}
+                        on:click={() => {
+                          fromDate = date.value;
+                          showFromDateDropdown = false;
+                        }}
+                      >
+                        {date.display}
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            </div>
+
+            <div
+              class="date-input-group"
+              class:dropdown-open={showToDateDropdown}
+            >
+              <span class="filter-label">{lang.to}:</span>
+              <div class="custom-date-dropdown">
+                <button
+                  class="custom-date-trigger"
+                  disabled={isSingleDayEvent}
+                  on:click|stopPropagation={() => {
+                    const wasOpen = showToDateDropdown;
+                    closeAllDropdowns();
+                    showToDateDropdown = !wasOpen;
+                  }}
+                  title={isSingleDayEvent ? "Single-day event" : ""}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    ></path>
+                  </svg>
+                  <span
+                    >{toDate
+                      ? availableDates.find((d) => d.value === toDate)
+                          ?.display || toDate
+                      : lang.selectDate}</span
+                  >
+                  <svg
+                    class="chevron"
+                    class:rotated={showToDateDropdown}
+                    width="10"
+                    height="10"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    ></path>
+                  </svg>
+                </button>
+                {#if showToDateDropdown}
+                  <div
+                    class="custom-date-menu"
+                    role="menu"
+                    tabindex="0"
+                    on:click|stopPropagation
+                    on:keydown={(e: globalThis.KeyboardEvent) => {
+                      /* keyboard support for menu container */
+                    }}
+                  >
+                    {#each availableDates as date}
+                      <button
+                        class="date-option"
+                        class:selected={toDate === date.value}
+                        on:click={() => {
+                          toDate = date.value;
+                          showToDateDropdown = false;
+                        }}
+                      >
+                        {date.display}
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-reset-filter" on:click={resetFilters}>
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              ></path>
             </svg>
-            <span>{statusFilter === "All" ? lang.all : statusFilter}</span>
-            <svg class="chevron" class:rotated={showStatusDropdown} width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
-            </svg>
+            {lang.reset}
           </button>
-          {#if showStatusDropdown}
-            <div class="filter-menu">
-              <button class="filter-option" class:selected={statusFilter === "All"} on:click|stopPropagation={() => { statusFilter = "All"; showStatusDropdown = false; }}>{lang.all}</button>
-              <button class="filter-option" class:selected={statusFilter === "Pending"} on:click|stopPropagation={() => { statusFilter = "Pending"; showStatusDropdown = false; }}>{lang.pending}</button>
-              <button class="filter-option" class:selected={statusFilter === "Approved"} on:click|stopPropagation={() => { statusFilter = "Approved"; showStatusDropdown = false; }}>{lang.approved}</button>
-              <button class="filter-option" class:selected={statusFilter === "Rejected"} on:click|stopPropagation={() => { statusFilter = "Rejected"; showStatusDropdown = false; }}>{lang.rejected}</button>
-            </div>
-          {/if}
-        </div>
-
-        <div class="date-filters">
-          <div class="date-input-group" class:dropdown-open={showFromDateDropdown}>
-            <span class="filter-label">{lang.from}:</span>
-            <div class="custom-date-dropdown">
-              <button class="custom-date-trigger" disabled={isSingleDayEvent} on:click|stopPropagation={() => {
-                const wasOpen = showFromDateDropdown;
-                closeAllDropdowns();
-                showFromDateDropdown = !wasOpen;
-              }} title={isSingleDayEvent ? "Single-day event" : ''}>
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                <span>{fromDate ? availableDates.find(d => d.value === fromDate)?.display || fromDate : lang.selectDate}</span>
-                <svg class="chevron" class:rotated={showFromDateDropdown} width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </button>
-              {#if showFromDateDropdown}
-                <div class="custom-date-menu" role="menu" tabindex="0" on:click|stopPropagation on:keydown={(e: globalThis.KeyboardEvent) => { /* keyboard support for menu container */ }}>
-                  {#each availableDates as date}
-                    <button class="date-option" class:selected={fromDate === date.value} on:click={() => { fromDate = date.value; showFromDateDropdown = false; }}>
-                      {date.display}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          </div>
-
-          <div class="date-input-group" class:dropdown-open={showToDateDropdown}>
-            <span class="filter-label">{lang.to}:</span>
-            <div class="custom-date-dropdown">
-              <button class="custom-date-trigger" disabled={isSingleDayEvent} on:click|stopPropagation={() => {
-                const wasOpen = showToDateDropdown;
-                closeAllDropdowns();
-                showToDateDropdown = !wasOpen;
-              }} title={isSingleDayEvent ? "Single-day event" : ''}>
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                <span>{toDate ? availableDates.find(d => d.value === toDate)?.display || toDate : lang.selectDate}</span>
-                <svg class="chevron" class:rotated={showToDateDropdown} width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </button>
-              {#if showToDateDropdown}
-                <div class="custom-date-menu" role="menu" tabindex="0" on:click|stopPropagation on:keydown={(e: globalThis.KeyboardEvent) => { /* keyboard support for menu container */ }}>
-                  {#each availableDates as date}
-                    <button class="date-option" class:selected={toDate === date.value} on:click={() => { toDate = date.value; showToDateDropdown = false; }}>
-                      {date.display}
-                    </button>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          </div>
-        </div>
-
-        <button class="btn-reset-filter" on:click={resetFilters}>
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-          </svg>
-          {lang.reset}
-        </button>
         </div>
       </div>
 
@@ -1250,8 +1845,19 @@
           </div>
         {:else if sortedSubmissions.length === 0}
           <div class="empty-state">
-            <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            <svg
+              width="64"
+              height="64"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
             </svg>
             <p>{lang.noPendingSubmissions}</p>
           </div>
@@ -1259,7 +1865,6 @@
           <div class="submissions-grid">
             {#each paginatedSubmissions as sub (sub.id)}
               <div class="submission-card">
-                
                 <div class="card-header">
                   <div class="user-info">
                     <h4 class="user-name">{sub.runnerName}</h4>
@@ -1269,25 +1874,45 @@
                       <span class="user-email">{sub.email}</span>
                     </div>
                   </div>
-                  <span class="status-badge" 
-                    class:pending={sub.status === "Pending"} 
-                    class:approved={sub.status === "Approved"} 
+                  <span
+                    class="status-badge"
+                    class:pending={sub.status === "Pending"}
+                    class:approved={sub.status === "Approved"}
                     class:rejected={sub.status === "Rejected"}
                   >
                     {sub.status}
                   </span>
                 </div>
-                
-                <div class="proof-image-box" 
-                  role="button" 
-                  tabindex="0" 
-                  on:click={() => onProofImageClick(sub.proofImage)} 
-                  on:keydown={(e: globalThis.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") onProofImageClick(sub.proofImage); }}
+
+                <div
+                  class="proof-image-box"
+                  role="button"
+                  tabindex="0"
+                  on:click={() => onProofImageClick(sub.proofImage)}
+                  on:keydown={(e: globalThis.KeyboardEvent) => {
+                    if (e.key === "Enter" || e.key === " ")
+                      onProofImageClick(sub.proofImage);
+                  }}
                 >
                   {#if sub.proofImage}
-                  <img src={sub.proofImage} alt="Proof" on:error={(e: globalThis.Event) => { const img = e.currentTarget as HTMLImageElement; img.src = "https://placehold.co/400x200/1e293b/64748b?text=Image+Unavailable"; }} />
+                    <img
+                      src={sub.proofImage}
+                      alt="Proof"
+                      on:error={(e: globalThis.Event) => {
+                        const img = e.currentTarget as HTMLImageElement;
+                        img.src =
+                          "https://placehold.co/400x200/1e293b/64748b?text=Image+Unavailable";
+                      }}
+                    />
                     <div class="image-overlay">
-                      <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <svg
+                        width="24"
+                        height="24"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        stroke-width="2"
+                      >
                         <path d="M21 21l-4.35-4.35"></path>
                         <path d="M11 8v6M8 11h6"></path>
                         <circle cx="11" cy="11" r="8"></circle>
@@ -1298,18 +1923,46 @@
                     <div class="no-image-placeholder">No image</div>
                   {/if}
                 </div>
-                
+
                 {#if sub.status === "Pending"}
                   <div class="card-actions">
-                    <button class="btn-reject" on:click={() => onRejectSubmission(sub)}>
-                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    <button
+                      class="btn-reject"
+                      on:click={() => onRejectSubmission(sub)}
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        ></path>
                       </svg>
                       {lang.reject}
                     </button>
-                    <button class="btn-approve" on:click={() => onApproveSubmission(sub)}>
-                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                    <button
+                      class="btn-approve"
+                      on:click={() => onApproveSubmission(sub)}
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M5 13l4 4L19 7"
+                        ></path>
                       </svg>
                       {lang.approve}
                     </button>
@@ -1317,9 +1970,8 @@
                 {/if}
 
                 <div class="submitted-time">
-  Submitted: {formatTimestamp(sub.submittedAt)}
-</div>
-
+                  Submitted: {formatTimestamp(sub.submittedAt)}
+                </div>
               </div>
             {/each}
           </div>
@@ -1328,42 +1980,113 @@
             <div class="pagination-wrapper">
               <div class="pagination-row">
                 <div class="pagination-controls">
-                  <button class="page-btn" aria-label="Previous submissions page" on:click={prevSubmissionsPage} disabled={submissionsPage === 1}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </button>
-
-                <div class="page-select-wrapper">
-                  <button class="page-indicator-box" on:click|stopPropagation={() => (showSubmissionsPageDropdown = !showSubmissionsPageDropdown)}>
-                    <span class="current-page">{submissionsPage}</span>
-                    <span class="sep">/</span>
-                    <span class="total-page">{totalSubmissionsPages}</span>
-                    <svg class="dropdown-arrow" class:flipped={showSubmissionsPageDropdown} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round"/>
+                  <button
+                    class="page-btn"
+                    aria-label="Previous submissions page"
+                    on:click={prevSubmissionsPage}
+                    disabled={submissionsPage === 1}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M15 19l-7-7 7-7"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
                     </svg>
                   </button>
 
-                  {#if showSubmissionsPageDropdown}
-                    <div class="page-dropdown-list" role="menu" tabindex="0" on:click|stopPropagation on:keydown={(e: globalThis.KeyboardEvent) => { /* keyboard support for menu container */ }}>
-                      {#each Array(totalSubmissionsPages) as _, i}
-                        <button class="page-option" class:active={submissionsPage === i + 1} on:click={() => { submissionsPage = i + 1; showSubmissionsPageDropdown = false; }}>
-                          Page {i + 1}
-                        </button>
-                      {/each}
-                    </div>
-                  {/if}
+                  <div class="page-select-wrapper">
+                    <button
+                      class="page-indicator-box"
+                      on:click|stopPropagation={() =>
+                        (showSubmissionsPageDropdown =
+                          !showSubmissionsPageDropdown)}
+                    >
+                      <span class="current-page">{submissionsPage}</span>
+                      <span class="sep">/</span>
+                      <span class="total-page">{totalSubmissionsPages}</span>
+                      <svg
+                        class="dropdown-arrow"
+                        class:flipped={showSubmissionsPageDropdown}
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M19 9l-7 7-7-7"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+
+                    {#if showSubmissionsPageDropdown}
+                      <div
+                        class="page-dropdown-list"
+                        role="menu"
+                        tabindex="0"
+                        on:click|stopPropagation
+                        on:keydown={(e: globalThis.KeyboardEvent) => {
+                          /* keyboard support for menu container */
+                        }}
+                      >
+                        {#each Array(totalSubmissionsPages) as _, i}
+                          <button
+                            class="page-option"
+                            class:active={submissionsPage === i + 1}
+                            on:click={() => {
+                              submissionsPage = i + 1;
+                              showSubmissionsPageDropdown = false;
+                            }}
+                          >
+                            Page {i + 1}
+                          </button>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+
+                  <button
+                    class="page-btn"
+                    aria-label="Next submissions page"
+                    on:click={nextSubmissionsPage}
+                    disabled={submissionsPage === totalSubmissionsPages}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M9 5l7 7-7 7"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
                 </div>
 
-                <button class="page-btn" aria-label="Next submissions page" on:click={nextSubmissionsPage} disabled={submissionsPage === totalSubmissionsPages}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </button>
-                </div>
-                
                 <div class="page-info">
-                  {lang.showingResults} {(submissionsPage - 1) * submissionsPerPage + 1} - {Math.min(submissionsPage * submissionsPerPage, totalSubmissions)} {lang.of} {totalSubmissions}
+                  {lang.showingResults}
+                  {(submissionsPage - 1) * submissionsPerPage + 1} - {Math.min(
+                    submissionsPage * submissionsPerPage,
+                    totalSubmissions,
+                  )}
+                  {lang.of}
+                  {totalSubmissions}
                 </div>
               </div>
             </div>
@@ -1375,10 +2098,35 @@
 </div>
 
 {#if showImageModal}
-  <div class="image-modal" role="dialog" tabindex="-1" aria-modal="true" aria-label="Image preview" on:click={(e: globalThis.MouseEvent) => { if ((e.target as EventTarget) === (e.currentTarget as EventTarget)) closeImageModal(); }} on:keydown={(e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') closeImageModal(); }}>
+  <div
+    class="image-modal"
+    role="dialog"
+    tabindex="-1"
+    aria-modal="true"
+    aria-label="Image preview"
+    on:click={(e: globalThis.MouseEvent) => {
+      if ((e.target as EventTarget) === (e.currentTarget as EventTarget))
+        closeImageModal();
+    }}
+    on:keydown={(e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") closeImageModal();
+    }}
+  >
     <div class="modal-content" role="document">
-      <button class="modal-close" aria-label="Close image preview" on:click={closeImageModal}>×</button>
-      <img src={modalImageUrl} alt="Proof Full View" on:error={(e: globalThis.Event) => { const img = e.currentTarget as HTMLImageElement; img.src = "https://placehold.co/800x600/0f172a/94a3b8?text=Image+Unavailable"; }} />
+      <button
+        class="modal-close"
+        aria-label="Close image preview"
+        on:click={closeImageModal}>×</button
+      >
+      <img
+        src={modalImageUrl}
+        alt="Proof Full View"
+        on:error={(e: globalThis.Event) => {
+          const img = e.currentTarget as HTMLImageElement;
+          img.src =
+            "https://placehold.co/800x600/0f172a/94a3b8?text=Image+Unavailable";
+        }}
+      />
     </div>
   </div>
 {/if}
@@ -1388,7 +2136,6 @@
   .proof-verification-container {
     width: 100%;
     min-height: 100vh;
-    
   }
 
   /* ==================== EVENTS VIEW ==================== */
@@ -1567,26 +2314,47 @@
   }
 
   /* Make the top area sticky and the submissions list scrollable */
-  .submissions-top { position: sticky; top: 0; z-index: 40; padding-bottom: 0.75rem; }
+  .submissions-top {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding-bottom: 0.75rem;
+  }
 
   /* Header is one rounded bar; statistics are separate cards below it */
-  .submissions-header { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .submissions-header {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
 
   /* Keep stats as separate cards with spacing */
-  .stats-dashboard { margin-top: 0; margin-bottom: 1rem; }
+  .stats-dashboard {
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
 
-  .filter-section { margin-top: 0; }
+  .filter-section {
+    margin-top: 0;
+  }
 
   .submissions-content {
     overflow-y: auto;
-    max-height: calc(100vh - 260px); /* leave space for header, stats and footer/pagination */
+    max-height: calc(
+      100vh - 260px
+    ); /* leave space for header, stats and footer/pagination */
     padding-right: 8px; /* room for scrollbar */
     margin-top: 1.25rem; /* add space between filter/search area and proofs */
     padding-top: 0.75rem; /* extra internal spacing so top of cards don't touch sticky header */
   }
 
   @media (max-width: 768px) {
-    .submissions-content { max-height: calc(100vh - 340px); }
+    .submissions-content {
+      max-height: calc(100vh - 340px);
+    }
   }
 
   .submissions-header {
@@ -1603,7 +2371,9 @@
   }
 
   /* use soft box-shadow on header instead of a pseudo-element line */
-  .submissions-header { box-shadow: 0 8px 20px rgba(0,0,0,0.16); }
+  .submissions-header {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+  }
 
   .btn-back {
     background: rgba(100, 116, 139, 0.2);
@@ -2110,7 +2880,7 @@
   }
 
   .nisit-id {
-    font-family: 'Courier New', monospace;
+    font-family: "Courier New", monospace;
     font-weight: 600;
     color: #10b981;
   }
@@ -2216,7 +2986,8 @@
     margin-top: 4px;
   }
 
-  .btn-approve, .btn-reject {
+  .btn-approve,
+  .btn-reject {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2277,8 +3048,12 @@
   }
 
   @media (max-width: 768px) {
-    .pagination-row { flex-direction: column; }
-    .page-info { text-align: center; }
+    .pagination-row {
+      flex-direction: column;
+    }
+    .page-info {
+      text-align: center;
+    }
   }
 
   .pagination-controls {
@@ -2376,7 +3151,9 @@
     cursor: pointer;
     border-radius: 0; /* corners handled on first/last child */
     font-size: 0.9rem;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
   }
 
   .page-option:hover {
@@ -2387,11 +3164,17 @@
     background: rgba(16, 185, 129, 0.12);
     color: #10b981;
     font-weight: 700;
-    box-shadow: inset 0 0 0 1px rgba(16,185,129,0.18);
+    box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.18);
   }
 
-  .page-option:first-child { border-top-left-radius: 12px; border-top-right-radius: 12px; }
-  .page-option:last-child { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+  .page-option:first-child {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+  .page-option:last-child {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
 
   /* .showing-text removed (unused in this file) */
 
@@ -2474,8 +3257,12 @@
 
   /* ==================== ANIMATIONS ==================== */
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   @keyframes slideDown {
@@ -2490,12 +3277,19 @@
   }
 
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* ==================== RESPONSIVE ==================== */

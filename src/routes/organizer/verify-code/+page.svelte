@@ -8,7 +8,7 @@
 
   // API Configuration: prefer env; in dev without env use Vite proxy '/api', otherwise fall back to fixed host
   const rawApiBase = import.meta.env.VITE_API_BASE_URL;
-  const DEFAULT_API_HOST = "http://158.108.102.14:8001";
+  const DEFAULT_API_HOST = "https://158.108.102.14:8005";
   const API_BASE_URL = rawApiBase
     ? rawApiBase.replace(/\/$/, "")
     : DEFAULT_API_HOST; // Force backend host when VITE_API_BASE_URL is not set

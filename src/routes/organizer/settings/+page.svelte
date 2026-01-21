@@ -7,7 +7,7 @@
   // --- 1. API Configuration (FIXED) ---
   // ใส่ Default URL เพื่อป้องกันการยิงเข้า localhost:5173
   const API_BASE_URL = (
-    import.meta.env.VITE_API_BASE_URL || "http://158.108.102.14:8001"
+    import.meta.env.VITE_API_BASE_URL || "https://158.108.102.14:8005"
   ).replace(/\/$/, "");
 
   const api = axios.create({
@@ -25,7 +25,7 @@
 
   // --- Language ---
   import { writable } from "svelte/store";
-  type Lang = 'th' | 'en';
+  type Lang = "th" | "en";
   export const appLanguage = writable<Lang>("th");
   if (typeof localStorage !== "undefined") {
     const saved = localStorage.getItem("app_language");
@@ -59,7 +59,7 @@
     { th: "ฝ่ายจัดงานกิจกรรม", en: "Event Management" },
   ];
 
-  let currentLang: Lang = 'th';
+  let currentLang: Lang = "th";
   $: currentLang = $appLanguage;
   $: lang = translations[currentLang];
   $: nameTitles = titleOptions[currentLang];
@@ -298,261 +298,276 @@
     </div>
   {:else}
     <div class="settings-content" in:fade={{ duration: 300 }}>
-  <header class="page-header">
-    <div class="header-icon-circle">
-      <svg
-        width="32"
-        height="32"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-        <circle cx="12" cy="7" r="4"></circle>
-      </svg>
-    </div>
-    <div class="header-text">
-      <h1>{lang.accountSettings}</h1>
-      <p>{lang.manageProfile}</p>
-    </div>
-  </header>
+      <header class="page-header">
+        <div class="header-icon-circle">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div class="header-text">
+          <h1>{lang.accountSettings}</h1>
+          <p>{lang.manageProfile}</p>
+        </div>
+      </header>
 
-  <section class="info-card" style="position: relative; z-index: 30;">
-    <div class="card-headerr">
-      <div class="card-icon">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
-      </div>
-      <h2>{lang.personalInfo}</h2>
-    </div>
-
-    <div class="card-content">
-      <div class="field-row">
-        <div class="form-field" style="flex: 0 0 120px;">
-          <label for="title-select">{lang.title}</label>
-          <div class="custom-select">
-            <button
-              id="title-select"
-              class="select-btn"
-              class:active={showTitleDropdown}
-              on:click={toggleTitleDropdown}
+      <section class="info-card" style="position: relative; z-index: 30;">
+        <div class="card-headerr">
+          <div class="card-icon">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
             >
-              <span>{userData.title || lang.selectTitle}</span>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+          <h2>{lang.personalInfo}</h2>
+        </div>
+
+        <div class="card-content">
+          <div class="field-row">
+            <div class="form-field" style="flex: 0 0 120px;">
+              <label for="title-select">{lang.title}</label>
+              <div class="custom-select">
+                <button
+                  id="title-select"
+                  class="select-btn"
+                  class:active={showTitleDropdown}
+                  on:click={toggleTitleDropdown}
+                >
+                  <span>{userData.title || lang.selectTitle}</span>
+                  <svg
+                    class="arrow"
+                    class:rotate={showTitleDropdown}
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+                  >
+                </button>
+                {#if showTitleDropdown}
+                  <div
+                    class="dropdown-menu"
+                    transition:slide={{ duration: 200 }}
+                  >
+                    {#each nameTitles as t}
+                      <button
+                        class="dropdown-item"
+                        on:click={() => {
+                          userData.title = t;
+                          closeDropdown();
+                        }}>{t}</button
+                      >
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            </div>
+
+            <div class="form-field" style="flex: 1;">
+              <label for="first-name">{lang.firstName}</label>
+              <div class="input-wrapper">
+                <input
+                  id="first-name"
+                  type="text"
+                  bind:value={userData.firstName}
+                  placeholder={lang.enterFirstName}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="last-name">{lang.lastName}</label>
+            <div class="input-wrapper">
+              <input
+                id="last-name"
+                type="text"
+                bind:value={userData.lastName}
+                placeholder={lang.enterLastName}
+              />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="email-address">{lang.emailAddress}</label>
+            <div class="input-wrapper locked">
+              <input
+                id="email-address"
+                type="email"
+                value={userData.email}
+                disabled
+              />
               <svg
-                class="arrow"
-                class:rotate={showTitleDropdown}
+                class="lock-icon"
                 width="16"
                 height="16"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+                stroke-width="2"
+                ><rect x="3" y="11" width="18" height="11" rx="2" ry="2"
+                ></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg
               >
-            </button>
-            {#if showTitleDropdown}
-              <div
-                class="dropdown-menu"
-                transition:slide={{ duration: 200 }}
-              >
-                {#each nameTitles as t}
-                  <button
-                    class="dropdown-item"
-                    on:click={() => {
-                      userData.title = t;
-                      closeDropdown();
-                    }}>{t}</button
-                  >
-                {/each}
-              </div>
-            {/if}
+            </div>
           </div>
         </div>
+      </section>
 
-        <div class="form-field" style="flex: 1;">
-          <label for="first-name">{lang.firstName}</label>
-          <div class="input-wrapper">
-            <input
-              id="first-name"
-              type="text"
-              bind:value={userData.firstName}
-              placeholder={lang.enterFirstName}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div class="form-field">
-        <label for="last-name">{lang.lastName}</label>
-        <div class="input-wrapper">
-          <input
-            id="last-name"
-            type="text"
-            bind:value={userData.lastName}
-            placeholder={lang.enterLastName}
-          />
-        </div>
-      </div>
-
-      <div class="form-field">
-        <label for="email-address">{lang.emailAddress}</label>
-        <div class="input-wrapper locked">
-          <input id="email-address" type="email" value={userData.email} disabled />
-          <svg
-            class="lock-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            ><rect x="3" y="11" width="18" height="11" rx="2" ry="2"
-            ></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg
-          >
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="info-card" style="position: relative; z-index: {showDepartmentDropdown ? 50 : 20};">
-    <div class="card-headerr">
-      <div class="card-icon">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-      </div>
-      <h2>{lang.workInfo}</h2>
-    </div>
-    <div class="card-content">
-      <div class="form-field" style="position:relative;">
-        <label for="department-select">{currentLang === "th" ? "ฝ่ายงาน" : "Department"}</label>
-        <div class="custom-select">
-          <button
-            id="department-select"
-            class="select-btn"
-            class:active={showDepartmentDropdown}
-            on:click={(e) => {
-              e.stopPropagation();
-              showDepartmentDropdown = !showDepartmentDropdown;
-            }}
-          >
-            <span>{selectedDepartmentLabel}</span>
+      <section
+        class="info-card"
+        style="position: relative; z-index: {showDepartmentDropdown ? 50 : 20};"
+      >
+        <div class="card-headerr">
+          <div class="card-icon">
             <svg
-              class="arrow"
-              class:rotate={showDepartmentDropdown}
-              width="16"
-              height="16"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
+              stroke-width="2"
             >
-          </button>
-          {#if showDepartmentDropdown}
-            <div class="dropdown-menu" transition:slide={{ duration: 200 }}>
-              {#each departmentLabelOptions as d}
-                <button
-                  class="dropdown-item"
-                  on:click={() => {
-                    userData.department = d.value;
-                    showDepartmentDropdown = false;
-                  }}>{d.label}</button
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <h2>{lang.workInfo}</h2>
+        </div>
+        <div class="card-content">
+          <div class="form-field" style="position:relative;">
+            <label for="department-select"
+              >{currentLang === "th" ? "ฝ่ายงาน" : "Department"}</label
+            >
+            <div class="custom-select">
+              <button
+                id="department-select"
+                class="select-btn"
+                class:active={showDepartmentDropdown}
+                on:click={(e) => {
+                  e.stopPropagation();
+                  showDepartmentDropdown = !showDepartmentDropdown;
+                }}
+              >
+                <span>{selectedDepartmentLabel}</span>
+                <svg
+                  class="arrow"
+                  class:rotate={showDepartmentDropdown}
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"><path d="M6 9l6 6 6-6" /></svg
                 >
-              {/each}
+              </button>
+              {#if showDepartmentDropdown}
+                <div class="dropdown-menu" transition:slide={{ duration: 200 }}>
+                  {#each departmentLabelOptions as d}
+                    <button
+                      class="dropdown-item"
+                      on:click={() => {
+                        userData.department = d.value;
+                        showDepartmentDropdown = false;
+                      }}>{d.label}</button
+                    >
+                  {/each}
+                </div>
+              {/if}
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="info-card">
+        <div class="card-headerr">
+          <div class="card-icon">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"
+              ></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h2>{lang.security}</h2>
+        </div>
+        <div class="card-content">
+          <div class="form-field">
+            <div class="password-row">
+              <label for="password-display">{lang.password}</label>
+              <a href="/auth/forgot-password" class="change-link"
+                >{lang.changePassword}</a
+              >
+            </div>
+            <div class="input-wrapper locked">
+              <input
+                id="password-display"
+                type="password"
+                value="••••••••••••"
+                disabled
+              />
+              <svg
+                class="lock-icon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                ><rect x="3" y="11" width="18" height="11" rx="2" ry="2"
+                ></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="save-section">
+        <button class="btn-save" on:click={saveProfile} disabled={saving}>
+          {#if saving}
+            <div class="btn-spinner"></div>
+            <span>{lang.saving}</span>
+          {:else}
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+              ></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            <span>{lang.saveChanges}</span>
           {/if}
-        </div>
+        </button>
       </div>
     </div>
-  </section>
-
-  <section class="info-card">
-    <div class="card-headerr">
-      <div class="card-icon">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"
-          ></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-        </svg>
-      </div>
-      <h2>{lang.security}</h2>
-    </div>
-    <div class="card-content">
-      <div class="form-field">
-        <div class="password-row">
-          <label for="password-display">{lang.password}</label>
-          <a href="/auth/forgot-password" class="change-link"
-            >{lang.changePassword}</a
-          >
-        </div>
-        <div class="input-wrapper locked">
-          <input id="password-display" type="password" value="••••••••••••" disabled />
-          <svg
-            class="lock-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            ><rect x="3" y="11" width="18" height="11" rx="2" ry="2"
-            ></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg
-          >
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div class="save-section">
-    <button class="btn-save" on:click={saveProfile} disabled={saving}>
-      {#if saving}
-        <div class="btn-spinner"></div>
-        <span>{lang.saving}</span>
-      {:else}
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path
-            d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
-          ></path>
-          <polyline points="17 21 17 13 7 13 7 21"></polyline>
-          <polyline points="7 3 7 8 15 8"></polyline>
-        </svg>
-        <span>{lang.saveChanges}</span>
-      {/if}
-    </button>
-  </div>
-</div>
   {/if}
 </div>
 
