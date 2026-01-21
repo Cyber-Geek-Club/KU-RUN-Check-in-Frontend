@@ -4,9 +4,12 @@
  */
 
 // Get base URL from environment
-export const API_BASE_URL = (typeof import.meta !== 'undefined' 
-  ? import.meta.env?.VITE_API_BASE_URL 
-  : '') || '';
+// Default API host for production when VITE_API_BASE_URL is not set
+const DEFAULT_API_HOST = 'https://158.108.102.14:8005';
+
+export const API_BASE_URL = (typeof import.meta !== 'undefined'
+  ? import.meta.env?.VITE_API_BASE_URL
+  : '') || DEFAULT_API_HOST;
 
 /**
  * Resolve image path to full URL
@@ -17,7 +20,7 @@ export const API_BASE_URL = (typeof import.meta !== 'undefined'
  */
 export function resolveImageUrl(path: string | null | undefined): string {
   if (!path) return '';
-  
+
   // Already a full URL
   if (path.startsWith('http://') || path.startsWith('https://')) {
     // Check if it's our API URL but missing /api prefix for uploads
@@ -26,23 +29,23 @@ export function resolveImageUrl(path: string | null | undefined): string {
     }
     return path;
   }
-  
+
   // Data URL (base64)
   if (path.startsWith('data:')) {
     return path;
   }
-  
+
   // Clean the base URL (remove trailing slash)
   const baseUrl = API_BASE_URL.replace(/\/$/, '');
-  
+
   // Ensure path starts with /
   let cleanPath = path.startsWith('/') ? path : `/${path}`;
-  
+
   // Add /api prefix for uploads path (backend serves images at /api/uploads/...)
   if (cleanPath.startsWith('/uploads/')) {
     cleanPath = `/api${cleanPath}`;
   }
-  
+
   return `${baseUrl}${cleanPath}`;
 }
 
@@ -77,15 +80,15 @@ export async function uploadImage(
   token?: string
 ): Promise<UploadResponse> {
   const authToken = token || localStorage.getItem('access_token');
-  
+
   if (!authToken) {
     throw new Error('No authorization token available');
   }
-  
+
   const formData = new FormData();
   formData.append('file', file);
   formData.append('subfolder', category);
-  
+
   const response = await fetch(`${API_BASE_URL}/api/images/upload`, {
     method: 'POST',
     headers: {
@@ -93,13 +96,13 @@ export async function uploadImage(
     },
     body: formData
   });
-  
+
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || result.detail || 'Upload failed');
   }
-  
+
   return result;
 }
 
@@ -111,18 +114,18 @@ export async function uploadImage(
  */
 export async function deleteImage(imageId: number, token?: string): Promise<void> {
   const authToken = token || localStorage.getItem('access_token');
-  
+
   if (!authToken) {
     throw new Error('No authorization token available');
   }
-  
+
   const response = await fetch(`${API_BASE_URL}/api/images/${imageId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${authToken}`
     }
   });
-  
+
   if (!response.ok) {
     const result = await response.json();
     throw new Error(result.error || result.detail || 'Delete failed');
@@ -137,22 +140,22 @@ export async function deleteImage(imageId: number, token?: string): Promise<void
  */
 export async function getImageInfo(imageId: number, token?: string): Promise<any> {
   const authToken = token || localStorage.getItem('access_token');
-  
+
   if (!authToken) {
     throw new Error('No authorization token available');
   }
-  
+
   const response = await fetch(`${API_BASE_URL}/api/images/${imageId}`, {
     headers: {
       'Authorization': `Bearer ${authToken}`
     }
   });
-  
+
   if (!response.ok) {
     const result = await response.json();
     throw new Error(result.error || result.detail || 'Failed to get image info');
   }
-  
+
   return response.json();
 }
 
@@ -171,16 +174,16 @@ export async function listImages(
   token?: string
 ): Promise<{ total: number; images: any[] }> {
   const authToken = token || localStorage.getItem('access_token');
-  
+
   if (!authToken) {
     throw new Error('No authorization token available');
   }
-  
+
   const params = new URLSearchParams();
   if (options.category) params.append('category', options.category);
   if (options.skip !== undefined) params.append('skip', String(options.skip));
   if (options.limit !== undefined) params.append('limit', String(options.limit));
-  
+
   const response = await fetch(
     `${API_BASE_URL}/api/images/list?${params}`,
     {
@@ -189,12 +192,12 @@ export async function listImages(
       }
     }
   );
-  
+
   if (!response.ok) {
     const result = await response.json();
     throw new Error(result.error || result.detail || 'Failed to list images');
   }
-  
+
   return response.json();
 }
 
@@ -208,26 +211,26 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
   const maxSizeBytes = 5 * 1024 * 1024; // 5MB
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'];
   const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.heic'];
-  
+
   // Check file size
   if (file.size > maxSizeBytes) {
-    return { 
-      valid: false, 
-      error: `File size exceeds 5MB limit (${(file.size / 1024 / 1024).toFixed(2)}MB)` 
+    return {
+      valid: false,
+      error: `File size exceeds 5MB limit (${(file.size / 1024 / 1024).toFixed(2)}MB)`
     };
   }
-  
+
   // Check file type
   if (!allowedTypes.includes(file.type.toLowerCase())) {
     const ext = file.name.toLowerCase().split('.').pop();
     if (!ext || !allowedExtensions.includes(`.${ext}`)) {
-      return { 
-        valid: false, 
-        error: `Invalid file type. Allowed: ${allowedExtensions.join(', ')}` 
+      return {
+        valid: false,
+        error: `Invalid file type. Allowed: ${allowedExtensions.join(', ')}`
       };
     }
   }
-  
+
   return { valid: true };
 }
 
