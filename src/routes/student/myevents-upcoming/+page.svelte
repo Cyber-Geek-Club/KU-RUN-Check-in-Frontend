@@ -68,7 +68,7 @@
             status_ended: "จบกิจกรรม",
 
             // ปุ่ม (Buttons)
-            btn_checkin: "เข้าร่วมกิจกรรม",
+            btn_checkin: "เช็คอิน",
             btn_register: "ลงทะเบียน",
             btn_waiting: "⏳ กำลังตรวจสอบ",
             btn_send_proof: "ส่งผลวิ่ง",
@@ -268,19 +268,6 @@
             distanceInput = 0;
         }
     }
-
-    // --- CANCEL MODAL STATE ---
-    let showCancelModal = false;
-    let eventToCancel: EventItem | null = null;
-    let selectedCancelReason = "";
-    let otherCancelReason = "";
-    const cancelReasons = [
-        "ติดธุระด่วน / Urgent matter",
-        "ปัญหาสุขภาพ / Health issue",
-        "สภาพอากาศ / Weather condition",
-        "การเดินทาง / Transportation",
-        "อื่นๆ / Other",
-    ];
 
     // --- MENU ITEMS ---
     const menuItems = [
@@ -727,7 +714,6 @@
                 const [y, m, d] = part.split("-").map(Number);
                 return new Date(y, m - 1, d);
             };
-            
 
             const projectStartDate = parseDateOnly(startIso);
             const projectEndDate = parseDateOnly(endIso);
@@ -1355,177 +1341,6 @@
         }
     }
 
-    // --- RE-JOIN LOGIC ---
-    function getCancelCountKey(eventId: number) {
-        const userId = getUserIdFromToken() || "guest";
-        const today = new Date().toISOString().split("T")[0];
-        return `cancel_count_${userId}_${eventId}_${today}`;
-    }
-
-    function getCancelCount(eventId: number): number {
-        if (typeof localStorage === "undefined") return 0;
-        const key = getCancelCountKey(eventId);
-        return parseInt(localStorage.getItem(key) || "0", 10);
-    }
-
-    function incrementCancelCount(eventId: number) {
-        if (typeof localStorage === "undefined") return;
-        const key = getCancelCountKey(eventId);
-        const current = getCancelCount(eventId);
-        localStorage.setItem(key, (current + 1).toString());
-    }
-
-    // --- REJOIN HELPER FUNCTIONS ---
-    const MAX_REJOIN_COUNT = 5;
-
-    function canRejoin(event: EventItem): boolean {
-        return (
-            event.status === "CANCELED" &&
-            (event.rejoin_count ?? 0) < MAX_REJOIN_COUNT &&
-            !event.isLocked // ถ้ากิจกรรมเลยเวลา (isLocked) จะไม่ให้ rejoin
-        );
-    }
-
-    function getRemainingRejoins(event: EventItem): number {
-        return MAX_REJOIN_COUNT - (event.rejoin_count ?? 0);
-    }
-
-    async function handleReJoin(event: EventItem) {
-        const token = getToken();
-        if (!token) {
-            Swal.fire(
-                t[lang].alert_error,
-                t[lang].alert_session_expired,
-                "error",
-            );
-            return;
-        }
-
-        // Must have participation_id for cancelled events
-        if (!event.participation_id) {
-            Swal.fire({
-                icon: "error",
-                title: lang === "th" ? "เกิดข้อผิดพลาด" : "Error",
-                text:
-                    lang === "th"
-                        ? "ไม่พบข้อมูลการเข้าร่วม กรุณารีเฟรชหน้าจอ"
-                        : "Participation data not found. Please refresh.",
-            });
-            return;
-        }
-
-        // Check if user can rejoin
-        if (!canRejoin(event)) {
-            Swal.fire({
-                icon: "warning",
-                title:
-                    lang === "th"
-                        ? "ไม่สามารถกลับเข้าร่วมได้"
-                        : "Cannot Rejoin",
-                text:
-                    lang === "th"
-                        ? "ใช้สิทธิ์กลับเข้าร่วมครบ 5 ครั้งแล้ว"
-                        : "You have used all 5 rejoin attempts",
-            });
-            return;
-        }
-
-        // Show confirmation dialog
-        const remaining = getRemainingRejoins(event);
-        const confirmResult = await Swal.fire({
-            icon: "question",
-            title: lang === "th" ? "ยืนยันการกลับเข้าร่วม" : "Confirm Rejoin",
-            html:
-                lang === "th"
-                    ? `คุณต้องการกลับเข้าร่วมกิจกรรมนี้ใช่หรือไม่?<br><br><span style="color: #f59e0b; font-weight: 600;">เหลือสิทธิ์ ${remaining} ครั้ง</span>`
-                    : `Do you want to rejoin this event?<br><br><span style="color: #f59e0b; font-weight: 600;">${remaining} attempts remaining</span>`,
-            showCancelButton: true,
-            confirmButtonText: lang === "th" ? "ยืนยัน" : "Confirm",
-            cancelButtonText: lang === "th" ? "ยกเลิก" : "Cancel",
-            confirmButtonColor: "#8b5cf6",
-            cancelButtonColor: "#6b7280",
-        });
-
-        if (!confirmResult.isConfirmed) {
-            return;
-        }
-
-        Swal.fire({
-            title: lang === "th" ? "กำลังดำเนินการ..." : "Processing...",
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading(),
-        });
-
-        try {
-            // Use rejoin endpoint to reset cancelled participation
-            const res = await fetch(
-                `${BASE_URL}/api/participations/${event.participation_id}/rejoin`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                },
-            );
-
-            Swal.close();
-
-            if (res.ok) {
-                const data = await res.json();
-                const newJoinCode = data.join_code || "";
-
-                // Close modal first
-                closeModal();
-
-                // Show success with new join code
-                await Swal.fire({
-                    icon: "success",
-                    title:
-                        lang === "th"
-                            ? "กลับเข้าร่วมกิจกรรมสำเร็จ!"
-                            : "Rejoin Successful!",
-                    html: newJoinCode
-                        ? lang === "th"
-                            ? `<p style="margin-bottom: 10px;">รหัสใหม่ของคุณ:</p><p style="font-size: 2rem; font-weight: bold; color: #10b981; letter-spacing: 8px;">${newJoinCode}</p>`
-                            : `<p style="margin-bottom: 10px;">Your new code:</p><p style="font-size: 2rem; font-weight: bold; color: #10b981; letter-spacing: 8px;">${newJoinCode}</p>`
-                        : undefined,
-                    confirmButtonText: lang === "th" ? "ตกลง" : "OK",
-                    confirmButtonColor: "#10b981",
-                });
-
-                await loadData();
-            } else {
-                const errData = await res.json().catch(() => ({}));
-                // Use Thai error message from backend directly
-                const errMsg =
-                    errData.detail ||
-                    errData.message ||
-                    (lang === "th"
-                        ? "ไม่สามารถกลับเข้าร่วมได้"
-                        : "Cannot rejoin event");
-
-                Swal.fire({
-                    icon: "error",
-                    title: lang === "th" ? "เกิดข้อผิดพลาด" : "Error",
-                    text: errMsg,
-                });
-            }
-        } catch (e: any) {
-            Swal.close();
-            console.error("Rejoin error:", e);
-            Swal.fire({
-                icon: "error",
-                title: lang === "th" ? "เกิดข้อผิดพลาด" : "Error",
-                text:
-                    e.message ||
-                    (lang === "th"
-                        ? "การเชื่อมต่อล้มเหลว"
-                        : "Connection failed"),
-            });
-        }
-    }
-
     // --- DASHBOARD STATE ---
     let showDashboardModal = false;
     let dashboardEvent: EventItem | null = null;
@@ -1716,114 +1531,6 @@
             nextDate.setDate(nextDate.getDate() + 1);
         } while (checkIsHoliday(nextDate, eventId));
         return nextDate;
-    }
-
-    // --- CANCEL FUNCTIONS ---
-    function openCancelModal(event: EventItem) {
-        eventToCancel = event;
-        selectedCancelReason = "";
-        otherCancelReason = "";
-        showCancelModal = true;
-    }
-
-    function closeCancelModal() {
-        showCancelModal = false;
-        eventToCancel = null;
-    }
-
-    async function confirmCancellation() {
-        if (!eventToCancel) return;
-
-        let finalReason = selectedCancelReason;
-
-        // เช็คกรณีเลือก "อื่นๆ" แต่ไม่พิมพ์อะไรมา
-        if (
-            selectedCancelReason.includes("Other") ||
-            selectedCancelReason.includes("อื่นๆ")
-        ) {
-            if (!otherCancelReason.trim()) {
-                Swal.fire({
-                    icon: "warning",
-                    title:
-                        lang === "th"
-                            ? "ยังไม่ได้ระบุสาเหตุการยกเลิกกิจกรรม"
-                            : "Reason not specified",
-                    text:
-                        lang === "th"
-                            ? "กรุณาระบุรายละเอียดเพิ่มเติม"
-                            : "Please provide more details",
-                    confirmButtonColor: "#f59e0b",
-                });
-                return;
-            }
-            finalReason = otherCancelReason;
-        }
-
-        try {
-            const token = getToken();
-            if (!token) {
-                Swal.fire(
-                    t[lang].alert_error,
-                    t[lang].alert_session_expired,
-                    "error",
-                );
-                return;
-            }
-
-            const participationId = eventToCancel.participation_id;
-            if (!participationId) {
-                Swal.fire(
-                    t[lang].alert_error,
-                    "Invalid participation",
-                    "error",
-                );
-                return;
-            }
-
-            const res = await fetch(
-                `${BASE_URL}/api/participations/${participationId}/cancel`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ cancellation_reason: finalReason }),
-                },
-            );
-
-            if (res.ok) {
-                // Update local state
-                incrementCancelCount(eventToCancel.id); // Add this line
-
-                upcomingEvents = upcomingEvents.filter(
-                    (e) => e.participation_id !== participationId,
-                );
-
-                Swal.fire({
-                    icon: "success",
-                    title:
-                        lang === "th"
-                            ? "ยกเลิกเรียบร้อยแล้ว"
-                            : "Cancelled successfully",
-                    timer: 1500,
-                    showConfirmButton: false,
-                });
-                closeCancelModal();
-
-                // Reload data
-                await loadData();
-            } else {
-                const err = await res.json();
-                Swal.fire(t[lang].alert_error, err.detail || "Error", "error");
-            }
-        } catch (err) {
-            Swal.fire(
-                t[lang].alert_error,
-                t[lang].alert_connection_error,
-                "error",
-            );
-        }
     }
 
     async function openActionModal(event: EventItem) {
@@ -3223,15 +2930,6 @@
                                             >
                                                 {t[lang].btn_checkin}
                                             </button>
-                                            <button
-                                                class="cancel-btn"
-                                                on:click={() =>
-                                                    openCancelModal(event)}
-                                            >
-                                                {lang === "th"
-                                                    ? "❌ ยกเลิก"
-                                                    : "❌ Cancel"}
-                                            </button>
                                         {/if}
                                     </div>
                                 </div>
@@ -3882,9 +3580,6 @@
                                 </div>
                             </div>
                         {:else if selectedEvent.status === "CANCELED"}
-                            {@const remainingRejoins =
-                                getRemainingRejoins(selectedEvent)}
-                            {@const canUserRejoin = canRejoin(selectedEvent)}
                             <div
                                 class="cancelled-view"
                                 style="text-align: center; padding: 40px 0; color: #94a3b8;"
@@ -3899,43 +3594,6 @@
                                         ? "กิจกรรมถูกยกเลิก"
                                         : "Event Cancelled"}
                                 </h3>
-
-                                {#if canUserRejoin}
-                                    <p
-                                        style="color: #f59e0b; margin-bottom: 15px; font-weight: 500;"
-                                    >
-                                        {lang === "th"
-                                            ? `เหลือสิทธิ์กลับเข้าร่วม ${remainingRejoins} ครั้ง`
-                                            : `${remainingRejoins} rejoin attempts remaining`}
-                                    </p>
-                                    <button
-                                        class="rejoin-btn"
-                                        style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); color: white; border: none; padding: 12px 28px; border-radius: 30px; cursor: pointer; font-size: 1rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);"
-                                        on:click={() =>
-                                            handleReJoin(selectedEvent!)}
-                                    >
-                                        🔄 {lang === "th"
-                                            ? "กลับเข้าร่วมอีกครั้ง"
-                                            : "Rejoin Event"}
-                                    </button>
-                                {:else if selectedEvent.isLocked}
-                                    <p
-                                        style="color: #6b7280; font-weight: 500;"
-                                    >
-                                        {selectedEvent.lockMessage ||
-                                            (lang === "th"
-                                                ? "กิจกรรมนี้สิ้นสุดแล้ว"
-                                                : "This event has ended")}
-                                    </p>
-                                {:else}
-                                    <p
-                                        style="color: #ef4444; font-weight: 500;"
-                                    >
-                                        {lang === "th"
-                                            ? "ใช้สิทธิ์กลับเข้าร่วมครบ 5 ครั้งแล้ว"
-                                            : "You have used all 5 rejoin attempts"}
-                                    </p>
-                                {/if}
                             </div>
                         {/if}
                     </div>
@@ -4039,69 +3697,6 @@
         </div>
     {/if}
 </div>
-
-<!-- CANCEL MODAL -->
-{#if showCancelModal && eventToCancel}
-    <div class="modal-overlay" transition:fade={{ duration: 200 }}>
-        <div
-            class="modal-content cancel-modal"
-            transition:scale={{ duration: 250, start: 0.9 }}
-        >
-            <button class="modal-close-btn" on:click={closeCancelModal}
-                >&times;</button
-            >
-            <div class="modal-body">
-                <h3 class="modal-title" style="color: #ef4444;">
-                    {lang === "th"
-                        ? "ยกเลิกการเข้าร่วมกิจกรรม"
-                        : "Cancel Participation"}
-                </h3>
-                <p class="modal-subtitle">
-                    {lang === "th"
-                        ? "โปรดระบุเหตุผลที่คุณต้องการยกเลิก"
-                        : "Please specify your reason for cancellation"}
-                </p>
-                <div class="cancel-options">
-                    {#each cancelReasons as reason}
-                        <label class="radio-item">
-                            <input
-                                type="radio"
-                                bind:group={selectedCancelReason}
-                                value={reason}
-                            />
-                            <span class="radio-label">{reason}</span>
-                        </label>
-                    {/each}
-                </div>
-                {#if selectedCancelReason.includes("อื่นๆ") || selectedCancelReason.includes("Other")}
-                    <div class="reason-input" transition:slide>
-                        <textarea
-                            placeholder={lang === "th"
-                                ? "ระบุเหตุผลอื่นๆ..."
-                                : "Specify other reason..."}
-                            bind:value={otherCancelReason}
-                            rows="3"
-                        ></textarea>
-                    </div>
-                {/if}
-                <div class="action-row">
-                    <button
-                        class="cancel-confirm-btn"
-                        on:click={confirmCancellation}
-                        disabled={!selectedCancelReason ||
-                            ((selectedCancelReason.includes("Other") ||
-                                selectedCancelReason.includes("อื่นๆ")) &&
-                                !otherCancelReason.trim())}
-                    >
-                        {lang === "th"
-                            ? "ยืนยันการยกเลิก"
-                            : "Confirm Cancellation"}
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-{/if}
 
 <style>
     @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
@@ -5237,30 +4832,6 @@
         margin-bottom: 20px;
         text-align: center;
     }
-
-    .holiday-info-box {
-        grid-column: 1 / -1;
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px dashed #ef4444;
-        padding: 12px;
-        border-radius: 8px;
-        margin-top: 10px;
-    }
-    .holiday-title {
-        color: #f87171;
-        font-weight: 700;
-        font-size: 0.9rem;
-        margin-bottom: 6px;
-    }
-    .holiday-list {
-        margin: 0;
-        padding-left: 20px;
-        color: #fca5a5;
-        font-size: 0.85rem;
-    }
-    .holiday-list li {
-        margin-bottom: 2px;
-    }
     /* Dashboard Button in Card */
     /* ลบอันเก่า .dashboard-icon-btn ทิ้ง หรือแก้เป็นอันนี้แทน */
 
@@ -5423,27 +4994,6 @@
         font-size: 1.2rem;
         font-weight: 800;
         color: white;
-    }
-
-    .holiday-section {
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px dashed #ef4444;
-        border-radius: 12px;
-        padding: 15px;
-    }
-    .holiday-header {
-        color: #f87171;
-        font-weight: 700;
-        margin-bottom: 8px;
-    }
-    .holiday-list-dash {
-        margin: 0;
-        padding-left: 20px;
-        color: #fca5a5;
-        font-size: 0.9rem;
-    }
-    .holiday-list-dash li {
-        margin-bottom: 4px;
     }
 
     /* CANCEL BUTTON & MODAL */

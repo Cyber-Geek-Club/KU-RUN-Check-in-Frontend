@@ -136,8 +136,10 @@
   // --- Computed ---
   $: backUrl =
     role === "student"
-      ? ROUTES.student.eventList
-      : ROUTES.organizer.createEvent;
+      ? ROUTES.student.eventList // ถ้าเป็น student -> ไปหน้ารายกิจกรรมนักเรียน
+      : role === "officer"
+        ? ROUTES.officer.eventList // ถ้าเป็น officer -> ไปหน้ารายกิจกรรมเจ้าหน้าที่
+        : ROUTES.student.eventList;
   $: userInitials =
     firstName && lastName
       ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()

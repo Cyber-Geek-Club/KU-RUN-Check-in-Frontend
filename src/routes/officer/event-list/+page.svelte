@@ -44,6 +44,7 @@
     allow_daily_checkin: boolean;
     max_checkins_per_user: number | null;
     checkin_count: number; // จำนวนครั้งที่ check-in แล้ว
+    hasHistory?: boolean;
   }
 
   // Interface สำหรับการแจ้งเตือนรางวัล
@@ -132,13 +133,7 @@
   let currentPage = $state(1);
   const itemsPerPage = 8;
 
-  // คำนวณจำนวนหน้าทั้งหมด
-  let totalPages = $derived(Math.ceil(events.length / itemsPerPage));
-
-  // ตัดข้อมูล events ที่จะแสดงในหน้าปัจจุบัน
-  let paginatedEvents = $derived(
-    events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
-  );
+  // (totalPages and paginatedEvents are calculated after filtering)
 
   // ฟังก์ชันเปลี่ยนหน้า
   function changePage(page: number) {
@@ -158,7 +153,7 @@
       status_active: "เปิดรับสมัคร",
       status_non_active: "ไม่รับสมัคร",
       status_not_open: "ยังไม่เปิด",
-      status_full: "เต็ม",
+      status_full: "ยอดสมัครเต็ม",
       status_joined: "เข้าร่วมแล้ว",
       status_resubmit: "ส่งใหม่",
       status_pending: "รอตรวจสอบ",
@@ -445,7 +440,6 @@
 
     for (let i = 0; i < eventsCopy.length; i += BATCH_SIZE) {
       const batch = eventsCopy.slice(i, i + BATCH_SIZE);
-      // For student, use participant_count from event directly
       batch.forEach((event) => {
         const eventIndex = events.findIndex((e) => e.id === event.id);
         if (eventIndex !== -1) {
@@ -507,6 +501,7 @@
           const myRecords = myData.filter(
             (item: any) => Number(item.event_id) === e.id,
           );
+          const hasHistory = myRecords.length > 0;
 
           const myCompletedCheckins = myRecords.reduce(
             (count: number, record: any) => {
@@ -614,6 +609,7 @@
             completionCount: e.completionCount, // คงค่าเดิมไว้
             checkin_count: myCompletedCheckins,
             hasCancelledRecord: !isJoined && hasCancelledRecord, // มี CANCELLED และยังไม่ได้สมัครใหม่
+            hasHistory: hasHistory,
           };
         });
       }
@@ -1451,37 +1447,34 @@
     window.location.href = "/auth/login";
   }
 
-  // Debounce search to reduce frequent recomputation
-  let debouncedQuery = $state("");
-  let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-  $effect(() => {
-    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-      debouncedQuery = searchQuery.toLowerCase().trim();
-    }, 250);
-  });
+  // ใช้ searchQuery ตรง ๆ ใน filteredEvents เพื่อให้ผลลัพธ์แสดงทันที
 
   let filteredEvents = $derived(
     events.filter((event) => {
-      // [NEW] เงื่อนไขเวลา: ต้องยังไม่เลยช่วงเวลา (Not Expired)
-      // ดึงไปแล้วในฟังก์ชัน fetchEvents เลย ดังนั้นควรจะไม่มีเหตุการณ์ที่เลยวันแล้ว
-      // แต่เราเช็คตรงนี้เพิ่มเติมเพื่อความปลอดภัย
+      // 1. เงื่อนไขเวลา (Not Expired) - คงเดิม
       if (event.endDate) {
         const now = new Date();
         const end = new Date(event.endDate);
         end.setHours(23, 59, 59, 999);
-        // ถ้าเวลาปัจจุบัน เลยเวลาจบกิจกรรมไปแล้ว -> ไม่แสดง
         if (now > end) return false;
       }
 
-      // [RULE] จำกัดสมัครได้ครั้งเดียวต่อกิจกรรม: ถ้าเคยสมัครแล้วและไม่ใช่การสมัครของวันนี้ → ไม่แสดง
-      if (event.isJoined && !event.isJoinedToday) {
+      // 2. [แก้ไข] กรองกิจกรรมที่เคยมีประวัติออกทั้งหมด
+      if (event.hasHistory) {
         return false;
       }
 
-      // --- Search Query Logic (คงเดิม) ---
-      const query = debouncedQuery;
+      // หมายเหตุ: กันเหนียวเผื่อ hasHistory ยังไม่มา (fallback)
+      if (
+        event.isJoined || 
+        event.hasCancelledRecord ||
+        (event.participationId !== null && event.participationId !== undefined)
+      ) {
+        return false;
+      }
+
+      // 3. Search Query Logic - ใช้ searchQuery ตรง ๆ
+      const query = searchQuery.toLowerCase().trim();
       if (!query) return true;
 
       return (
@@ -1490,6 +1483,19 @@
         event.description.toLowerCase().includes(query)
       );
     }),
+  );
+
+  // Recompute pagination based on filtered results
+  let totalPages = $derived(
+    Math.max(1, Math.ceil(filteredEvents.length / itemsPerPage)),
+  );
+
+  // Paginated events come from filteredEvents so search/pagination interact correctly
+  let paginatedEvents = $derived(
+    filteredEvents.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage,
+    ),
   );
 </script>
 
@@ -2322,11 +2328,6 @@
     height: 16px;
     color: #10b981;
   }
-  .active-search-icon {
-    color: var(--primary);
-    opacity: 0.8;
-  }
-
   /* --- Mobile Drawer --- */
   .mobile-toggle {
     display: none;
@@ -2703,19 +2704,6 @@
     color: #10b981;
     font-weight: 600;
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
-  }
-
-  .count-badge {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color: white;
-    font-size: 0.8rem;
-    font-weight: 700;
-    padding: 6px 14px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   .card-desc {
