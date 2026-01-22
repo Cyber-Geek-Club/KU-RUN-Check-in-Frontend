@@ -663,43 +663,6 @@
         } catch (e) {}
       }
 
-      // 🎨 ADD MOCK DATA FOR TESTING (250 entries)
-      const mockLogs: LogEntry[] = [];
-      const actions = [
-        "registration",
-        "check_in",
-        "proof_submitted",
-        "proof_approved",
-        "proof_rejected",
-        "reward_unlocked",
-      ];
-      for (let i = 1; i <= 250; i++) {
-        const action = actions[i % actions.length];
-        mockLogs.push({
-          id: `mock-${i}`,
-          eventId: eventId,
-          userId: String(1000 + i),
-          userName: `Mock User ${i}`,
-          userEmail: `user${i}@example.com`,
-          userNisitId: `67${String(100000 + i).slice(-6)}`,
-          userRole: i % 5 === 0 ? "officer" : "participant",
-          action: action,
-          timestamp: new Date(Date.now() - i * 3600000).toISOString(),
-          participationDate: new Date(Date.now() - i * 3600000)
-            .toISOString()
-            .split("T")[0],
-          details: null,
-          metadata: {},
-          proofImage: action.includes("proof")
-            ? `https://placehold.co/400x300/1e293b/10b981?text=Proof+${i}`
-            : undefined,
-          distanceKm: action === "reward_unlocked" ? 5 + (i % 10) : undefined,
-          status: action,
-        });
-      }
-      logs = [...logs, ...mockLogs];
-      // 🎨 END MOCK DATA
-
       calculateStatistics();
     } catch (error) {
       console.error("Failed to load entries:", error);
@@ -773,21 +736,8 @@
       await performAutoRefresh(event.id, true);
     }
 
-    // If still empty (no real data), force mock data load for testing
-    if (snapshots.length === 0) {
-      currentSnapshotId = "mock-test-id";
-      // Add fake snapshot to list so UI dropdown works
-      snapshots = [
-        {
-          id: 0,
-          snapshot_id: currentSnapshotId,
-          snapshot_time: new Date().toISOString(),
-          entry_count: 250,
-          description: "Test Data",
-        },
-      ];
-      await loadSnapshotEntries(event.id, currentSnapshotId);
-    } else {
+    // If still empty (no real data), maybe just show empty state
+    if (snapshots.length > 0) {
       currentSnapshotId = snapshots[0].snapshot_id;
       await loadSnapshotEntries(event.id, currentSnapshotId);
     }
