@@ -2069,7 +2069,7 @@
                   </svg>
                 </button>
 
-                {#if showSubmissionsPageDropdown}
+                {#if showSubmissionsPageDropdown} 
                   <div
                     bind:this={submissionsDropdownRef}
                     class="page-dropdown-list"
