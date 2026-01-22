@@ -486,7 +486,7 @@
       const token = localStorage.getItem("access_token");
       console.log("🔍 Fetching events... Token:", token);
 
-      const response = await api.get("/api/events", {
+      const response = await api.get("/api/events/", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const rawEvents = response.data.events || response.data || [];
