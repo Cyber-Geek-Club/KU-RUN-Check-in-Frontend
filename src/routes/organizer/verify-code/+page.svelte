@@ -412,28 +412,6 @@
   });
 </script>
 
-<!-- 🔒 Coming Soon Lock Screen Overlay -->
-<div class="coming-soon-overlay">
-  <div class="coming-soon-content">
-    <div class="lock-icon">
-      <svg
-        width="80"
-        height="80"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.5"
-      >
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-      </svg>
-    </div>
-    <h2 class="coming-soon-title">
-      {currentLang === "th" ? "รอการอัพเดท" : "Awaiting Updates"}
-    </h2>
-  </div>
-</div>
-
 <div class="vc-container">
   <div class="vc-main-card">
     <div class="vc-action-selector">
@@ -1971,58 +1949,6 @@
     }
   }
 
-  /* ==================== COMING SOON OVERLAY (FULL SCREEN) ==================== */
-  .coming-soon-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(10, 15, 30, 0.95);
-    backdrop-filter: blur(10px);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.5s ease;
-  }
-
-  .coming-soon-content {
-    max-width: 500px;
-    padding: 3rem 2rem;
-    text-align: center;
-  }
-
-  .lock-icon {
-    margin: 0 auto 1.5rem;
-    width: 90px;
-    height: 90px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(
-      135deg,
-      rgba(100, 116, 139, 0.2),
-      rgba(71, 85, 105, 0.1)
-    );
-    border: 2px solid rgba(148, 163, 184, 0.3);
-    border-radius: 50%;
-    color: #94a3b8;
-    box-shadow:
-      0 0 30px rgba(100, 116, 139, 0.3),
-      inset 0 0 20px rgba(100, 116, 139, 0.1);
-    animation: pulse 3s infinite;
-  }
-
-  .lock-icon svg {
-    filter: drop-shadow(0 0 10px rgba(148, 163, 184, 0.6));
-    display: block;
-  }
-
-  .coming-soon-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #f8fafc;
-    margin: 0;
-  }
-
   /* ==================== QR LOCK OVERLAY (QR MODE ONLY) ==================== */
   .qr-lock-overlay {
     position: absolute;
@@ -2050,17 +1976,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(
-      135deg,
-      rgba(100, 116, 139, 0.2),
-      rgba(71, 85, 105, 0.1)
-    );
-    border: 2px solid rgba(148, 163, 184, 0.3);
-    border-radius: 50%;
     color: #94a3b8;
-    box-shadow:
-      0 0 30px rgba(100, 116, 139, 0.3),
-      inset 0 0 20px rgba(100, 116, 139, 0.1);
     animation: pulse 3s infinite;
   }
 
