@@ -431,50 +431,6 @@
     <h2 class="coming-soon-title">
       {currentLang === "th" ? "รอการอัพเดท" : "Awaiting Updates"}
     </h2>
-    <p class="coming-soon-desc">
-      {currentLang === "th"
-        ? "ฟีเจอร์เช็คอิน และเช็คเอาท์ กำลังอยู่ระหว่างการปรับปรุงและพัฒนา"
-        : "Check-in and Check-out features are currently under development and improvement"}
-    </p>
-    <div class="coming-soon-features">
-      <div class="feature-item">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-          <polyline points="10 17 15 12 10 7" />
-          <line x1="15" y1="12" x2="3" y2="12" />
-        </svg>
-        <span>{currentLang === "th" ? "ระบบเช็คอิน" : "Check-in System"}</span>
-      </div>
-      <div class="feature-item">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-          <polyline points="16 17 21 12 16 7" />
-          <line x1="21" y1="12" x2="9" y2="12" />
-        </svg>
-        <span
-          >{currentLang === "th" ? "ระบบเช็คเอาท์" : "Check-out System"}</span
-        >
-      </div>
-    </div>
-    <p class="coming-soon-note">
-      {currentLang === "th"
-        ? "ขอบคุณสำหรับความอดทนรอ เราจะกลับมาเร็วๆ นี้!"
-        : "Thank you for your patience. We'll be back soon!"}
-    </p>
   </div>
 </div>
 
@@ -2013,6 +1969,58 @@
     50% {
       opacity: 0.5;
     }
+  }
+
+  /* ==================== COMING SOON OVERLAY (FULL SCREEN) ==================== */
+  .coming-soon-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 15, 30, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.5s ease;
+  }
+
+  .coming-soon-content {
+    max-width: 500px;
+    padding: 3rem 2rem;
+    text-align: center;
+  }
+
+  .lock-icon {
+    margin: 0 auto 1.5rem;
+    width: 90px;
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(
+      135deg,
+      rgba(100, 116, 139, 0.2),
+      rgba(71, 85, 105, 0.1)
+    );
+    border: 2px solid rgba(148, 163, 184, 0.3);
+    border-radius: 50%;
+    color: #94a3b8;
+    box-shadow:
+      0 0 30px rgba(100, 116, 139, 0.3),
+      inset 0 0 20px rgba(100, 116, 139, 0.1);
+    animation: pulse 3s infinite;
+  }
+
+  .lock-icon svg {
+    filter: drop-shadow(0 0 10px rgba(148, 163, 184, 0.6));
+    display: block;
+  }
+
+  .coming-soon-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0;
   }
 
   /* ==================== QR LOCK OVERLAY (QR MODE ONLY) ==================== */

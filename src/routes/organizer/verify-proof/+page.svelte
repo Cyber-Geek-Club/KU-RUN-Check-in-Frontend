@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, tick } from "svelte";
   import { api } from "../_lib/api/client";
   import { endpoints } from "../_lib/api/endpoints";
   import Swal from "sweetalert2";
@@ -199,6 +199,20 @@
   let submissionsPage = 1;
   const submissionsPerPage = 12;
   let showSubmissionsPageDropdown = false;
+  let submissionsDropdownRef: HTMLDivElement;
+
+  async function toggleSubmissionsPageDropdown() {
+    showSubmissionsPageDropdown = !showSubmissionsPageDropdown;
+    if (showSubmissionsPageDropdown) {
+      await tick();
+      if (submissionsDropdownRef) {
+        submissionsDropdownRef.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    }
+  }
 
   // Auto-refresh
   let autoRefreshEnabled = false;
@@ -2000,124 +2014,123 @@
               </div>
             {/each}
           </div>
-
-          {#if totalSubmissionsPages > 1}
-            <div class="pagination-wrapper">
-              <div class="pagination-row">
-                <div class="pagination-controls">
-                  <button
-                    class="page-btn"
-                    aria-label="Previous submissions page"
-                    on:click={prevSubmissionsPage}
-                    disabled={submissionsPage === 1}
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        d="M15 19l-7-7 7-7"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-
-                  <div class="page-select-wrapper">
-                    <button
-                      class="page-indicator-box"
-                      on:click|stopPropagation={() =>
-                        (showSubmissionsPageDropdown =
-                          !showSubmissionsPageDropdown)}
-                    >
-                      <span class="current-page">{submissionsPage}</span>
-                      <span class="sep">/</span>
-                      <span class="total-page">{totalSubmissionsPages}</span>
-                      <svg
-                        class="dropdown-arrow"
-                        class:flipped={showSubmissionsPageDropdown}
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path
-                          d="M19 9l-7 7-7-7"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                    </button>
-
-                    {#if showSubmissionsPageDropdown}
-                      <div
-                        class="page-dropdown-list"
-                        role="menu"
-                        tabindex="0"
-                        on:click|stopPropagation
-                        on:keydown={(e: globalThis.KeyboardEvent) => {
-                          /* keyboard support for menu container */
-                        }}
-                      >
-                        {#each Array(totalSubmissionsPages) as _, i}
-                          <button
-                            class="page-option"
-                            class:active={submissionsPage === i + 1}
-                            on:click={() => {
-                              submissionsPage = i + 1;
-                              showSubmissionsPageDropdown = false;
-                            }}
-                          >
-                            Page {i + 1}
-                          </button>
-                        {/each}
-                      </div>
-                    {/if}
-                  </div>
-
-                  <button
-                    class="page-btn"
-                    aria-label="Next submissions page"
-                    on:click={nextSubmissionsPage}
-                    disabled={submissionsPage === totalSubmissionsPages}
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        d="M9 5l7 7-7 7"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <div class="page-info">
-                {lang.showingResults}
-                {(submissionsPage - 1) * submissionsPerPage + 1} - {Math.min(
-                  submissionsPage * submissionsPerPage,
-                  totalSubmissions,
-                )}
-                {lang.of}
-                {totalSubmissions}
-              </div>
-            </div>
-          {/if}
         {/if}
       </div>
+
+      {#if totalSubmissionsPages > 1}
+        <div class="pagination-wrapper">
+          <div class="pagination-row">
+            <div class="pagination-controls">
+              <button
+                class="page-btn"
+                aria-label="Previous submissions page"
+                on:click={prevSubmissionsPage}
+                disabled={submissionsPage === 1}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M15 19l-7-7 7-7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+
+              <div class="page-select-wrapper">
+                <button
+                  class="page-indicator-box"
+                  on:click|stopPropagation={toggleSubmissionsPageDropdown}
+                >
+                  <span class="current-page">{submissionsPage}</span>
+                  <span class="sep">/</span>
+                  <span class="total-page">{totalSubmissionsPages}</span>
+                  <svg
+                    class="dropdown-arrow"
+                    class:flipped={showSubmissionsPageDropdown}
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M19 9l-7 7-7 7"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
+
+                {#if showSubmissionsPageDropdown}
+                  <div
+                    bind:this={submissionsDropdownRef}
+                    class="page-dropdown-list"
+                    role="menu"
+                    tabindex="0"
+                    on:click|stopPropagation
+                    on:keydown={(e: globalThis.KeyboardEvent) => {
+                      /* keyboard support for menu container */
+                    }}
+                  >
+                    {#each Array(totalSubmissionsPages) as _, i}
+                      <button
+                        class="page-option"
+                        class:active={submissionsPage === i + 1}
+                        on:click={() => {
+                          submissionsPage = i + 1;
+                          showSubmissionsPageDropdown = false;
+                        }}
+                      >
+                        Page {i + 1}
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+
+              <button
+                class="page-btn"
+                aria-label="Next submissions page"
+                on:click={nextSubmissionsPage}
+                disabled={submissionsPage === totalSubmissionsPages}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M9 5l7 7-7 7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="page-info">
+            {lang.showingResults}
+            {(submissionsPage - 1) * submissionsPerPage + 1} - {Math.min(
+              submissionsPage * submissionsPerPage,
+              totalSubmissions,
+            )}
+            {lang.of}
+            {totalSubmissions}
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
