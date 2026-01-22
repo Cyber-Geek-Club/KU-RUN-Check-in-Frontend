@@ -596,6 +596,76 @@
         );
       }
 
+      // 🎨 MOCK DATA GENERATION (If no real data)
+      if (rewards.length === 0) {
+        console.warn("[rewards] No real data found, generating MOCK DATA...");
+        const mockRewards: RewardEntry[] = [];
+        for (let i = 1; i <= 250; i++) {
+          const isQualified = Math.random() > 0.3;
+          const isRewarded = isQualified && Math.random() > 0.5;
+          const completions = Math.floor(Math.random() * 50) + 1;
+
+          mockRewards.push({
+            id: i,
+            user_id: 1000 + i,
+            user_full_name: `Mock User ${i}`,
+            user_email: `user${i}@example.com`,
+            user_nisit_id: `67${String(100000 + i).slice(-6)}`,
+            user_role: i % 10 === 0 ? "officer" : "participant",
+            total_completions: completions,
+            rank: i,
+            reward_id: isRewarded ? i : null,
+            reward_name: isRewarded
+              ? i <= 3
+                ? "Gold Medal"
+                : "Silver Medal"
+              : null,
+            reward_tier: isRewarded ? (i <= 3 ? 1 : 2) : null,
+            qualified_at: isQualified ? new Date().toISOString() : null,
+            rewarded_at: isRewarded ? new Date().toISOString() : null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+        rewards = mockRewards;
+
+        // Mock Config if null to prevent UI errors
+        if (!rewardConfig) {
+          rewardConfig = {
+            id: 999,
+            event_id: event.id,
+            name: "Mock Reward Config",
+            description: "Generated for testing",
+            max_reward_recipients: 100,
+            required_completions: 10,
+            starts_at: new Date().toISOString(),
+            ends_at: new Date(Date.now() + 86400000).toISOString(),
+            is_finalized: false,
+            finalized_at: null,
+            reward_tiers: [
+              {
+                tier: 1,
+                reward_id: 1,
+                reward_name: "Gold Medal",
+                quantity: 3,
+                required_completions: 50,
+                min_rank: 1,
+                max_rank: 3,
+              },
+              {
+                tier: 2,
+                reward_id: 2,
+                reward_name: "Silver Medal",
+                quantity: 10,
+                required_completions: 30,
+                min_rank: 4,
+                max_rank: 13,
+              },
+            ],
+          };
+        }
+      }
+
       calculateStatistics();
       applyFilters();
       if (import.meta.env.DEV)
