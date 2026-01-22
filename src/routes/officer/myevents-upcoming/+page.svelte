@@ -3733,6 +3733,7 @@
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
+        padding-top: calc(var(--nav-height) + 20px);
         padding-bottom: 20px;
     }
     .content-wrapper {
