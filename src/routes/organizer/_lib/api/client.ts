@@ -84,6 +84,7 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem('refresh_token');
 
         if (!refreshToken) {
+          isRefreshing = false;
           return handleLogout(error);
         }
 
@@ -104,6 +105,12 @@ api.interceptors.response.use(
             localStorage.setItem('access_token', data.access_token);
             if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
 
+            // Update token expiry if provided
+            if (data.expires_in) {
+              const expiry = Date.now() + data.expires_in * 1000;
+              localStorage.setItem('token_expiry', expiry.toString());
+            }
+
             api.defaults.headers.common['Authorization'] = 'Bearer ' + data.access_token;
             originalRequest.headers.Authorization = 'Bearer ' + data.access_token;
 
@@ -111,6 +118,9 @@ api.interceptors.response.use(
             isRefreshing = false;
 
             return api(originalRequest); // ยิงซ้ำ
+          } else {
+            // No access_token in response - treat as refresh failure
+            throw new Error('No access_token in refresh response');
           }
         } catch (refreshError) {
           processQueue(refreshError, null);
@@ -119,8 +129,14 @@ api.interceptors.response.use(
         }
       }
 
-      // ถ้า Refresh ไม่ผ่าน หรือเป็น Error อื่นๆ ให้ Logout
-      if (status === 401 || status === 403) {
+      // 👉 ถ้าเป็น 401 ที่ retry แล้วยังไม่ผ่าน หรือเป็น 403 ให้ Logout
+      if (status === 401 && originalRequest._retry) {
+        // Already tried refresh, still got 401 - force logout
+        return handleLogout(error);
+      }
+
+      if (status === 403) {
+        // 403 Forbidden - no permission, force logout
         return handleLogout(error);
       }
 

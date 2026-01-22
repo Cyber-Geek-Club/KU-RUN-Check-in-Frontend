@@ -3,6 +3,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [sveltekit()],
+	preview: {
+		allowedHosts: ['reg1.src.ku.ac.th']
+	},
 	server: {
 		headers: {
 			// Allow camera, microphone, and geolocation
@@ -13,7 +16,7 @@ export default defineConfig({
 			'/api': {
 				target: 'https://reg1.src.ku.ac.th:8005', // ให้ส่งต่อไปที่ localhost แทน
 				changeOrigin: true,
-				secure: true,
+				secure: false,
 			}
 		}
 	}
