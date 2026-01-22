@@ -103,6 +103,18 @@
       }
 
       // Prepare user data matching LoginResponse interface
+      // Handle name from either first_name+last_name or name field
+      const userName =
+        data.name ||
+        (data.first_name && data.last_name
+          ? `${data.first_name} ${data.last_name}`
+          : null) ||
+        data.first_name ||
+        data.user?.name ||
+        data.username ||
+        data.user?.username ||
+        email.split("@")[0];
+
       const loginResponse = {
         access_token: accessToken,
         refresh_token: refreshToken || undefined,
@@ -110,16 +122,18 @@
         expires_in: data.expires_in || 3600,
         user_id: data.user_id || data.id || data.user?.id,
         email: data.email || data.user?.email || email,
-        name:
-          data.name ||
-          data.user?.name ||
-          data.username ||
-          data.user?.username ||
-          email.split("@")[0],
+        name: userName,
         role: userRole,
       };
       // Use auth store - it will handle all localStorage operations
       auth.login(loginResponse);
+
+      // Debug: Verify tokens are stored
+      console.log("✅ Login successful, tokens stored:", {
+        hasAccessToken: !!localStorage.getItem("access_token"),
+        hasRefreshToken: !!localStorage.getItem("refresh_token"),
+        expiresIn: data.expires_in,
+      });
       // Store additional role-based routing info
       try {
         localStorage.setItem("strict_allowed_path", getRoleHome(userRole));
