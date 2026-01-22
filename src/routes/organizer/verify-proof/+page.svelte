@@ -2069,7 +2069,7 @@
                   </svg>
                 </button>
 
-                {#if showSubmissionsPageDropdown} 
+                {#if showSubmissionsPageDropdown}
                   <div
                     bind:this={submissionsDropdownRef}
                     class="page-dropdown-list"
@@ -3112,14 +3112,11 @@
     flex-direction: column;
     align-items: center;
     gap: 1rem;
-    padding: 1rem 0;
+    padding-top: 1rem;
     flex-shrink: 0;
-    z-index: 50;
-    position: sticky;
-    bottom: 0;
-    background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(8px);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    z-index: 20;
+    /* Optional: Add background to separate from content */
+    /* background: #0f172a; */
   }
 
   .pagination-row {
