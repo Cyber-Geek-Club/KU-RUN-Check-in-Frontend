@@ -2314,11 +2314,10 @@
     padding: 2rem;
   }
 
-  /* Make the top area sticky and the submissions list scrollable */
+  /* Top area with header, stats, and filters - stays visible */
   .submissions-top {
-    position: sticky;
-    top: 0;
-    z-index: 40;
+    position: relative;
+    z-index: 10;
     padding-bottom: 0.75rem;
   }
 
@@ -2340,21 +2339,55 @@
 
   .filter-section {
     margin-top: 0;
+    position: relative;
+    z-index: 20;
   }
 
+  /* Proof cards container - scrollable independently */
   .submissions-content {
+    position: relative;
+    z-index: 1;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    padding-right: 8px;
+    /* Set fixed height so it scrolls independently */
+    max-height: 65vh;
     overflow-y: auto;
-    max-height: calc(
-      100vh - 260px
-    ); /* leave space for header, stats and footer/pagination */
-    padding-right: 8px; /* room for scrollbar */
-    margin-top: 1.25rem; /* add space between filter/search area and proofs */
-    padding-top: 0.75rem; /* extra internal spacing so top of cards don't touch sticky header */
+    overflow-x: hidden;
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
+    /* Custom scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(16, 185, 129, 0.4) transparent;
+  }
+
+  .submissions-content::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .submissions-content::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 4px;
+  }
+
+  .submissions-content::-webkit-scrollbar-thumb {
+    background: rgba(16, 185, 129, 0.4);
+    border-radius: 4px;
+  }
+
+  .submissions-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(16, 185, 129, 0.6);
   }
 
   @media (max-width: 768px) {
+    .submissions-view {
+      padding: 1rem;
+    }
+
     .submissions-content {
-      max-height: calc(100vh - 340px);
+      max-height: 55vh;
+      padding-bottom: 2rem;
+      border-radius: 12px;
     }
   }
 
@@ -2581,6 +2614,8 @@
     gap: 1rem;
     flex-wrap: wrap;
     align-items: center;
+    position: relative;
+    z-index: 10;
   }
 
   .search-box {
