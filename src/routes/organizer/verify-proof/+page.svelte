@@ -655,30 +655,6 @@
           }));
       }
 
-      // 🎨 ADD MOCK DATA FOR TESTING PAGINATION (remove this section in production)
-      const mockSubmissions: Submission[] = [];
-      for (let i = 1; i <= 250; i++) {
-        mockSubmissions.push({
-          id: `mock-${i}`,
-          runnerName: `Mock Runner ${i}`,
-          odySd: `67${String(100000 + i).slice(-6)}`,
-          email: `runner${i}@example.com`,
-          proofImage: `https://placehold.co/400x300/1e293b/10b981?text=Proof+${i}`,
-          status:
-            i % 3 === 0 ? "Approved" : i % 3 === 1 ? "Pending" : "Rejected",
-          submittedAt: new Date(Date.now() - i * 3600000).toISOString(),
-          updatedAt: new Date(Date.now() - i * 3600000).toISOString(),
-          stravaLink:
-            i % 2 === 0
-              ? `https://www.strava.com/activities/mock${i}`
-              : undefined,
-          actualDistance: 5 + i * 0.5,
-          userId: i,
-        });
-      }
-      submissions = [...submissions, ...mockSubmissions];
-      // 🎨 END MOCK DATA
-
       calculateStatistics();
     } catch (error) {
       console.warn("Failed to load submissions:", error);
