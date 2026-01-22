@@ -40,7 +40,7 @@ jobs:
           pnpm install --frozen-lockfile
 
           # Set environment variable for build
-          $env:VITE_API_BASE_URL = "https://reg1.src.ku.ac.th:8005"
+          $env:VITE_API_BASE_URL = "http://158.108.102.14:8005"
 
           # Build
           Write-Host "Building with VITE_API_BASE_URL = $env:VITE_API_BASE_URL"
