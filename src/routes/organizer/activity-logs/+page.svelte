@@ -3839,7 +3839,7 @@
       flex-wrap: wrap;
     }
     .stats-dashboard {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: 1fr;
     }
     .filter-section {
       flex-direction: column;
@@ -3854,7 +3854,7 @@
       overflow-x: auto;
     }
     .logs-table {
-      min-width: 900px;
+      min-width: auto;
     }
   }
   @media (max-width: 640px) {
