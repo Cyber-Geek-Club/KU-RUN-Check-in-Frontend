@@ -1848,16 +1848,6 @@
           />
         </div>
 
-        <div class="batch-filter">
-          <input
-            type="text"
-            placeholder={lang.batch}
-            maxlength="2"
-            bind:value={batchFilter}
-            class="batch-input"
-          />
-        </div>
-
         <div class="filter-dropdown" class:dropdown-open={actionDropdownOpen}>
           <button
             class="filter-trigger"
@@ -2199,115 +2189,115 @@
             </table>
           {/if}
         </div>
-      </div>
 
-      {#if totalPages > 1}
-        <div class="pagination-wrapper">
-          <div class="pagination-controls">
-            <button
-              class="page-btn"
-              aria-label="Previous page"
-              on:click={prevPage}
-              disabled={currentPage === 1}
-              ><svg
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                ><path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M15 19l-7-7 7-7"
-                ></path></svg
-              ></button
-            >
-            <div class="page-select-wrapper">
+        {#if totalPages > 1}
+          <div class="pagination-wrapper">
+            <div class="pagination-controls">
               <button
-                class="page-indicator-box"
-                on:click|stopPropagation={() =>
-                  (showPageDropdown = !showPageDropdown)}
-              >
-                <span class="current-page">{currentPage}</span><span class="sep"
-                  >/</span
-                ><span class="total-page">{totalPages}</span>
-                <svg
-                  class="dropdown-arrow"
-                  class:flipped={showPageDropdown}
-                  width="12"
-                  height="12"
+                class="page-btn"
+                aria-label="Previous page"
+                on:click={prevPage}
+                disabled={currentPage === 1}
+                ><svg
+                  width="16"
+                  height="16"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                   ><path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    stroke-width="3"
-                    d="M19 9l-7 7-7-7"
+                    stroke-width="2"
+                    d="M15 19l-7-7 7-7"
                   ></path></svg
+                ></button
+              >
+              <div class="page-select-wrapper">
+                <button
+                  class="page-indicator-box"
+                  on:click|stopPropagation={() =>
+                    (showPageDropdown = !showPageDropdown)}
                 >
-              </button>
-              {#if showPageDropdown}
-                <div
-                  class="click-outside"
-                  role="button"
-                  tabindex="0"
-                  aria-hidden="true"
-                  on:click|stopPropagation={() => (showPageDropdown = false)}
-                  on:keydown|stopPropagation={(e) => {
-                    if (
-                      e.key === "Enter" ||
-                      e.key === " " ||
-                      e.key === "Escape"
-                    )
-                      showPageDropdown = false;
-                  }}
-                ></div>
-                <div class="page-dropdown-list">
-                  {#each Array(totalPages) as _, i}<button
-                      class="page-option"
-                      class:active={currentPage === i + 1}
-                      on:click|stopPropagation={() => {
-                        jumpToPage(i + 1);
+                  <span class="current-page">{currentPage}</span><span
+                    class="sep">/</span
+                  ><span class="total-page">{totalPages}</span>
+                  <svg
+                    class="dropdown-arrow"
+                    class:flipped={showPageDropdown}
+                    width="12"
+                    height="12"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    ><path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="3"
+                      d="M19 9l-7 7-7-7"
+                    ></path></svg
+                  >
+                </button>
+                {#if showPageDropdown}
+                  <div
+                    class="click-outside"
+                    role="button"
+                    tabindex="0"
+                    aria-hidden="true"
+                    on:click|stopPropagation={() => (showPageDropdown = false)}
+                    on:keydown|stopPropagation={(e) => {
+                      if (
+                        e.key === "Enter" ||
+                        e.key === " " ||
+                        e.key === "Escape"
+                      )
                         showPageDropdown = false;
-                      }}>Page {i + 1}</button
-                    >{/each}
-                </div>
-              {/if}
+                    }}
+                  ></div>
+                  <div class="page-dropdown-list">
+                    {#each Array(totalPages) as _, i}<button
+                        class="page-option"
+                        class:active={currentPage === i + 1}
+                        on:click|stopPropagation={() => {
+                          jumpToPage(i + 1);
+                          showPageDropdown = false;
+                        }}>Page {i + 1}</button
+                      >{/each}
+                  </div>
+                {/if}
+              </div>
+              <button
+                class="page-btn"
+                aria-label="Next page"
+                on:click={nextPage}
+                disabled={currentPage === totalPages}
+                ><svg
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  ><path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  ></path></svg
+                ></button
+              >
             </div>
-            <button
-              class="page-btn"
-              aria-label="Next page"
-              on:click={nextPage}
-              disabled={currentPage === totalPages}
-              ><svg
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                ><path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9 5l7 7-7 7"
-                ></path></svg
-              ></button
-            >
+            <div class="showing-text">
+              {lang.showingResults}
+              {(currentPage - 1) * itemsPerPage + 1} - {Math.min(
+                currentPage * itemsPerPage,
+                filteredLogs.length,
+              )}
+              {lang.of}
+              {filteredLogs.length}
+              {lang.results}
+            </div>
           </div>
-          <div class="showing-text">
-            {lang.showingResults}
-            {(currentPage - 1) * itemsPerPage + 1} - {Math.min(
-              currentPage * itemsPerPage,
-              filteredLogs.length,
-            )}
-            {lang.of}
-            {filteredLogs.length}
-            {lang.results}
-          </div>
-        </div>
-      {/if}
+        {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -3092,26 +3082,6 @@
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
   }
 
-  .batch-filter {
-    width: 80px;
-  }
-  .batch-input {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    color: #f8fafc;
-    font-size: 0.9rem;
-    text-align: center;
-    font-weight: 600;
-  }
-  .batch-input:focus {
-    outline: none;
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-  }
-
   /* Dropdown Generic */
   .filter-dropdown {
     position: relative;
@@ -3431,6 +3401,18 @@
     cursor: pointer;
     font-weight: 600;
     color: #f8fafc;
+  }
+
+  .action-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    gap: 0.375rem;
   }
   .page-indicator-box .sep {
     color: #64748b;
@@ -3864,7 +3846,6 @@
       align-items: stretch;
     }
     .search-box,
-    .batch-filter,
     .filter-dropdown,
     .btn-reset-filter {
       width: 100%;
@@ -3894,7 +3875,7 @@
   .logs-content {
     max-height: 65vh;
     overflow-y: auto;
-    background: rgba(30, 41, 59, 0.4);
+    /* background: rgba(30, 41, 59, 0.4); Removed background */
     border-radius: 16px;
     padding: 1rem;
   }
