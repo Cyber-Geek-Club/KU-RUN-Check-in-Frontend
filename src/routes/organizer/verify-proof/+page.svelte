@@ -996,6 +996,174 @@
     }
   }
 
+  // Bulk Actions
+  async function onApproveAll() {
+    const pendingSubmissions = filteredSubmissions.filter(
+      (s) => s.status === "Pending",
+    );
+
+    if (pendingSubmissions.length === 0) {
+      await Swal.fire({
+        title:
+          currentLang === "th"
+            ? "ไม่มีหลักฐานรออนุมัติ"
+            : "No Pending Submissions",
+        text:
+          currentLang === "th"
+            ? "ไม่มีหลักฐานที่รออนุมัติในขณะนี้"
+            : "There are no pending submissions at this time",
+        icon: "info",
+        customClass: { popup: "swal-dark" },
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: currentLang === "th" ? "อนุมัติทั้งหมด?" : "Approve All?",
+      html:
+        currentLang === "th"
+          ? `คุณต้องการอนุมัติหลักฐาน <strong>${pendingSubmissions.length}</strong> รายการใช่หรือไม่?`
+          : `Do you want to approve <strong>${pendingSubmissions.length}</strong> submission(s)?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText:
+        currentLang === "th" ? "อนุมัติทั้งหมด" : "Approve All",
+      cancelButtonText: currentLang === "th" ? "ยกเลิก" : "Cancel",
+      confirmButtonColor: "#10b981",
+      customClass: { popup: "swal-dark" },
+    });
+
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+      title: currentLang === "th" ? "กำลังอนุมัติ..." : "Approving...",
+      html:
+        currentLang === "th"
+          ? `กำลังอนุมัติ 0 / ${pendingSubmissions.length}`
+          : `Approving 0 / ${pendingSubmissions.length}`,
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      customClass: { popup: "swal-dark" },
+      didOpen: () => Swal.showLoading(),
+    });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < pendingSubmissions.length; i++) {
+      try {
+        await verifyParticipationAPI(pendingSubmissions[i].id, true);
+        successCount++;
+      } catch (error) {
+        console.error("Error approving:", pendingSubmissions[i].id, error);
+        failCount++;
+      }
+      Swal.update({
+        html:
+          currentLang === "th"
+            ? `กำลังอนุมัติ ${i + 1} / ${pendingSubmissions.length}`
+            : `Approving ${i + 1} / ${pendingSubmissions.length}`,
+      });
+    }
+
+    await refreshSubmissions();
+
+    Swal.fire({
+      title: currentLang === "th" ? "เสร็จสิ้น" : "Complete",
+      html:
+        currentLang === "th"
+          ? `<div style="color: #10b981; font-weight: 600;">อนุมัติสำเร็จ: ${successCount}</div>
+             ${failCount > 0 ? `<div style="color: #ef4444; margin-top: 0.5rem;">ล้มเหลว: ${failCount}</div>` : ""}`
+          : `<div style="color: #10b981; font-weight: 600;">Approved: ${successCount}</div>
+             ${failCount > 0 ? `<div style="color: #ef4444; margin-top: 0.5rem;">Failed: ${failCount}</div>` : ""}`,
+      icon: failCount > 0 ? "warning" : "success",
+      customClass: { popup: "swal-dark" },
+    });
+  }
+
+  async function onRejectAll() {
+    const pendingSubmissions = filteredSubmissions.filter(
+      (s) => s.status === "Pending",
+    );
+
+    if (pendingSubmissions.length === 0) {
+      await Swal.fire({
+        title:
+          currentLang === "th"
+            ? "ไม่มีหลักฐานรออนุมัติ"
+            : "No Pending Submissions",
+        text:
+          currentLang === "th"
+            ? "ไม่มีหลักฐานที่รออนุมัติในขณะนี้"
+            : "There are no pending submissions at this time",
+        icon: "info",
+        customClass: { popup: "swal-dark" },
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: currentLang === "th" ? "ปฏิเสธทั้งหมด?" : "Reject All?",
+      html:
+        currentLang === "th"
+          ? `คุณต้องการปฏิเสธหลักฐาน <strong>${pendingSubmissions.length}</strong> รายการใช่หรือไม่?<br/><br/><span style="color: #f87171; font-size: 0.9rem;">การดำเนินการนี้ไม่สามารถย้อนกลับได้</span>`
+          : `Do you want to reject <strong>${pendingSubmissions.length}</strong> submission(s)?<br/><br/><span style="color: #f87171; font-size: 0.9rem;">This action cannot be undone</span>`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: currentLang === "th" ? "ปฏิเสธทั้งหมด" : "Reject All",
+      cancelButtonText: currentLang === "th" ? "ยกเลิก" : "Cancel",
+      confirmButtonColor: "#ef4444",
+      customClass: { popup: "swal-dark" },
+    });
+
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+      title: currentLang === "th" ? "กำลังปฏิเสธ..." : "Rejecting...",
+      html:
+        currentLang === "th"
+          ? `กำลังปฏิเสธ 0 / ${pendingSubmissions.length}`
+          : `Rejecting 0 / ${pendingSubmissions.length}`,
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      customClass: { popup: "swal-dark" },
+      didOpen: () => Swal.showLoading(),
+    });
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < pendingSubmissions.length; i++) {
+      try {
+        await verifyParticipationAPI(pendingSubmissions[i].id, false);
+        successCount++;
+      } catch (error) {
+        console.error("Error rejecting:", pendingSubmissions[i].id, error);
+        failCount++;
+      }
+      Swal.update({
+        html:
+          currentLang === "th"
+            ? `กำลังปฏิเสธ ${i + 1} / ${pendingSubmissions.length}`
+            : `Rejecting ${i + 1} / ${pendingSubmissions.length}`,
+      });
+    }
+
+    await refreshSubmissions();
+
+    Swal.fire({
+      title: currentLang === "th" ? "เสร็จสิ้น" : "Complete",
+      html:
+        currentLang === "th"
+          ? `<div style="color: #ef4444; font-weight: 600;">ปฏิเสธสำเร็จ: ${successCount}</div>
+             ${failCount > 0 ? `<div style="color: #f59e0b; margin-top: 0.5rem;">ล้มเหลว: ${failCount}</div>` : ""}`
+          : `<div style="color: #ef4444; font-weight: 600;">Rejected: ${successCount}</div>
+             ${failCount > 0 ? `<div style="color: #f59e0b; margin-top: 0.5rem;">Failed: ${failCount}</div>` : ""}`,
+      icon: failCount > 0 ? "warning" : "success",
+      customClass: { popup: "swal-dark" },
+    });
+  }
+
   function prevEventsPage() {
     if (eventsPage > 1) eventsPage--;
   }
@@ -1872,6 +2040,42 @@
               ></path>
             </svg>
             {lang.reset}
+          </button>
+
+          <button class="btn-bulk-approve" on:click={onApproveAll}>
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            {currentLang === "th" ? "อนุมัติทั้งหมด" : "Approve All"}
+          </button>
+
+          <button class="btn-bulk-reject" on:click={onRejectAll}>
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            {currentLang === "th" ? "ปฏิเสธทั้งหมด" : "Reject All"}
           </button>
         </div>
       </div>
@@ -3437,6 +3641,54 @@
       flex-direction: column;
       align-items: flex-start;
       gap: 0.5rem;
+    }
+  }
+
+  /* ==================== BULK ACTION BUTTONS ==================== */
+  .btn-bulk-approve,
+  .btn-bulk-reject {
+    padding: 0.75rem 1.25rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-bulk-approve {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .btn-bulk-approve:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+  }
+
+  .btn-bulk-reject {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .btn-bulk-reject:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+  }
+
+  @media (max-width: 768px) {
+    .btn-bulk-approve,
+    .btn-bulk-reject {
+      width: 100%;
     }
   }
 </style>
