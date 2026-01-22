@@ -4,6 +4,7 @@
   import { appState } from '../../_lib/stores/appState';
   import { t } from '../../_lib/i18n';
   import { onMount } from 'svelte';
+  import { resolveImageUrl as resolveApiImageUrl } from '$lib/utils/imageUtils';
   // ✅ Import endpoints เพื่อใช้ URL ที่ถูกต้อง
   import { endpoints } from '../../_lib/api/endpoints';
 
@@ -45,7 +46,7 @@
 
   function handleSummaryImgError(e: Event) {
     const img = e.currentTarget as HTMLImageElement;
-    img.src = '/image 7.png';
+    img.src = 'https://placehold.co/600x400/1e293b/64748b?text=Image+Not+Found';
   }
 
   function formatDate(day: string, month: string, year: string) {
@@ -283,7 +284,7 @@
 
     {#if formData.imagePreview}
         <div class="ce-summary-image">
-          <img src={formData.imagePreview} alt="Event banner" on:error={handleSummaryImgError} />
+          <img src={resolveApiImageUrl(formData.imagePreview)} alt="Event banner" on:error={handleSummaryImgError} />
         </div>
     {/if}
 
