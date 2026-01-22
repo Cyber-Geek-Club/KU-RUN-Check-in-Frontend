@@ -412,6 +412,72 @@
   });
 </script>
 
+<!-- 🔒 Coming Soon Lock Screen Overlay -->
+<div class="coming-soon-overlay">
+  <div class="coming-soon-content">
+    <div class="lock-icon">
+      <svg
+        width="80"
+        height="80"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+      >
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+    </div>
+    <h2 class="coming-soon-title">
+      {currentLang === "th" ? "รอการอัพเดท" : "Awaiting Updates"}
+    </h2>
+    <p class="coming-soon-desc">
+      {currentLang === "th"
+        ? "ฟีเจอร์เช็คอิน และเช็คเอาท์ กำลังอยู่ระหว่างการปรับปรุงและพัฒนา"
+        : "Check-in and Check-out features are currently under development and improvement"}
+    </p>
+    <div class="coming-soon-features">
+      <div class="feature-item">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+          <polyline points="10 17 15 12 10 7" />
+          <line x1="15" y1="12" x2="3" y2="12" />
+        </svg>
+        <span>{currentLang === "th" ? "ระบบเช็คอิน" : "Check-in System"}</span>
+      </div>
+      <div class="feature-item">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+        <span
+          >{currentLang === "th" ? "ระบบเช็คเอาท์" : "Check-out System"}</span
+        >
+      </div>
+    </div>
+    <p class="coming-soon-note">
+      {currentLang === "th"
+        ? "ขอบคุณสำหรับความอดทนรอ เราจะกลับมาเร็วๆ นี้!"
+        : "Thank you for your patience. We'll be back soon!"}
+    </p>
+  </div>
+</div>
+
 <div class="vc-container">
   <div class="vc-main-card">
     <div class="vc-action-selector">
@@ -842,6 +908,37 @@
       </div>
 
       <div class="vc-qr-mode" class:active={verifyMode === "qr"}>
+        <!-- 🔒 QR Lock Overlay -->
+        <div class="qr-lock-overlay">
+          <div class="qr-lock-content">
+            <div class="qr-lock-icon">
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </div>
+            <h3 class="qr-lock-title">
+              {currentLang === "th" ? "รอการอัพเดท" : "Under Development"}
+            </h3>
+            <p class="qr-lock-desc">
+              {currentLang === "th"
+                ? "ฟีเจอร์สแกน QR กำลังอยู่ระหว่างการพัฒนา"
+                : "QR Scan feature is currently under development"}
+            </p>
+            <p class="qr-lock-hint">
+              {currentLang === "th"
+                ? "กรุณาใช้รหัส PIN แทน"
+                : "Please use PIN Code instead"}
+            </p>
+          </div>
+        </div>
         <div class="vc-scanner">
           {#if cameraError}
             <div class="vc-camera-err">
@@ -1242,9 +1339,9 @@
     position: relative;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
+    gap: 0.75rem;
     background: rgba(15, 23, 42, 0.5);
-    padding: 0.5rem;
+    padding: 0.75rem;
     border-radius: 16px;
     margin-bottom: 2rem;
   }
@@ -1256,7 +1353,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
-    padding: 1rem;
+    padding: 1rem 1.25rem;
     background: transparent;
     border: none;
     border-radius: 12px;
@@ -1264,6 +1361,7 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
+    min-height: 60px;
   }
 
   .vc-mode-icon {
@@ -1303,10 +1401,10 @@
 
   .vc-mode-slider {
     position: absolute;
-    top: 0.5rem;
-    left: 0.5rem;
-    width: calc(50% - 0.25rem);
-    height: calc(100% - 1rem);
+    top: 0.75rem;
+    left: 0.75rem;
+    width: calc(50% - 1rem);
+    height: calc(100% - 1.5rem);
     background: linear-gradient(
       135deg,
       rgba(16, 185, 129, 0.2),
@@ -1319,7 +1417,7 @@
   }
 
   .vc-mode-slider.qr {
-    transform: translateX(calc(100% + 0.5rem));
+    transform: translateX(calc(100% + 0.75rem));
   }
 
   .vc-mode-slider.checkout {
@@ -1920,6 +2018,68 @@
     50% {
       opacity: 0.5;
     }
+  }
+
+  /* ==================== QR LOCK OVERLAY (QR MODE ONLY) ==================== */
+  .qr-lock-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 15, 30, 0.95);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .qr-lock-content {
+    max-width: 350px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+  }
+
+  .qr-lock-icon {
+    margin: 0 auto 1.5rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(100, 116, 139, 0.15);
+    border-radius: 50%;
+    color: #64748b;
+    animation: pulse 2s infinite;
+  }
+
+  .qr-lock-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 0.75rem;
+  }
+
+  .qr-lock-desc {
+    font-size: 0.95rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+
+  .qr-lock-hint {
+    font-size: 0.875rem;
+    color: #10b981;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .qr-lock-hint::before {
+    content: "→";
+    font-size: 1.25rem;
   }
 
   /* RESPONSIVE */

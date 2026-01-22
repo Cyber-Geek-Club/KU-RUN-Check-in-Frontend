@@ -643,7 +643,7 @@
 
       // 🎨 ADD MOCK DATA FOR TESTING PAGINATION (remove this section in production)
       const mockSubmissions: Submission[] = [];
-      for (let i = 1; i <= 20; i++) {
+      for (let i = 1; i <= 250; i++) {
         mockSubmissions.push({
           id: `mock-${i}`,
           runnerName: `Mock Runner ${i}`,
