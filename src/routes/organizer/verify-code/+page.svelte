@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { onMount, onDestroy } from "svelte";
   import jsQR from "jsqr";
 
   // ✅ Import API Endpoints
