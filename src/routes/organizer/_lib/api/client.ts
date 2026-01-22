@@ -45,8 +45,12 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
+    // Debug: log if Authorization header is set
+    console.log('📤 Request:', config.method?.toUpperCase(), config.url, {
+      hasAuth: !!config.headers['Authorization']
+    });
     (config as any).__retryCount = (config as any).__retryCount || 0;
     return config;
   },
@@ -111,10 +115,24 @@ api.interceptors.response.use(
               localStorage.setItem('token_expiry', expiry.toString());
             }
 
-            api.defaults.headers.common['Authorization'] = 'Bearer ' + data.access_token;
-            originalRequest.headers.Authorization = 'Bearer ' + data.access_token;
+            // ⚠️ สำคัญมาก: ต้องอัปเดต Authorization header ใน originalRequest
+            const newToken = data.access_token;
 
-            processQueue(null, data.access_token);
+            // อัปเดต default header ของ axios instance
+            api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+
+            // อัปเดต header ใน originalRequest - ใช้ bracket notation
+            if (!originalRequest.headers) {
+              originalRequest.headers = {};
+            }
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+
+            console.log('🔄 Retrying request with new token:', {
+              hasAuthHeader: !!originalRequest.headers['Authorization'],
+              url: originalRequest.url
+            });
+
+            processQueue(null, newToken);
             isRefreshing = false;
 
             return api(originalRequest); // ยิงซ้ำ
