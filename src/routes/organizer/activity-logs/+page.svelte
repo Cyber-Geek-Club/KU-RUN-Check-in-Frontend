@@ -3858,16 +3858,8 @@
     }
   }
   @media (max-width: 640px) {
-    .stats-dashboard {
-      grid-template-columns: 1fr;
-    }
     .header-info h1 {
       font-size: 1.5rem;
-    }
-  }
-  @media (max-width: 1024px) {
-    .stats-dashboard {
-      grid-template-columns: repeat(3, 1fr);
     }
   }
 
