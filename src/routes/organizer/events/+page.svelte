@@ -483,11 +483,12 @@
   async function fetchEvents() {
     eventsLoading = true;
     try {
-      console.log(
-        "🔍 Fetching events... Token:",
-        localStorage.getItem("access_token"),
-      );
-      const response = await api.get("/api/events");
+      const token = localStorage.getItem("access_token");
+      console.log("🔍 Fetching events... Token:", token);
+
+      const response = await api.get("/api/events", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const rawEvents = response.data.events || response.data || [];
       events = rawEvents.map((e: any) => mapToEvent(e));
 
