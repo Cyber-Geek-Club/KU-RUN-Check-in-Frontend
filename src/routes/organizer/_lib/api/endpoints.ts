@@ -83,7 +83,7 @@ export const endpoints = {
     profile: '/api/users/profile', // legacy/self
     updateProfile: '/api/users/profile', // legacy/self
     changePassword: '/api/users/change-password',
-    getById: (userId: number | string) => `/api/users/${userId}`,
-    updateById: (userId: number | string) => `/api/users/${userId}`,
+    getById: (userId: number | string) => `/api/users/${userId}/`,
+    updateById: (userId: number | string) => `/api/users/${userId}/`,
   }
 };
