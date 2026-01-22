@@ -7,9 +7,7 @@
 
     const rawEnv = import.meta.env.VITE_API_BASE_URL;
     const envUrl =
-        rawEnv && rawEnv.trim() !== ""
-            ? rawEnv
-            : "https://reg1.src.ku.ac.th:8005";
+        rawEnv && rawEnv.trim() !== "" ? rawEnv : "http://158.108.102.14:8005";
     const API_BASE_URL = envUrl.replace(/\/$/, "");
 
     let userId: string = "";

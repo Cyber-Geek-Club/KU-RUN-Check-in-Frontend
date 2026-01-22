@@ -8,7 +8,7 @@
 
   const rawEnv = import.meta.env.VITE_API_BASE_URL;
   const envUrl =
-    rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
+    rawEnv && rawEnv.trim() !== "" ? rawEnv : "http://158.108.102.14:8005";
   const API_BASE_URL = envUrl.replace(/\/$/, "");
 
   // --- User Data ---
@@ -281,7 +281,9 @@
           body,
         });
         if (response.status === 401) return goto("/auth/login");
-        throw new Error(`Failed to fetch user data: ${response.status} ${JSON.stringify(body)}`);
+        throw new Error(
+          `Failed to fetch user data: ${response.status} ${JSON.stringify(body)}`,
+        );
       }
 
       const data = await response.json();
@@ -661,7 +663,8 @@
                       <button
                         type="button"
                         class="select-option"
-                        on:click={() => selectTitle(t)}>{t}</button>
+                        on:click={() => selectTitle(t)}>{t}</button
+                      >
                     {/each}
                   </div>
                 {/if}
@@ -765,7 +768,8 @@
                 on:click={(e) => toggleDropdown("dept", e)}
               >
                 <span class:placeholder={!department}
-                  >{getDeptName(department)}</span>
+                  >{getDeptName(department)}</span
+                >
                 <svg
                   width="16"
                   height="16"
@@ -788,7 +792,8 @@
                       type="button"
                       class="select-option"
                       on:click={() => selectDepartment(dept.id)}
-                      >{dept.name}</button>
+                      >{dept.name}</button
+                    >
                   {/each}
                 </div>
               {/if}
@@ -820,7 +825,8 @@
               <span class="form-label">Password</span>
               <a
                 href="/auth/forgot-password?return_to={$page.url.pathname}"
-                class="link-btn">Change Password</a>
+                class="link-btn">Change Password</a
+              >
             </div>
             <div class="input-wrapper disabled">
               <svg
@@ -911,7 +917,8 @@
               stroke="currentColor"
               stroke-width="2"
             >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+              <path
+                d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
               />
               <polyline points="17 21 17 13 7 13 7 21" />
               <polyline points="7 3 7 8 15 8" />
