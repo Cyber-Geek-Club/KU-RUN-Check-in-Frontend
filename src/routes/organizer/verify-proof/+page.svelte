@@ -2014,123 +2014,123 @@
               </div>
             {/each}
           </div>
-        {/if}
-      </div>
 
-      {#if totalSubmissionsPages > 1}
-        <div class="pagination-wrapper">
-          <div class="pagination-row">
-            <div class="pagination-controls">
-              <button
-                class="page-btn"
-                aria-label="Previous submissions page"
-                on:click={prevSubmissionsPage}
-                disabled={submissionsPage === 1}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path
-                    d="M15 19l-7-7 7-7"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-
-              <div class="page-select-wrapper">
-                <button
-                  class="page-indicator-box"
-                  on:click|stopPropagation={toggleSubmissionsPageDropdown}
-                >
-                  <span class="current-page">{submissionsPage}</span>
-                  <span class="sep">/</span>
-                  <span class="total-page">{totalSubmissionsPages}</span>
-                  <svg
-                    class="dropdown-arrow"
-                    class:flipped={showSubmissionsPageDropdown}
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
+          {#if totalSubmissionsPages > 1}
+            <div class="pagination-wrapper">
+              <div class="pagination-row">
+                <div class="pagination-controls">
+                  <button
+                    class="page-btn"
+                    aria-label="Previous submissions page"
+                    on:click={prevSubmissionsPage}
+                    disabled={submissionsPage === 1}
                   >
-                    <path
-                      d="M19 9l-7 7-7 7"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </button>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M15 19l-7-7 7-7"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
 
-                {#if showSubmissionsPageDropdown}
-                  <div
-                    bind:this={submissionsDropdownRef}
-                    class="page-dropdown-list"
-                    role="menu"
-                    tabindex="0"
-                    on:click|stopPropagation
-                    on:keydown={(e: globalThis.KeyboardEvent) => {
-                      /* keyboard support for menu container */
-                    }}
-                  >
-                    {#each Array(totalSubmissionsPages) as _, i}
-                      <button
-                        class="page-option"
-                        class:active={submissionsPage === i + 1}
-                        on:click={() => {
-                          submissionsPage = i + 1;
-                          showSubmissionsPageDropdown = false;
+                  <div class="page-select-wrapper">
+                    <button
+                      class="page-indicator-box"
+                      on:click|stopPropagation={toggleSubmissionsPageDropdown}
+                    >
+                      <span class="current-page">{submissionsPage}</span>
+                      <span class="sep">/</span>
+                      <span class="total-page">{totalSubmissionsPages}</span>
+                      <svg
+                        class="dropdown-arrow"
+                        class:flipped={showSubmissionsPageDropdown}
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M19 9l-7 7-7-7"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+
+                    {#if showSubmissionsPageDropdown}
+                      <div
+                        bind:this={submissionsDropdownRef}
+                        class="page-dropdown-list"
+                        role="menu"
+                        tabindex="0"
+                        on:click|stopPropagation
+                        on:keydown={(e: globalThis.KeyboardEvent) => {
+                          /* keyboard support for menu container */
                         }}
                       >
-                        Page {i + 1}
-                      </button>
-                    {/each}
+                        {#each Array(totalSubmissionsPages) as _, i}
+                          <button
+                            class="page-option"
+                            class:active={submissionsPage === i + 1}
+                            on:click={() => {
+                              submissionsPage = i + 1;
+                              showSubmissionsPageDropdown = false;
+                            }}
+                          >
+                            Page {i + 1}
+                          </button>
+                        {/each}
+                      </div>
+                    {/if}
                   </div>
-                {/if}
+
+                  <button
+                    class="page-btn"
+                    aria-label="Next submissions page"
+                    on:click={nextSubmissionsPage}
+                    disabled={submissionsPage === totalSubmissionsPages}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M9 5l7 7-7 7"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
-              <button
-                class="page-btn"
-                aria-label="Next submissions page"
-                on:click={nextSubmissionsPage}
-                disabled={submissionsPage === totalSubmissionsPages}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path
-                    d="M9 5l7 7-7 7"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
+              <div class="page-info">
+                {lang.showingResults}
+                {(submissionsPage - 1) * submissionsPerPage + 1} - {Math.min(
+                  submissionsPage * submissionsPerPage,
+                  totalSubmissions,
+                )}
+                {lang.of}
+                {totalSubmissions}
+              </div>
             </div>
-          </div>
-
-          <div class="page-info">
-            {lang.showingResults}
-            {(submissionsPage - 1) * submissionsPerPage + 1} - {Math.min(
-              submissionsPage * submissionsPerPage,
-              totalSubmissions,
-            )}
-            {lang.of}
-            {totalSubmissions}
-          </div>
-        </div>
-      {/if}
+          {/if}
+        {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -2396,6 +2396,14 @@
     /* Custom scrollbar */
     scrollbar-width: thin;
     scrollbar-color: rgba(16, 185, 129, 0.4) transparent;
+  }
+
+  /* Grid Layout */
+  .submissions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
   }
 
   .submissions-content::-webkit-scrollbar {
@@ -3111,7 +3119,7 @@
     flex-direction: column;
     align-items: center;
     gap: 1rem;
-    margin-top: 2rem; /* เพิ่มระยะห่างระหว่างการ์ดกับปุ่ม */
+    margin-top: 2rem;
   }
 
   .pagination-row {
