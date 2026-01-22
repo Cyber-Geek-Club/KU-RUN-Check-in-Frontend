@@ -255,7 +255,7 @@
 
       if (!token || !userId) throw new Error("User not authenticated");
 
-      const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/${userId}/`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -409,9 +409,9 @@
       };
 
       console.log("Sending Payload:", JSON.stringify(updateData, null, 2));
-      console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
+      console.log("To URL:", `${API_BASE_URL}/api/users/${userId}/`);
       console.log("Updating Profile with:", updateData);
-      const putRes = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+      const putRes = await fetch(`${API_BASE_URL}/api/users/${userId}/`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
