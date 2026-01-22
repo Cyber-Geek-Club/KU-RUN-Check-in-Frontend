@@ -10,87 +10,6 @@
   const envUrl =
     rawEnv && rawEnv.trim() !== "" ? rawEnv : "https://reg1.src.ku.ac.th:8005";
   const API_BASE_URL = envUrl.replace(/\/$/, "");
-  // Utilities: typed fetch with timeout & retries, safe parse, normalizers, debounce
-  type ApiResult<T = any> =
-    | { ok: true; data: T }
-    | { ok: false; status: number; body: any; error?: string };
-
-  const DEFAULT_TIMEOUT = 10000;
-
-  async function apiFetch<T = any>(
-    input: string,
-    init: RequestInit = {},
-    timeout = DEFAULT_TIMEOUT,
-    retries = 0,
-  ): Promise<ApiResult<T>> {
-    const url = /^https?:\/\//.test(input)
-      ? input
-      : `${API_BASE_URL}${input.startsWith("/") ? "" : "/"}${input}`;
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      const res = await fetch(url, { ...init, signal: controller.signal });
-      clearTimeout(timer);
-
-      const contentType = res.headers.get("content-type") || "";
-      let body: any = null;
-      try {
-        body = contentType.includes("application/json") ? await res.json() : await res.text();
-      } catch {
-        body = "<unreadable>";
-      }
-
-      if (!res.ok) {
-        return { ok: false, status: res.status, body, error: (body && body.message) || res.statusText };
-      }
-
-      return { ok: true, data: body as T };
-    } catch (err: any) {
-      clearTimeout(timer);
-      // simple retry for transient failures/aborts
-      if (retries > 0 && (err?.name === "AbortError" || /fetch/i.test(err?.message || ""))) {
-        return apiFetch<T>(input, init, timeout, retries - 1);
-      }
-      return { ok: false, status: 0, body: null, error: err?.message || String(err) };
-    }
-  }
-
-  function safeLower(s?: string) {
-    return (s || "").toLowerCase();
-  }
-
-  function safeParseJSON<T = any>(str: string | null) {
-    if (!str) return null;
-    try {
-      return JSON.parse(str) as T;
-    } catch {
-      return null;
-    }
-  }
-
-  function debounce<T extends (...args: any[]) => Promise<any> | any>(fn: T, wait = 300) {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let lastResolve: ((value: any) => void) | null = null;
-
-    return (...args: Parameters<T>) =>
-      new Promise((resolve) => {
-        if (timer) clearTimeout(timer);
-        lastResolve = resolve;
-        timer = setTimeout(async () => {
-          timer = null;
-          try {
-            const result = await fn(...args);
-            lastResolve?.(result);
-          } catch (e) {
-            lastResolve?.(Promise.reject(e));
-          } finally {
-            lastResolve = null;
-          }
-        }, wait);
-      });
-  }
 
   // --- User Data ---
   let userId: string = "";
@@ -336,7 +255,7 @@
 
       if (!token || !userId) throw new Error("User not authenticated");
 
-      const response = await fetch(`${API_BASE_URL}/api/users/${userId}/`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -345,22 +264,8 @@
       });
 
       if (!response.ok) {
-        const contentType = response.headers.get("content-type") || "";
-        let body: any = null;
-        try {
-          body = contentType.includes("application/json")
-            ? await response.json()
-            : await response.text();
-        } catch (err) {
-          body = "<unreadable response body>";
-        }
-        console.error("Failed fetching user", {
-          url: `${API_BASE_URL}/api/users/${userId}`,
-          status: response.status,
-          body,
-        });
         if (response.status === 401) return goto("/auth/login");
-        throw new Error(`Failed to fetch user data: ${response.status} ${JSON.stringify(body)}`);
+        throw new Error("Failed to fetch user data");
       }
 
       const data = await response.json();
@@ -490,9 +395,9 @@
       };
 
       console.log("Sending Payload:", JSON.stringify(updateData, null, 2));
-      console.log("To URL:", `${API_BASE_URL}/api/users/${userId}/`);
+      console.log("To URL:", `${API_BASE_URL}/api/users/${userId}`);
       console.log("Updating Profile with:", updateData);
-      const putRes = await fetch(`${API_BASE_URL}/api/users/${userId}/`, {
+      const putRes = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
