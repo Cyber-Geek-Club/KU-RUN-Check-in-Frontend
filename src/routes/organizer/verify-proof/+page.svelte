@@ -2348,11 +2348,7 @@
   .submissions-view {
     max-width: 1600px;
     margin: 0 auto;
-    padding: 1rem 2rem;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    padding: 2rem;
   }
 
   /* Top area with header, stats, and filters - stays visible */
@@ -2391,10 +2387,8 @@
     padding-top: 1rem;
     padding-bottom: 1rem;
     padding-right: 8px;
-    /* Flex grow to fill remaining space */
-    flex: 1;
-    min-height: 0;
-    max-height: none;
+    /* Set fixed height so it scrolls independently */
+    max-height: 65vh;
     overflow-y: auto;
     overflow-x: hidden;
     /* Smooth scrolling */
@@ -2402,14 +2396,6 @@
     /* Custom scrollbar */
     scrollbar-width: thin;
     scrollbar-color: rgba(16, 185, 129, 0.4) transparent;
-  }
-
-  /* Grid Layout */
-  .submissions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-    width: 100%;
   }
 
   .submissions-content::-webkit-scrollbar {
@@ -3125,11 +3111,7 @@
     flex-direction: column;
     align-items: center;
     gap: 1rem;
-    padding-top: 1rem;
-    flex-shrink: 0;
-    z-index: 20;
-    /* Optional: Add background to separate from content */
-    /* background: #0f172a; */
+    margin-top: 2rem; /* เพิ่มระยะห่างระหว่างการ์ดกับปุ่ม */
   }
 
   .pagination-row {
@@ -3401,7 +3383,6 @@
     .events-grid,
     .submissions-grid {
       grid-template-columns: 1fr;
-      justify-items: center; /* Center cards on mobile */
     }
 
     .submissions-header {
