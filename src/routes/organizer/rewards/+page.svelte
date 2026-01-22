@@ -1857,123 +1857,13 @@
           </button>
         </div>
 
-        <div class="table-wrapper">
-          {#if filteredRewards.length === 0}
-            <div class="empty-state">
-              <svg
-                width="48"
-                height="48"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.5"
-                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-              <p>{lang.noData}</p>
-            </div>
-          {:else}
-            <table class="leaderboard-table">
-              <thead>
-                <tr>
-                  <th>{lang.rank}</th>
-                  <th>{lang.name}</th>
-                  <th>{lang.email}</th>
-                  <th>{lang.nisitId}</th>
-                  <th>{lang.role}</th>
-                  <th>{lang.completions}</th>
-                  <th>{lang.status}</th>
-                  <th>{lang.reward}</th>
-                  <th>{lang.rewardedAt}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each paginatedRewards as entry}
-                  <tr>
-                    <td>
-                      <div
-                        class="rank-badge"
-                        style="background: {getRankBadgeColor(entry.rank)};"
-                      >
-                        #{entry.rank}
-                      </div>
-                    </td>
-                    <td class="name-cell">{formatUserName(entry)}</td>
-                    <td class="email-cell"
-                      >{userCache[entry.user_id]?.email || entry.user_email}</td
-                    >
-                    <td class="nisit-cell">{formatNisitId(entry)}</td>
-                    <td>
-                      <span
-                        class="role-badge"
-                        class:officer={entry.user_role === "officer"}
-                      >
-                        {entry.user_role === "officer"
-                          ? lang.officer
-                          : lang.participant}
-                      </span>
-                    </td>
-                    <td class="completions-cell">{entry.total_completions}</td>
-                    <td>
-                      <span
-                        class="status-badge"
-                        style="background: {getStatusColor(
-                          entry,
-                        )}20; border-color: {getStatusColor(
-                          entry,
-                        )}40; color: {getStatusColor(entry)};"
-                      >
-                        {getStatusLabel(entry)}
-                      </span>
-                    </td>
-                    <td class="reward-cell">
-                      {#if entry.reward_name}
-                        <span class="tier-badge"
-                          ><span class="tier-text">{entry.reward_name}</span
-                          ></span
-                        >
-                      {:else if entry.reward_tier && rewardConfig}
-                        {@const tier = rewardConfig.reward_tiers.find(
-                          (t) => t.tier === entry.reward_tier,
-                        )}
-                        {#if tier}
-                          <span class="tier-badge"
-                            ><span class="tier-text">{tier.reward_name}</span
-                            ></span
-                          >
-                        {:else}
-                          Tier {entry.reward_tier}
-                        {/if}
-                      {:else}
-                        -
-                      {/if}
-                    </td>
-                    <td class="date-cell"
-                      >{formatTimestamp(entry.rewarded_at)}</td
-                    >
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          {/if}
-        </div>
-
-        {#if totalPages > 1}
-          <div class="pagination-wrapper">
-            <div class="pagination-controls">
-              <button
-                class="page-btn"
-                on:click={prevPage}
-                disabled={currentPage === 1}
-                aria-label={currentLang === "th" ? "ก่อนหน้า" : "Previous"}
-              >
+        <div class="leaderboard-content">
+          <div class="table-wrapper">
+            {#if filteredRewards.length === 0}
+              <div class="empty-state">
                 <svg
-                  width="16"
-                  height="16"
+                  width="48"
+                  height="48"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -1981,25 +1871,117 @@
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15 19l-7-7 7-7"
+                    stroke-width="1.5"
+                    d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   ></path>
                 </svg>
-              </button>
-              <div class="page-select-wrapper">
+                <p>{lang.noData}</p>
+              </div>
+            {:else}
+              <table class="leaderboard-table">
+                <thead>
+                  <tr>
+                    <th>{lang.rank}</th>
+                    <th>{lang.name}</th>
+                    <th>{lang.email}</th>
+                    <th>{lang.nisitId}</th>
+                    <th>{lang.role}</th>
+                    <th>{lang.completions}</th>
+                    <th>{lang.status}</th>
+                    <th>{lang.reward}</th>
+                    <th>{lang.rewardedAt}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each paginatedRewards as entry}
+                    <tr>
+                      <td>
+                        <div
+                          class="rank-badge"
+                          style="background: {getRankBadgeColor(entry.rank)};"
+                        >
+                          #{entry.rank}
+                        </div>
+                      </td>
+                      <td class="name-cell" data-label={lang.name}
+                        >{formatUserName(entry)}</td
+                      >
+                      <td class="email-cell" data-label={lang.email}
+                        >{userCache[entry.user_id]?.email ||
+                          entry.user_email}</td
+                      >
+                      <td class="nisit-cell" data-label={lang.nisitId}
+                        >{formatNisitId(entry)}</td
+                      >
+                      <td data-label={lang.role}>
+                        <span
+                          class="role-badge"
+                          class:officer={entry.user_role === "officer"}
+                        >
+                          {entry.user_role === "officer"
+                            ? lang.officer
+                            : lang.participant}
+                        </span>
+                      </td>
+                      <td class="completions-cell" data-label={lang.completions}
+                        >{entry.total_completions}</td
+                      >
+                      <td data-label={lang.status}>
+                        <span
+                          class="status-badge"
+                          style="background: {getStatusColor(
+                            entry,
+                          )}20; border-color: {getStatusColor(
+                            entry,
+                          )}40; color: {getStatusColor(entry)};"
+                        >
+                          {getStatusLabel(entry)}
+                        </span>
+                      </td>
+                      <td class="reward-cell" data-label={lang.reward}>
+                        {#if entry.reward_name}
+                          <span class="tier-badge"
+                            ><span class="tier-text">{entry.reward_name}</span
+                            ></span
+                          >
+                        {:else if entry.reward_tier && rewardConfig}
+                          {@const tier = rewardConfig.reward_tiers.find(
+                            (t) => t.tier === entry.reward_tier,
+                          )}
+                          {#if tier}
+                            <span class="tier-badge"
+                              ><span class="tier-text">{tier.reward_name}</span
+                              ></span
+                            >
+                          {:else}
+                            Tier {entry.reward_tier}
+                          {/if}
+                        {:else}
+                          -
+                        {/if}
+                      </td>
+                      <td class="date-cell" data-label={lang.rewardedAt}
+                        >{formatTimestamp(entry.rewarded_at)}</td
+                      >
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            {/if}
+          </div>
+
+          {#if totalPages > 1}
+            <div class="pagination-wrapper">
+              <div class="pagination-controls">
                 <button
-                  class="page-indicator-box"
-                  on:click|stopPropagation={() =>
-                    (showPageDropdown = !showPageDropdown)}
+                  class="page-btn"
+                  on:click={prevPage}
+                  disabled={currentPage === 1}
+                  aria-label={currentLang === "th" ? "ก่อนหน้า" : "Previous"}
                 >
-                  <span class="current-page">{currentPage}</span>
-                  <span class="sep">/</span>
-                  <span class="total-page">{totalPages}</span>
                   <svg
-                    class="dropdown-arrow"
-                    class:flipped={showPageDropdown}
-                    width="12"
-                    height="12"
+                    width="16"
+                    height="16"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -2007,78 +1989,119 @@
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
-                      stroke-width="3"
-                      d="M19 9l-7 7-7-7"
+                      stroke-width="2"
+                      d="M15 19l-7-7 7-7"
                     ></path>
                   </svg>
                 </button>
-                {#if showPageDropdown}
-                  <div
-                    class="click-outside"
-                    role="button"
-                    tabindex="0"
-                    aria-label={currentLang === "th" ? "ปิด" : "Close"}
-                    on:click|stopPropagation={() => (showPageDropdown = false)}
-                    on:keydown|stopPropagation={(e) => {
-                      if (
-                        e.key === "Enter" ||
-                        e.key === " " ||
-                        e.key === "Escape"
-                      ) {
-                        showPageDropdown = false;
+                <div class="page-select-wrapper">
+                  <button
+                    class="page-indicator-box"
+                    on:click|stopPropagation={() => {
+                      showPageDropdown = !showPageDropdown;
+                      if (showPageDropdown) {
+                        setTimeout(() => {
+                          const el = document.querySelector(
+                            ".page-dropdown-list.leaderboard-pager",
+                          );
+                          if (el)
+                            el.scrollIntoView({
+                              behavior: "smooth",
+                              block: "nearest",
+                            });
+                        }, 50);
                       }
                     }}
-                  ></div>
-                  <div class="page-dropdown-list">
-                    {#each Array(totalPages) as _, i}
-                      <button
-                        class="page-option"
-                        class:active={currentPage === i + 1}
-                        on:click|stopPropagation={() => {
-                          jumpToPage(i + 1);
+                  >
+                    <span class="current-page">{currentPage}</span>
+                    <span class="sep">/</span>
+                    <span class="total-page">{totalPages}</span>
+                    <svg
+                      class="dropdown-arrow"
+                      class:flipped={showPageDropdown}
+                      width="12"
+                      height="12"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="3"
+                        d="M19 9l-7 7-7-7"
+                      ></path>
+                    </svg>
+                  </button>
+                  {#if showPageDropdown}
+                    <div
+                      class="click-outside"
+                      role="button"
+                      tabindex="0"
+                      aria-label={currentLang === "th" ? "ปิด" : "Close"}
+                      on:click|stopPropagation={() =>
+                        (showPageDropdown = false)}
+                      on:keydown|stopPropagation={(e) => {
+                        if (
+                          e.key === "Enter" ||
+                          e.key === " " ||
+                          e.key === "Escape"
+                        ) {
                           showPageDropdown = false;
-                        }}
-                      >
-                        Page {i + 1}
-                      </button>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-              <button
-                class="page-btn"
-                on:click={nextPage}
-                disabled={currentPage === totalPages}
-                aria-label={currentLang === "th" ? "ถัดไป" : "Next"}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                        }
+                      }}
+                    ></div>
+                    <div class="page-dropdown-list leaderboard-pager">
+                      {#each Array(totalPages) as _, i}
+                        <button
+                          class="page-option"
+                          class:active={currentPage === i + 1}
+                          on:click|stopPropagation={() => {
+                            jumpToPage(i + 1);
+                            showPageDropdown = false;
+                          }}
+                        >
+                          Page {i + 1}
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+                <button
+                  class="page-btn"
+                  on:click={nextPage}
+                  disabled={currentPage === totalPages}
+                  aria-label={currentLang === "th" ? "ถัดไป" : "Next"}
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 5l7 7-7 7"
-                  ></path>
-                </svg>
-              </button>
+                  <svg
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="showing-text">
+                {lang.showingResults}
+                {(currentPage - 1) * itemsPerPage + 1} - {Math.min(
+                  currentPage * itemsPerPage,
+                  filteredRewards.length,
+                )}
+                {lang.of}
+                {filteredRewards.length}
+                {lang.results}
+              </div>
             </div>
-            <div class="showing-text">
-              {lang.showingResults}
-              {(currentPage - 1) * itemsPerPage + 1} - {Math.min(
-                currentPage * itemsPerPage,
-                filteredRewards.length,
-              )}
-              {lang.of}
-              {filteredRewards.length}
-              {lang.results}
-            </div>
-          </div>
-        {/if}
+          {/if}
+        </div>
       {/if}
     </div>
   {/if}
@@ -2478,6 +2501,136 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+  }
+
+  /* ==================== LEADERBOARD CONTENT (SCROLLABLE) ==================== */
+  .leaderboard-content {
+    max-height: 65vh;
+    overflow-y: auto;
+    border-radius: 16px;
+    padding: 1rem;
+    position: relative;
+  }
+  .leaderboard-content::-webkit-scrollbar {
+    width: 8px;
+  }
+  .leaderboard-content::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 10px;
+  }
+  .leaderboard-content::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.6);
+    border-radius: 10px;
+  }
+  .leaderboard-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.8);
+  }
+
+  .leaderboard-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #1e293b;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* ==================== RESPONSIVE (CARD VIEW) ==================== */
+  @media (max-width: 768px) {
+    .stats-dashboard {
+      grid-template-columns: 1fr;
+    }
+
+    .leaderboard-table thead {
+      display: none;
+    }
+
+    .leaderboard-table,
+    .leaderboard-table tbody,
+    .leaderboard-table tr,
+    .leaderboard-table td {
+      display: block;
+      width: 100%;
+    }
+
+    /* Remove table-specific spacing */
+    .leaderboard-table {
+      border-collapse: separate;
+      border-spacing: 0 1rem;
+    }
+
+    .leaderboard-table tr {
+      margin-bottom: 1rem;
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 1.25rem;
+      position: relative;
+    }
+
+    .leaderboard-table td {
+      padding: 0.5rem 0;
+      border-bottom: none;
+      text-align: right; /* Aligned right */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+    }
+
+    .leaderboard-table td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      color: #94a3b8;
+      text-align: left;
+    }
+
+    /* Rank: Top Right Badge style */
+    .leaderboard-table td:nth-child(1) {
+      justify-content: flex-end;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      margin-bottom: 0.5rem;
+    }
+    .leaderboard-table td:nth-child(1)::before {
+      display: block;
+      content: "Rank";
+      margin-right: auto;
+    }
+
+    /* Name: Large */
+    .leaderboard-table td.name-cell {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Status Badge: Full Width Row (Requested Feature) */
+    .leaderboard-table td:nth-child(7) {
+      /* Status column index might vary, verify */
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .leaderboard-table td:nth-child(7)::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    .leaderboard-table td:nth-child(7) .status-badge {
+      width: 100%;
+      justify-content: center;
+      display: flex;
+    }
+
+    /* Reward: Full Width Row */
+    .leaderboard-table td.reward-cell {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      justify-content: space-between;
+    }
   }
   .stat-value {
     font-size: 2rem;
