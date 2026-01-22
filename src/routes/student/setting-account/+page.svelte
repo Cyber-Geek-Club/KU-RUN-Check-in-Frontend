@@ -264,8 +264,22 @@
       });
 
       if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        let body: any = null;
+        try {
+          body = contentType.includes("application/json")
+            ? await response.json()
+            : await response.text();
+        } catch (err) {
+          body = "<unreadable response body>";
+        }
+        console.error("Failed fetching user", {
+          url: `${API_BASE_URL}/api/users/${userId}`,
+          status: response.status,
+          body,
+        });
         if (response.status === 401) return goto("/auth/login");
-        throw new Error("Failed to fetch user data");
+        throw new Error(`Failed to fetch user data: ${response.status} ${JSON.stringify(body)}`);
       }
 
       const data = await response.json();
