@@ -2215,8 +2215,21 @@
               <div class="page-select-wrapper">
                 <button
                   class="page-indicator-box"
-                  on:click|stopPropagation={() =>
-                    (showPageDropdown = !showPageDropdown)}
+                  on:click|stopPropagation={() => {
+                    showPageDropdown = !showPageDropdown;
+                    if (showPageDropdown) {
+                      setTimeout(() => {
+                        const el = document.querySelector(
+                          ".page-dropdown-list",
+                        );
+                        if (el)
+                          el.scrollIntoView({
+                            behavior: "smooth",
+                            block: "nearest",
+                          });
+                      }, 50);
+                    }
+                  }}
                 >
                   <span class="current-page">{currentPage}</span><span
                     class="sep">/</span
@@ -2242,7 +2255,6 @@
                     class="click-outside"
                     role="button"
                     tabindex="0"
-                    aria-hidden="true"
                     on:click|stopPropagation={() => (showPageDropdown = false)}
                     on:keydown|stopPropagation={(e) => {
                       if (
