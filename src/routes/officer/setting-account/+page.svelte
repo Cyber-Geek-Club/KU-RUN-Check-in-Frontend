@@ -647,8 +647,7 @@
                       <button
                         type="button"
                         class="select-option"
-                        on:click={() => selectTitle(t)}>{t}</button
-                      >
+                        on:click={() => selectTitle(t)}>{t}</button>
                     {/each}
                   </div>
                 {/if}
@@ -752,8 +751,7 @@
                 on:click={(e) => toggleDropdown("dept", e)}
               >
                 <span class:placeholder={!department}
-                  >{getDeptName(department)}</span
-                >
+                  >{getDeptName(department)}</span>
                 <svg
                   width="16"
                   height="16"
@@ -776,8 +774,7 @@
                       type="button"
                       class="select-option"
                       on:click={() => selectDepartment(dept.id)}
-                      >{dept.name}</button
-                    >
+                      >{dept.name}</button>
                   {/each}
                 </div>
               {/if}
@@ -809,8 +806,7 @@
               <span class="form-label">Password</span>
               <a
                 href="/auth/forgot-password?return_to={$page.url.pathname}"
-                class="link-btn">Change Password</a
-              >
+                class="link-btn">Change Password</a>
             </div>
             <div class="input-wrapper disabled">
               <svg
@@ -901,9 +897,10 @@
               stroke="currentColor"
               stroke-width="2"
             >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+              />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
             </svg>
             Logout
           </button>
