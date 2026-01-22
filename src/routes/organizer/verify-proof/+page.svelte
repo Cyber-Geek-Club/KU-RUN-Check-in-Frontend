@@ -2103,16 +2103,16 @@
                     </svg>
                   </button>
                 </div>
+              </div>
 
-                <div class="page-info">
-                  {lang.showingResults}
-                  {(submissionsPage - 1) * submissionsPerPage + 1} - {Math.min(
-                    submissionsPage * submissionsPerPage,
-                    totalSubmissions,
-                  )}
-                  {lang.of}
-                  {totalSubmissions}
-                </div>
+              <div class="page-info">
+                {lang.showingResults}
+                {(submissionsPage - 1) * submissionsPerPage + 1} - {Math.min(
+                  submissionsPage * submissionsPerPage,
+                  totalSubmissions,
+                )}
+                {lang.of}
+                {totalSubmissions}
               </div>
             </div>
           {/if}

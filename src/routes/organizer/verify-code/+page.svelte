@@ -913,8 +913,8 @@
           <div class="qr-lock-content">
             <div class="qr-lock-icon">
               <svg
-                width="48"
-                height="48"
+                width="56"
+                height="56"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -925,17 +925,12 @@
               </svg>
             </div>
             <h3 class="qr-lock-title">
-              {currentLang === "th" ? "รอการอัพเดท" : "Under Development"}
+              {currentLang === "th" ? "รอการอัพเดท" : "Coming Soon"}
             </h3>
-            <p class="qr-lock-desc">
-              {currentLang === "th"
-                ? "ฟีเจอร์สแกน QR กำลังอยู่ระหว่างการพัฒนา"
-                : "QR Scan feature is currently under development"}
-            </p>
             <p class="qr-lock-hint">
               {currentLang === "th"
                 ? "กรุณาใช้รหัส PIN แทน"
-                : "Please use PIN Code instead"}
+                : "Please use PIN Code"}
             </p>
           </div>
         </div>
@@ -2024,8 +2019,8 @@
   .qr-lock-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(10, 15, 30, 0.95);
-    backdrop-filter: blur(8px);
+    background: rgba(10, 15, 30, 0.97);
+    backdrop-filter: blur(12px);
     z-index: 100;
     display: flex;
     align-items: center;
@@ -2035,40 +2030,45 @@
   }
 
   .qr-lock-content {
-    max-width: 350px;
+    max-width: 280px;
     padding: 2rem 1.5rem;
     text-align: center;
   }
 
   .qr-lock-icon {
     margin: 0 auto 1.5rem;
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(100, 116, 139, 0.15);
+    background: linear-gradient(
+      135deg,
+      rgba(100, 116, 139, 0.2),
+      rgba(71, 85, 105, 0.1)
+    );
+    border: 2px solid rgba(148, 163, 184, 0.3);
     border-radius: 50%;
-    color: #64748b;
-    animation: pulse 2s infinite;
+    color: #94a3b8;
+    box-shadow:
+      0 0 30px rgba(100, 116, 139, 0.3),
+      inset 0 0 20px rgba(100, 116, 139, 0.1);
+    animation: pulse 3s infinite;
+  }
+
+  .qr-lock-icon svg {
+    filter: drop-shadow(0 0 8px rgba(148, 163, 184, 0.5));
   }
 
   .qr-lock-title {
     font-size: 1.5rem;
     font-weight: 700;
     color: #f8fafc;
-    margin-bottom: 0.75rem;
-  }
-
-  .qr-lock-desc {
-    font-size: 0.95rem;
-    color: #cbd5e1;
-    line-height: 1.5;
     margin-bottom: 1rem;
   }
 
   .qr-lock-hint {
-    font-size: 0.875rem;
+    font-size: 0.9rem;
     color: #10b981;
     font-weight: 600;
     display: flex;
@@ -2080,6 +2080,17 @@
   .qr-lock-hint::before {
     content: "→";
     font-size: 1.25rem;
+    animation: bounce 2s infinite;
+  }
+
+  @keyframes bounce {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(4px);
+    }
   }
 
   /* RESPONSIVE */
