@@ -57,13 +57,117 @@
     }
   }
 
+  // Helper function to translate field names to user-friendly format
+  function translateField(field: string): string {
+    const fieldMap: Record<string, string> = {
+      email: "Email",
+      password: "Password",
+      username: "Username",
+      body: "Field",
+      name: "Name",
+      first_name: "First Name",
+      last_name: "Last Name",
+    };
+    return fieldMap[field.toLowerCase()] || field;
+  }
+
+  // Helper function to translate error messages to user-friendly format
+  function translateErrorMsg(msg: string): string {
+    const msgMap: Record<string, string> = {
+      "field required": "is missing",
+      "invalid email": "is not valid",
+      "invalid format": "is not valid",
+      "value is not a valid email address": "is not valid",
+      "string type expected": "must be text",
+      "invalid credentials": "is incorrect",
+      "user not found": "not found",
+      "incorrect password": "is incorrect",
+    };
+
+    const lowerMsg = msg.toLowerCase();
+    for (const [key, value] of Object.entries(msgMap)) {
+      if (lowerMsg.includes(key)) {
+        return value;
+      }
+    }
+    return msg;
+  }
+
+  // Helper function to parse error messages from API
+  function parseErrorMessage(data: any): string {
+    // If detail is a string, check for common error patterns
+    if (typeof data?.detail === "string") {
+      const detail = data.detail.toLowerCase();
+
+      // Common login errors
+      if (
+        detail.includes("incorrect") ||
+        detail.includes("invalid credentials")
+      ) {
+        return "Wrong email or password.";
+      }
+      if (detail.includes("user not found") || detail.includes("not found")) {
+        return "No account found with this email.";
+      }
+      if (detail.includes("password")) {
+        return "Wrong password.";
+      }
+      if (detail.includes("email")) {
+        return "Email format is not valid.";
+      }
+
+      // Return original message if no pattern matches
+      return data.detail;
+    }
+
+    // If detail is an array (FastAPI validation errors)
+    if (Array.isArray(data?.detail)) {
+      const errors = data.detail.map((err: any) => {
+        // Extract field name from location array
+        const fieldPath = err.loc || [];
+        const field = fieldPath[fieldPath.length - 1] || "Field";
+        const translatedField = translateField(String(field));
+
+        // Translate error message
+        const msg = err.msg || "invalid value";
+        const translatedMsg = translateErrorMsg(msg);
+
+        return `${translatedField} ${translatedMsg}`;
+      });
+
+      if (errors.length > 0) {
+        return errors.join(" • ");
+      }
+      return "Please check your information and try again.";
+    }
+
+    // If detail is an object with message
+    if (data?.detail && typeof data.detail === "object") {
+      if (data.detail.message) return data.detail.message;
+      // Try to stringify the object in a readable way
+      try {
+        const jsonStr = JSON.stringify(data.detail);
+        return `Something went wrong: ${jsonStr}`;
+      } catch {
+        return "Something went wrong. Please try again.";
+      }
+    }
+
+    // Check for other common error fields
+    if (data?.message) return data.message;
+    if (data?.error) return data.error;
+
+    // Default message
+    return "Login failed. Please check your email and password.";
+  }
+
   async function submitLogin() {
     clearError();
 
     if (isSubmitting) return;
     if (!email) return showError("Please enter your email.", "email");
     if (!validateEmail(email))
-      return showError("Invalid email format.", "email");
+      return showError("Please enter a valid email.", "email");
     if (!password) return showError("Please enter your password.", "password");
 
     try {
@@ -85,10 +189,7 @@
       if (!res.ok) {
         // Clear any stale auth state on failed login
         auth.logout();
-        return showError(
-          data?.detail ?? "Login failed. Please check your credentials.",
-          "both",
-        );
+        return showError(parseErrorMessage(data), "both");
       }
 
       const accessToken = data.access_token;
@@ -98,8 +199,7 @@
 
       console.log("ROLE FROM SERVER:", rawRole, "=>", userRole);
       if (!accessToken || !userRole) {
-        console.error("Login Error: Missing token or role", data);
-        return showError("System Error: Invalid response from server.", "both");
+        return showError("Something went wrong. Please try again.", "both");
       }
 
       // Prepare user data matching LoginResponse interface
@@ -147,8 +247,7 @@
 
       await goto(home, { replaceState: true });
     } catch (err) {
-      console.error("Login Error:", err);
-      showError("Cannot connect to server. Please try again later.", "both");
+      showError("Can't connect to server. Please try again.", "both");
     } finally {
       isSubmitting = false;
     }
