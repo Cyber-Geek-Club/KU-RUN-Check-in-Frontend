@@ -77,7 +77,7 @@
       "field required": "is missing",
       "invalid email": "is not valid",
       "invalid format": "is not valid",
-      "value is not a valid email address": "is not valid", 
+      "value is not a valid email address": "is not valid",
       "string type expected": "must be text",
       "invalid credentials": "is incorrect",
       "user not found": "not found",
@@ -165,10 +165,10 @@
     clearError();
 
     if (isSubmitting) return;
-    if (!email) return showError("Please enter your email", "email");
+    if (!email) return showError("Please enter your email.", "email");
     if (!validateEmail(email))
-      return showError("Please enter a valid email", "email");
-    if (!password) return showError("Please enter your password", "password");
+      return showError("Please enter a valid email.", "email");
+    if (!password) return showError("Please enter your password.", "password");
 
     try {
       isSubmitting = true;

@@ -22,18 +22,18 @@ test.describe('Login Page', () => {
 
     // Case 1: ไม่กรอกอะไรเลย
     await loginButton.click();
-    await expect(page.locator('.message-container.error')).toContainText('Please enter your email.');
+    await expect(page.locator('.message-container.error')).toContainText('Please enter your email');
 
     // Case 2: กรอก Email ผิดรูปแบบ
     await page.fill('#email', 'invalid-email');
     await loginButton.click();
-    await expect(page.locator('.message-container.error')).toContainText('Invalid email format.');
+    await expect(page.locator('.message-container.error')).toContainText('Please enter a valid email');
 
     // Case 3: กรอก Email ถูก แต่ไม่กรอก Password
     await page.fill('#email', 'test@example.com');
     await page.fill('#password', ''); // เคลียร์ password
     await loginButton.click();
-    await expect(page.locator('.message-container.error')).toContainText('Please enter your password.');
+    await expect(page.locator('.message-container.error')).toContainText('Please enter your password');
   });
 
   test('should handle failed login (API error)', async ({ page }) => {
@@ -51,7 +51,7 @@ test.describe('Login Page', () => {
     await page.click('button.login-button');
 
     // ตรวจสอบว่าแสดง Error message จาก API
-    await expect(page.locator('.message-container.error')).toContainText('Incorrect email or password');
+    await expect(page.locator('.message-container.error')).toContainText('Wrong email or password');
   });
 
   test('should redirect to student page on successful login', async ({ page }) => {
