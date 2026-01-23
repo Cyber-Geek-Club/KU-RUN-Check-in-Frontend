@@ -77,7 +77,7 @@
       "field required": "is missing",
       "invalid email": "is not valid",
       "invalid format": "is not valid",
-      "value is not a valid email address": "is not valid",
+      "value is not a valid email address": "is not valid", 
       "string type expected": "must be text",
       "invalid credentials": "is incorrect",
       "user not found": "not found",
