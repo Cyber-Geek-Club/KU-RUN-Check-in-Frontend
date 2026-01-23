@@ -1466,7 +1466,7 @@
 
       // หมายเหตุ: กันเหนียวเผื่อ hasHistory ยังไม่มา (fallback)
       if (
-        event.isJoined || 
+        event.isJoined ||
         event.hasCancelledRecord ||
         (event.participationId !== null && event.participationId !== undefined)
       ) {
@@ -1884,6 +1884,27 @@
                           </span>
                         </div>
                       {/if}
+
+                      <!-- Participant Count Display -->
+                      <div class="info-pill participants-pill">
+                        <svg
+                          class="pill-icon"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                          ></path>
+                        </svg>
+                        <span>
+                          {t[lang].participants}: {event.participant_count} / {event.max_participants}
+                          {lang === "th" ? "คน" : "people"}
+                        </span>
+                      </div>
                     </div>
                     <div class="card-separator"></div>
                   </div>
@@ -1895,6 +1916,26 @@
                       ? t[lang].btn_read_less
                       : t[lang].btn_read_more}
                   </button>
+
+                  <!-- Compact Participant Count Badge (always visible) -->
+                  <div class="participant-badge">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span
+                      >{event.participant_count}/{event.max_participants}</span
+                    >
+                  </div>
 
                   <div class="footer-actions">
                     {#if event.isJoined}
@@ -2706,6 +2747,23 @@
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
   }
 
+  .info-pill.participants-pill {
+    background: linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.15),
+      rgba(37, 99, 235, 0.2)
+    );
+    border: 2px solid rgba(59, 130, 246, 0.4);
+    color: #60a5fa;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+    grid-column: 1 / -1; /* Full width to show all info */
+  }
+  .info-pill.participants-pill:hover {
+    border-color: rgba(59, 130, 246, 0.6);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
   .card-desc {
     font-size: 0.9rem;
     color: #94a3b8;
@@ -2800,6 +2858,24 @@
     gap: 10px;
     align-items: center;
     flex-wrap: wrap;
+  }
+
+  /* Compact Participant Badge */
+  .participant-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .participant-badge svg {
+    opacity: 0.9;
   }
 
   /* =========================================
