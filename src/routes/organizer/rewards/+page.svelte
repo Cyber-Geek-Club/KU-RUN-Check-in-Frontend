@@ -138,11 +138,8 @@
       backToEvents: "กลับไปเลือกกิจกรรม",
       loading: "กำลังโหลด...",
       noEvents: "ไม่มีกิจกรรม",
-      noData: "ไม่มีข้อมูล (กรุณากดคำนวณอันดับ)",
+      noData: "ไม่มีข้อมูล",
       viewRewards: "ดูรางวัล",
-      calculateRanks: "คำนวณอันดับ",
-      finalizeLeaderboard: "ยืนยันผลรางวัล",
-      resetLeaderboard: "รีเซ็ตผลรางวัล",
       export: "ส่งออก",
       exportPNG: "ส่งออกรูปภาพ",
       exportPDF: "ส่งออก PDF",
@@ -180,29 +177,8 @@
       showingResults: "แสดง",
       of: "จาก",
       results: "รายการ",
-      confirmCalculate: "คุณต้องการคำนวณอันดับหรือไม่?",
-      confirmCalculateText:
-        "ระบบจะดึงข้อมูลการเข้าร่วมและจัดอันดับใหม่ (Preview)",
-      confirmFinalize: "ยืนยันการแจกรางวัล?",
-      confirmFinalizeText:
-        "เมื่อยืนยันแล้วจะไม่สามารถแก้ไขได้ รางวัลจะถูกแจกให้ผู้ได้รับตามอันดับทันที",
-      confirmReset: "รีเซ็ตผลรางวัล?",
-      confirmResetText: "การกระทำนี้จะลบผลการคำนวณทั้งหมด คุณแน่ใจหรือไม่?",
       success: "สำเร็จ",
       error: "เกิดข้อผิดพลาด",
-      rankCalculated: "คำนวณอันดับเรียบร้อย",
-      leaderboardFinalized: "ยืนยันผลรางวัลเรียบร้อย",
-      leaderboardReset: "รีเซ็ตผลรางวัลเรียบร้อย",
-      calculating: "กำลังคำนวณ...",
-      finalizing: "กำลังยืนยัน...",
-      resetting: "กำลังรีเซ็ต...",
-      step1: "ขั้นตอนที่ 1: คำนวณอันดับ",
-      step2: "ขั้นตอนที่ 2: ตรวจสอบผล",
-      step3: "ขั้นตอนที่ 3: ยืนยันผลรางวัล",
-      step1Desc:
-        "คำนวณอันดับและสิทธิ์รับรางวัลตามจำนวนครั้งที่เข้าร่วม (Simulate)",
-      step2Desc: "ตรวจสอบความถูกต้องของผลการคำนวณในตารางด้านล่าง",
-      step3Desc: "ยืนยันผลและแจกรางวัลให้ผู้ได้รับ (ไม่สามารถแก้ไขได้)",
       role: "บทบาท",
       participant: "ผู้เข้าร่วม",
       officer: "เจ้าหน้าที่",
@@ -218,11 +194,8 @@
       backToEvents: "Back to Events",
       loading: "Loading...",
       noEvents: "No events",
-      noData: "No data (Please calculate ranks)",
+      noData: "No data",
       viewRewards: "View Rewards",
-      calculateRanks: "Calculate Ranks",
-      finalizeLeaderboard: "Finalize Leaderboard",
-      resetLeaderboard: "Reset Leaderboard",
       export: "Export",
       exportPNG: "Export PNG",
       exportPDF: "Export PDF",
@@ -337,9 +310,6 @@
   // ===== Modals & Actions =====
   let showExportMenu = false;
   let isExporting = false;
-  let isCalculating = false;
-  let isFinalizing = false;
-  let isResetting = false;
 
   // ===== Computed =====
   $: paginatedRewards = filteredRewards.slice(
@@ -670,113 +640,7 @@
   }
 
   // ===== Action Functions =====
-
-  // STEP 1: Calculate Ranks
-  async function calculateRanks() {
-    if (!rewardConfig) {
-      Swal.fire({
-        icon: "warning",
-        title: lang.noEvents,
-        text: lang.noConfigDesc,
-      });
-      return;
-    }
-
-    const result = await Swal.fire({
-      title: lang.confirmCalculate,
-      text: lang.confirmCalculateText,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: lang.calculateRanks,
-      cancelButtonText: lang.reset,
-      confirmButtonColor: "#10b981",
-      cancelButtonColor: "#64748b",
-    });
-
-    if (result.isConfirmed) {
-      isCalculating = true;
-      try {
-        // ใช้ endpoint calculate-ranks
-        // POST /api/reward-leaderboards/configs/{config_id}/calculate-ranks
-        // หมายเหตุ: ใน endpoints.ts ไม่ได้ระบุ calculate-ranks ชัดเจน อาจจะต้องเพิ่ม หรือใช้ path manual
-        const url = endpoints.rewards.preview(rewardConfig.id);
-        const res = await api.post(url);
-
-        // Response น่าจะคืนค่า stats หรือ entries ที่อัปเดตแล้ว
-        // เพื่อความชัวร์ ให้ reload data ใหม่
-        await selectEventForRewards(selectedEvent!);
-
-        Swal.fire({
-          icon: "success",
-          title: lang.success,
-          text: lang.rankCalculated,
-          timer: 2000,
-        });
-      } catch (err) {
-        showApiError(err, "Failed to calculate ranks");
-      } finally {
-        isCalculating = false;
-      }
-    }
-  }
-
-  // STEP 3: Finalize
-  async function finalizeLeaderboard() {
-    if (!rewardConfig) return;
-
-    const result = await Swal.fire({
-      title: lang.confirmFinalize,
-      text: lang.confirmFinalizeText,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: lang.finalizeLeaderboard,
-      cancelButtonText: lang.reset,
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#64748b",
-    });
-
-    if (result.isConfirmed) {
-      isFinalizing = true;
-      try {
-        // Ensure we have an access token
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-          Swal.fire({
-            icon: "warning",
-            title: "Unauthorized",
-            text: "Please log in before finalizing.",
-          });
-          isFinalizing = false;
-          return;
-        }
-
-        // endpoints.rewards.finalize expects JSON body { config_id: number, confirm: boolean }
-        const payload = { config_id: rewardConfig.id, confirm: true };
-        const url = endpoints.rewards.finalize(rewardConfig.id);
-        console.debug("[rewards] finalize URL:", url);
-        console.debug("[rewards] finalize payload:", payload);
-
-        // POST to the canonical finalize endpoint with JSON body
-        await api.post(url, payload, {
-          headers: { "Content-Type": "application/json" },
-        });
-
-        // Reload to get updated status (is_finalized = true)
-        await selectEventForRewards(selectedEvent!);
-
-        Swal.fire({
-          icon: "success",
-          title: lang.success,
-          text: lang.leaderboardFinalized,
-          timer: 2000,
-        });
-      } catch (err) {
-        showApiError(err, "Failed to finalize leaderboard");
-      } finally {
-        isFinalizing = false;
-      }
-    }
-  }
+  // Note: calculateRanks and finalize removed - system now uses automatic real-time ranking
 
   async function resetLeaderboard() {
     // ฟังก์ชัน Reset อาจจะไม่มี Endpoint โดยตรงในบาง implementation
@@ -1549,97 +1413,33 @@
           <p>{lang.noConfigDesc}</p>
         </div>
       {:else}
-        <div class="action-steps">
-          <div class="step-card">
-            <div class="step-number">1</div>
-            <div class="step-content">
-              <h3>{lang.step1}</h3>
-              <p>{lang.step1Desc}</p>
-              <button
-                class="btn-step"
-                on:click={calculateRanks}
-                disabled={isCalculating || rewardConfig?.is_finalized}
-              >
-                {#if isCalculating}
-                  <div class="btn-spinner"></div>
-                  {lang.calculating}
-                {:else}
-                  <svg
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                    ></path>
-                  </svg>
-                  {lang.calculateRanks}
-                {/if}
-              </button>
-            </div>
-          </div>
-
-          <div class="step-card">
-            <div class="step-number">2</div>
-            <div class="step-content">
-              <h3>{lang.step2}</h3>
-              <p>{lang.step2Desc}</p>
-              <div class="step-status">
-                ✓ {lang.step2}
-              </div>
-            </div>
-          </div>
-
-          <div class="step-card">
-            <div class="step-number">3</div>
-            <div class="step-content">
-              <h3>{lang.step3}</h3>
-              <p>{lang.step3Desc}</p>
-              <button
-                class="btn-step btn-danger"
-                on:click={finalizeLeaderboard}
-                disabled={isFinalizing ||
-                  rewardConfig?.is_finalized ||
-                  !isFinalizable}
-                title={!isFinalizable
-                  ? `Cannot finalize before event ends (${endsAtFormatted})`
-                  : ""}
-              >
-                {#if isFinalizing}
-                  <div class="btn-spinner"></div>
-                  {lang.finalizing}
-                {:else}
-                  <svg
-                    width="16"
-                    height="16"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    ></path>
-                  </svg>
-                  {lang.finalizeLeaderboard}
-                {/if}
-              </button>
-              {#if !isFinalizable}
-                <div
-                  class="hint-block"
-                  style="margin-top:0.5rem;color:#f97316;font-size:0.95rem;"
-                >
-                  Cannot finalize before event ends ({endsAtFormatted})
-                </div>
-              {/if}
-            </div>
+        <!-- ✅ Real-time Leaderboard Info -->
+        <div class="info-banner">
+          <svg
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+          <div>
+            <strong
+              >{currentLang === "th"
+                ? "ระบบคำนวณอัตโนมัติ"
+                : "Automatic Ranking System"}</strong
+            >
+            <p>
+              {currentLang === "th"
+                ? "อันดับจะถูกคำนวณและอัปเดตอัตโนมัติเมื่อผู้เข้าร่วม check-out แต่ละครั้ง ไม่จำเป็นต้องคำนวณด้วยตนเองอีกต่อไป"
+                : "Rankings are automatically calculated and updated in real-time when participants check-out. Manual calculation is no longer required."}
+            </p>
           </div>
         </div>
 
@@ -2368,104 +2168,8 @@
     background: rgba(16, 185, 129, 0.1);
     color: #10b981;
   }
-  .action-steps {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-  .step-card {
-    background: rgba(30, 41, 59, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    padding: 1.5rem;
-    display: flex;
-    gap: 1rem;
-    transition: all 0.3s;
-  }
-  .step-card:hover {
-    border-color: rgba(16, 185, 129, 0.3);
-    transform: translateY(-2px);
-  }
-  .step-number {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    font-weight: 700;
-    font-size: 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .step-content {
-    flex: 1;
-  }
-  .step-content h3 {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #f8fafc;
-    margin: 0 0 0.5rem 0;
-  }
-  .step-content p {
-    font-size: 0.875rem;
-    color: #94a3b8;
-    line-height: 1.6;
-    margin: 0 0 1rem 0;
-  }
-  .btn-step {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: none;
-    border-radius: 12px;
-    color: white;
-    font-weight: 600;
-    font-size: 0.875rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: linear-gradient(135deg, #10b981, #059669);
-  }
-  .btn-step:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  }
-  .btn-step:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  .btn-step.btn-danger {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-  }
-  .btn-step.btn-danger:hover:not(:disabled) {
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-  }
-  /* removed unused .btn-step.btn-reset to silence css_unused_selector */
-  .step-status {
-    padding: 0.75rem 1rem;
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.2);
-    border-radius: 12px;
-    color: #10b981;
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-align: center;
-  }
-  /* removed unused .step-reset to silence css_unused_selector */
-  .btn-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-  }
+
+  /* ===== Stats Dashboard ===== */
   .stats-dashboard {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -3072,12 +2776,42 @@
       transform: rotate(360deg);
     }
   }
+
+  /* ===== Info Banner ===== */
+  .info-banner {
+    background: linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.1),
+      rgba(99, 102, 241, 0.05)
+    );
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  .info-banner svg {
+    flex-shrink: 0;
+    color: #60a5fa;
+    margin-top: 2px;
+  }
+  .info-banner strong {
+    color: #93c5fd;
+    font-size: 1.05rem;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .info-banner p {
+    color: #cbd5e1;
+    line-height: 1.6;
+    margin: 0;
+  }
+
   @media (max-width: 1024px) {
     .stats-dashboard {
       grid-template-columns: repeat(3, 1fr);
-    }
-    .action-steps {
-      grid-template-columns: 1fr;
     }
   }
   @media (max-width: 768px) {
