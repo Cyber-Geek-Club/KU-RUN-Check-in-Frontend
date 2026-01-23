@@ -928,9 +928,64 @@
     }
   }
 
+  function getRoleLabel(role: string): string {
+    if (!role) return "-";
+    const r = role.toLowerCase();
+
+    // Student roles
+    if (r === "student" || r === "nisit")
+      return currentLang === "th" ? "นิสิต" : "Student";
+
+    // Faculty roles
+    if (r === "professor" || r === "teacher" || r === "lecturer")
+      return currentLang === "th" ? "อาจารย์" : "Professor";
+
+    // Staff/Officer roles
+    if (r === "staff") return currentLang === "th" ? "บุคลากร" : "Staff";
+    if (r === "officer")
+      return currentLang === "th" ? "เจ้าหน้าที่" : "Officer";
+    if (r === "organizer" || r === "admin")
+      return currentLang === "th" ? "ผู้จัดงาน" : "Organizer";
+
+    // Generic participant (fallback)
+    if (r === "participant")
+      return currentLang === "th" ? "ผู้เข้าร่วม" : "Participant";
+
+    // Return original if unknown
+    return role;
+  }
+
+  // ✅ English-only versions for CSV export
+  function getRoleLabelEN(role: string): string {
+    if (!role) return "-";
+    const r = role.toLowerCase();
+
+    if (r === "student" || r === "nisit") return "Student";
+    if (r === "professor" || r === "teacher" || r === "lecturer")
+      return "Professor";
+    if (r === "staff") return "Staff";
+    if (r === "officer") return "Officer";
+    if (r === "organizer" || r === "admin") return "Organizer";
+    if (r === "participant") return "Participant";
+
+    return role;
+  }
+
+  function getActionLabelEN(action: string): string {
+    const normalized = normalizeAction(action);
+    if (normalized === "registration") return "Joined";
+    if (normalized === "check_in") return "Checked In";
+    if (normalized === "proof_submitted") return "Proof Sent";
+    if (normalized === "proof_approved") return "Approved";
+    if (normalized === "proof_rejected") return "Rejected";
+    if (normalized === "reward_unlocked") return "Completed";
+    if (normalized === "no_show") return "No Show";
+    if (normalized === "registration_cancelled") return "Cancelled";
+    return getActionConfig(normalized).label;
+  }
+
   function convertToCSV(data: LogEntry[]): string {
     const headers = [
-      "ID",
       "Name",
       "Email",
       "Nisit ID",
@@ -941,15 +996,14 @@
       "Status",
     ];
     const rows = data.map((log) => [
-      log.id,
       log.userName,
       log.userEmail,
       log.userNisitId,
-      log.userRole,
-      log.action,
+      getRoleLabelEN(log.userRole), // ✅ Always English
+      getActionLabelEN(log.action), // ✅ Always English
       log.participationDate,
       log.timestamp,
-      log.status,
+      log.status || "-",
     ]);
     return [
       headers.join(","),
@@ -1555,10 +1609,38 @@
           {#if showExportMenu}
             <div class="export-menu">
               <button class="export-option" on:click={() => exportLogs("csv")}
-                >{lang.exportCSV}</button
+                ><svg
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  ></path>
+                </svg>
+                {lang.exportCSV}</button
               >
               <button class="export-option" on:click={() => exportLogs("json")}
-                >{lang.exportJSON}</button
+                ><svg
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                  ></path>
+                </svg>
+                {lang.exportJSON}</button
               >
             </div>
           {/if}
