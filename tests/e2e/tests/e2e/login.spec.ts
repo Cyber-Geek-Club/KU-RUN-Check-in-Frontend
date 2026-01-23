@@ -27,7 +27,7 @@ test.describe('Login Page', () => {
     // Case 2: กรอก Email ผิดรูปแบบ
     await page.fill('#email', 'invalid-email');
     await loginButton.click();
-    await expect(page.locator('.message-container.error')).toContainText('Please enter a valid email');
+    await expect(page.locator('.message-container.error')).toContainText('Please enter a valid email.');
 
     // Case 3: กรอก Email ถูก แต่ไม่กรอก Password
     await page.fill('#email', 'test@example.com');

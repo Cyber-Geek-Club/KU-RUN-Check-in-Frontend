@@ -199,7 +199,6 @@
 
       console.log("ROLE FROM SERVER:", rawRole, "=>", userRole);
       if (!accessToken || !userRole) {
-        console.error("Login Error: Missing token or role", data);
         return showError("Something went wrong. Please try again.", "both");
       }
 
@@ -248,7 +247,6 @@
 
       await goto(home, { replaceState: true });
     } catch (err) {
-      console.error("Login Error:", err);
       showError("Can't connect to server. Please try again.", "both");
     } finally {
       isSubmitting = false;
