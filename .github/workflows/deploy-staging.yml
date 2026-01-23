@@ -42,7 +42,7 @@ jobs:
 
           # Set environment variable for build
           # Use the same backend for now, or change to a staging backend URL if available
-          $env:VITE_API_BASE_URL = "http://158.108.102.14:8005"
+          $env:VITE_API_BASE_URL = "http://158.108.102.14:8006"
 
           # Build
           Write-Host "Building with VITE_API_BASE_URL = $env:VITE_API_BASE_URL"
