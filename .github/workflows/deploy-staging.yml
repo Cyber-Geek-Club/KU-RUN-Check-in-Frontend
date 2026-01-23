@@ -1,0 +1,71 @@
+name: Deploy Staging Frontend to Windows VPS
+
+on:
+  push:
+    branches: [ "staging" ]
+
+jobs:
+  deploy-staging:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Deploy Script
+        shell: powershell
+        run: |
+          # ================= CONFIG =================
+          # Note: This folder must be created and git cloned manually first!
+          $PROJECT_PATH = "C:\Users\Administrator\Desktop\Web Project\KU-run\KU-RUN-Check-in-Frontend-Staging" 
+          $PM2_NAME = "ku-run-frontend-staging"
+          $PORT = 4174
+          # ==========================================
+
+          Write-Host "Deploying Staging to $PROJECT_PATH"
+
+          if (-not (Test-Path $PROJECT_PATH)) {
+              Write-Error "Staging project path not found! Please manually clone the repo to '$PROJECT_PATH' on the server first."
+              exit 1
+          }
+
+          Set-Location $PROJECT_PATH
+
+          # Pull latest code from staging branch
+          git fetch origin staging
+          git reset --hard origin/staging
+
+          # Install deps
+          pnpm install --frozen-lockfile
+
+          # Set environment variable for build
+          # Use the same backend for now, or change to a staging backend URL if available
+          $env:VITE_API_BASE_URL = "http://158.108.102.14:8005"
+
+          # Build
+          Write-Host "Building with VITE_API_BASE_URL = $env:VITE_API_BASE_URL"
+          pnpm run build
+
+          # Delete old PM2 process (ignore if doesn't exist)
+          Write-Host "Stopping any existing PM2 process: $PM2_NAME"
+          try {
+              pm2 delete $PM2_NAME 2>&1 | Out-Null
+          } catch {
+              Write-Host "No existing process found, continuing..."
+          }
+          Start-Sleep -Seconds 2
+
+
+          # Start SvelteKit with PM2 using node adapter
+          Write-Host "Starting $PM2_NAME on port $PORT..."
+          $env:PORT = $PORT
+          $env:HOST = "127.0.0.1"
+          pm2 start build/index.js --name $PM2_NAME --max-memory-restart 500M --time
+
+          # Save PM2
+          pm2 save --force
+
+          # Status
+          pm2 status
