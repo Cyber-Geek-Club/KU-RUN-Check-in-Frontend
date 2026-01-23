@@ -1575,7 +1575,7 @@
               class:animate-spin={isRefeshing}
               width="16"
               height="16"
-              fill="none"
+              fill="none" 
               stroke="currentColor"
               viewBox="0 0 24 24"
               stroke-width="2"
