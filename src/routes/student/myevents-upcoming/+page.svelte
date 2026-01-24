@@ -299,6 +299,7 @@
         distance_km: number;
         actual_distance_km?: number;
         banner_image_url: string;
+        proof_image_hash?: string;
         status:
             | "JOINED"
             | "CHECKED_IN"
@@ -1997,7 +1998,28 @@
             saveDraft(3);
         }
     }
-    async function submitProofAction() {
+
+    async function calculateImageHash(file: File): Promise<string> {
+    try {
+        // Read file as ArrayBuffer
+        const arrayBuffer = await file.arrayBuffer();
+        
+        // Calculate SHA-256 hash
+        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+        
+        // Convert to hex string
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        return hashHex;
+    } catch (error) {
+        console.error('❌ Failed to calculate image hash:', error);
+        // Fallback: use simple timestamp-based hash
+        return `fallback_${Date.now()}_${file.size}`;
+    }
+}
+
+   async function submitProofAction() {
     if (!selectedEvent) return;
     const token = getToken();
     
@@ -2011,7 +2033,7 @@
     // ========================================
     
     if (!selectedEvent.participation_id) {
-        Swal.fire("Error", "ไม่พบรหัสการเข้าร่วม (Participation ID) - กรุณารีเฟรชหน้าจอ", "error");
+        Swal.fire("Error", "ไม่พบรหัสการเข้าร่วม (Participation ID)", "error");
         return;
     }
 
@@ -2096,12 +2118,19 @@
         }
 
         // ========================================
-        // 2. UPLOAD IMAGE
+        // 2. UPLOAD IMAGE & CALCULATE HASH
         // ========================================
         let finalImageUrl = selectedEvent.proof_image_url || "";
+        let imageHash = ""; // ✅ เพิ่มตัวแปรนี้
 
         if (proofFile) {
             try {
+                // ✅ Calculate hash BEFORE upload
+                console.log("🔐 Calculating image hash...");
+                imageHash = await calculateImageHash(proofFile);
+                console.log("✅ Image hash:", imageHash);
+
+                // Upload image
                 const { uploadImage } = await import("$lib/utils/imageUtils");
                 const upData = await uploadImage(proofFile, "proofs");
                 finalImageUrl = upData.url;
@@ -2114,14 +2143,18 @@
                         : `Image upload failed: ${uploadErr.message || "Unknown error"}`
                 );
             }
+        } else if (selectedEvent.proof_image_url) {
+            // ✅ ถ้าใช้รูปเก่า ให้ส่ง hash เดิม (ถ้ามี)
+            imageHash = selectedEvent.proof_image_hash || `existing_${Date.now()}`;
         }
 
         // ========================================
-        // 3. PREPARE PAYLOAD
+        // 3. PREPARE PAYLOAD (✅ เพิ่ม image_hash)
         // ========================================
         const payload = {
             proof_image_url: finalImageUrl,
-            strava_link: sendingLink.trim(), // ✅ Trim!
+            image_hash: imageHash, // ✅ เพิ่มบรรทัดนี้
+            strava_link: sendingLink.trim(),
             actual_distance_km: Number(distanceInput),
         };
 
@@ -2174,31 +2207,7 @@
         }
 
         // ========================================
-        // 7. AUTO-RETRY LOGIC (PUT → PATCH) [สำรอง]
-        // ========================================
-        if (!res.ok && (res.status === 400 || res.status === 405) && method === "PUT") {
-            console.warn("⚠️ PUT failed. Trying PATCH as last resort...");
-
-            endpoint = `${BASE_URL}/api/participations/${selectedEvent.participation_id}`;
-            method = "PATCH";
-
-            res = await fetch(endpoint, {
-                method: method,
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    ...payload,
-                    status: "proof_submitted" // บอก Backend ให้เปลี่ยน status
-                }),
-            });
-
-            console.log(`📥 Final Retry Response: ${res.status} ${res.statusText}`);
-        }
-
-        // ========================================
-        // 8. HANDLE RESPONSE
+        // 7. HANDLE RESPONSE
         // ========================================
         if (res.ok) {
             const responseData = await res.json().catch(() => ({}));
@@ -2212,22 +2221,19 @@
                 showConfirmButton: true
             });
 
-            // Clear draft
             if (currentParticipationId) {
                 clearDraft(currentParticipationId);
             }
 
-            // Update local state
             if (selectedEvent) {
                 updateEventInLists(selectedEvent.id, {
                     status: "proof_submitted",
                     proof_image_url: finalImageUrl || undefined,
+                    proof_image_hash: imageHash || undefined, // ✅ เพิ่ม
                 });
             }
 
             closeModal();
-            
-            // Refresh from server
             await loadData();
 
         } else {
@@ -2241,13 +2247,11 @@
                 console.error("❌ API Error Response:", errData);
                 errorMessage = errData.detail || errData.message || errData.error || "";
             } catch (e) {
-                // ไม่ใช่ JSON Response
                 const errText = await res.text().catch(() => "");
                 console.error("❌ Non-JSON Error Response:", errText);
                 errorMessage = errText;
             }
 
-            // แปล Error Message ให้เป็นภาษาไทย (ถ้าเป็นไปได้)
             if (!errorMessage || errorMessage.trim() === "") {
                 if (res.status === 400) {
                     errorMessage = lang === "th" 
@@ -2278,10 +2282,6 @@
             html: `<div style="text-align: left;">
                 <p><strong>${lang === "th" ? "เกิดข้อผิดพลาด" : "Error occurred"}:</strong></p>
                 <p style="color: #666; font-size: 0.9em;">${err.message || "Unknown error"}</p>
-                ${err.stack ? `<details style="margin-top: 10px; font-size: 0.8em; color: #999;">
-                    <summary>Technical Details</summary>
-                    <pre style="white-space: pre-wrap; max-height: 200px; overflow: auto;">${err.stack}</pre>
-                </details>` : ""}
             </div>`,
             confirmButtonText: "OK"
         });
