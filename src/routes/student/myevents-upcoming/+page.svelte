@@ -2627,7 +2627,7 @@
                 <div class="events-grid">
                     {#each paginatedUpcoming as event, i}
                         <div
-                            class="event-card"
+                            class="glass-card"
                             class:locked-card={event.isLocked}
                         >
                             <div class="card-img-wrapper">
@@ -3019,7 +3019,7 @@
 
             <div class="events-grid">
                 {#each paginatedHistory as event, i}
-                    <div class="event-card">
+                    <div class="glass-card">
                         <div class="card-img-wrapper">
                             <img
                                 class="card-img"
@@ -4165,42 +4165,38 @@
         }
     }
 
-    /* --- REVERTED CARD THEME (Standard Event Card) --- */
-    .event-card {
-        background: #1e293b;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 16px;
+    /* --- NEW CARD THEME (Organizer Style) --- */
+    .glass-card {
+        background: rgba(30, 41, 55, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
         overflow: hidden;
         transition: all 0.3s ease;
         display: flex;
         flex-direction: column;
         height: 100%;
         position: relative;
-        box-shadow:
-            0 4px 6px -1px rgba(0, 0, 0, 0.1),
-            0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
-    .event-card:hover {
+    .glass-card:hover {
         transform: translateY(-4px);
-        box-shadow:
-            0 20px 25px -5px rgba(0, 0, 0, 0.1),
-            0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        border-color: rgba(16, 185, 129, 0.3);
     }
     .card-img-wrapper {
         width: 100%;
         height: 200px;
         overflow: hidden;
         position: relative;
-        background: #0f172a;
+        background: #1e293b;
     }
     .card-img {
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transition: transform 0.5s ease;
+        transition: transform 0.3s ease;
     }
-    .event-card:hover .card-img {
+    .glass-card:hover .card-img {
         transform: scale(1.05);
     }
 
@@ -4283,8 +4279,8 @@
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        backdrop-filter: blur(4px); /* Keep slight blur for badges over image */
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         display: inline-flex;
         align-items: center;
         width: fit-content;
@@ -4322,11 +4318,11 @@
     }
 
     /* Locked State Overrides */
-    .event-card.locked-card .card-img-wrapper img {
+    .glass-card.locked-card .card-img-wrapper img {
         filter: grayscale(100%);
         opacity: 0.5;
     }
-    .event-card.locked-card .card-body {
+    .glass-card.locked-card .card-body {
         opacity: 0.6;
         pointer-events: none; /* Disable interaction on body */
     }
