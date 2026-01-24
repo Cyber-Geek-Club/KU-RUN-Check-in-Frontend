@@ -642,8 +642,10 @@
             let actualDist = p.actual_distance_km;
             let compRank = p.completion_rank;
 
-            // [NEW LOGIC] ตรวจสอบวัน: หากกิจกรรมที่สมัครมาไม่ใช่วันปัจจุบัน และ status ไม่ใช่ COMPLETED
-            // ให้ AUTO CANCEL ทันที (ระบบวันต่อวัน)
+            // [MODIFIED] Removed Auto-Cancel logic to support Auto-Rejoin
+            // Previously, this block forced 'CANCELED' if the registration date wasn't today.
+            // This conflited with Rejoin logic which reuses the original registration record.
+            /*
             const recordDateStr = p.created_at || p.date || p.start_date;
             if (recordDateStr) {
                 const recordDate = new Date(recordDateStr);
@@ -651,7 +653,6 @@
                 recordDate.setHours(0, 0, 0, 0);
                 today.setHours(0, 0, 0, 0);
 
-                // ถ้าวันที่ของ Record ไม่ใช่วันนี้ และ status ไม่ใช่ COMPLETED
                 if (
                     recordDate.getTime() !== today.getTime() &&
                     uiStatus !== "COMPLETED"
@@ -662,6 +663,7 @@
                     uiStatus = "CANCELED";
                 }
             }
+            */
             // Logic Draft Key
             if (
                 uiStatus === "CHECKED_IN" &&
@@ -2628,10 +2630,14 @@
                             class="event-card"
                             class:locked-card={event.isLocked}
                         >
-                            <div
-                                class="card-image"
-                                use:lazyLoadBg={event.banner_image_url}
-                            >
+                            <div class="card-img-wrapper">
+                                <img
+                                    class="card-img"
+                                    src={event.banner_image_url}
+                                    alt={event.title}
+                                    loading="lazy"
+                                    decoding="async"
+                                />
                                 {#if event.isLocked}
                                     <div class="lock-overlay">
                                         <div class="lock-overlay-content">
@@ -2657,81 +2663,79 @@
                                         </div>
                                     </div>
                                 {/if}
-                            </div>
-                            <div class="card-content">
-                                <div class="card-header-row">
-                                    <h3 class="card-title">{event.title}</h3>
-                                    <div class="badges-col">
-                                        {#if event.status === "proof_submitted"}
-                                            <span class="status-badge running"
-                                                >{t[lang].status_waiting}</span
-                                            >
-                                        {:else if event.status === "REJECTED"}
-                                            <span
-                                                class="status-badge resubmit-badge"
-                                                >{t[lang].status_rejected}</span
-                                            >
-                                        {:else if event.status === "CHECKED_IN"}
-                                            <span
-                                                class="status-badge proof-badge"
-                                                >{t[lang].status_sending}</span
-                                            >
-                                        {:else if event.status === "COMPLETED"}
-                                            <div
-                                                style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"
-                                            >
-                                                <span
-                                                    class="status-badge completed-btn"
-                                                    style="font-size:0.7rem;"
-                                                    >{t[lang]
-                                                        .status_completed_badge}</span
-                                                >
-                                                {#if event.completion_rank && event.completion_rank > 0}
-                                                    <span
-                                                        class="status-badge"
-                                                        style="background:#fbbf24; color:#78350f; border:1px solid #f59e0b; font-size: 0.7rem;"
-                                                    >
-                                                        🏆 {t[lang].rank_label}
-                                                        {event.completion_rank}
-                                                    </span>
-                                                {/if}
-                                            </div>
-                                        {:else if event.status === "JOINED"}
-                                            <span class="status-badge running"
-                                                >{t[lang].status_register}</span
-                                            >
-                                        {:else}
-                                            <span class="status-badge running"
-                                                >{event.status}</span
-                                            >
-                                        {/if}
-                                        <div
-                                            class="count-badge"
-                                            style="margin-top: 4px; background-color: #10b981;"
+                                <div class="status-badge-overlay">
+                                    {#if event.status === "proof_submitted"}
+                                        <span class="status-badge running"
+                                            >{t[lang].status_waiting}</span
                                         >
-                                            🏃 {event.completed_count}
-                                            {lang === "th" ? "ครั้ง" : "times"}
+                                    {:else if event.status === "REJECTED"}
+                                        <span
+                                            class="status-badge resubmit-badge"
+                                            >{t[lang].status_rejected}</span
+                                        >
+                                    {:else if event.status === "CHECKED_IN"}
+                                        <span class="status-badge proof-badge"
+                                            >{t[lang].status_sending}</span
+                                        >
+                                    {:else if event.status === "COMPLETED"}
+                                        <div
+                                            style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"
+                                        >
+                                            <span
+                                                class="status-badge completed-btn"
+                                                style="font-size:0.7rem;"
+                                                >{t[lang]
+                                                    .status_completed_badge}</span
+                                            >
+                                            {#if event.completion_rank && event.completion_rank > 0}
+                                                <span
+                                                    class="status-badge"
+                                                    style="background:#fbbf24; color:#78350f; border:1px solid #f59e0b; font-size: 0.7rem;"
+                                                >
+                                                    🏆 {t[lang].rank_label}
+                                                    {event.completion_rank}
+                                                </span>
+                                            {/if}
                                         </div>
+                                    {:else if event.status === "JOINED"}
+                                        <span class="status-badge running"
+                                            >{t[lang].status_register}</span
+                                        >
+                                    {:else}
+                                        <span class="status-badge running"
+                                            >{event.status}</span
+                                        >
+                                    {/if}
+                                    <div
+                                        class="count-badge"
+                                        style="margin-top: 4px; background-color: #10b981;"
+                                    >
+                                        🏃 {event.completed_count}
+                                        {lang === "th" ? "ครั้ง" : "times"}
                                     </div>
                                 </div>
+                            </div>
 
-                                <p
-                                    class="card-desc"
-                                    class:expanded={event.isExpanded}
-                                >
-                                    {event.description}
-                                </p>
+                            <div class="card-body">
+                                <div class="card-header">
+                                    <h3 class="card-title">{event.title}</h3>
+                                </div>
 
-                                {#if event.isExpanded}
-                                    <div
-                                        class="info-grid"
-                                        transition:slide|local={{
-                                            duration: 300,
-                                        }}
-                                    >
-                                        <div class="info-pill">
+                                <div class="card-content-area">
+                                    <p class="event-description-short">
+                                        {event.description.length > 80
+                                            ? event.description.substring(
+                                                  0,
+                                                  80,
+                                              ) + "..."
+                                            : event.description}
+                                    </p>
+
+                                    <div class="event-simple-meta">
+                                        <div class="meta-row">
                                             <svg
-                                                class="pill-icon"
+                                                width="16"
+                                                height="16"
                                                 fill="none"
                                                 stroke="currentColor"
                                                 viewBox="0 0 24 24"
@@ -2750,9 +2754,10 @@
                                             <span>{event.location}</span>
                                         </div>
 
-                                        <div class="info-pill">
+                                        <div class="meta-row">
                                             <svg
-                                                class="pill-icon"
+                                                width="16"
+                                                height="16"
                                                 fill="none"
                                                 stroke="currentColor"
                                                 viewBox="0 0 24 24"
@@ -2772,9 +2777,10 @@
                                             >
                                         </div>
 
-                                        <div class="info-pill">
+                                        <div class="meta-row">
                                             <svg
-                                                class="pill-icon"
+                                                width="16"
+                                                height="16"
                                                 fill="none"
                                                 stroke="currentColor"
                                                 viewBox="0 0 24 24"
@@ -2794,9 +2800,13 @@
                                             >
                                         </div>
 
-                                        <div class="info-pill highlight-pill">
+                                        <div
+                                            class="meta-row"
+                                            style="color:#fbbf24; font-weight:600;"
+                                        >
                                             <svg
-                                                class="pill-icon"
+                                                width="16"
+                                                height="16"
                                                 fill="none"
                                                 stroke="currentColor"
                                                 viewBox="0 0 24 24"
@@ -2810,127 +2820,130 @@
                                             <span>{event.distance_km} KM</span>
                                         </div>
                                     </div>
-                                {/if}
+                                </div>
 
                                 <div class="card-footer-actions">
-                                    <button
-                                        class="dashboard-text-btn"
-                                        on:click={() => openDashboard(event)}
-                                    >
-                                        <svg
-                                            width="18"
-                                            height="18"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
+                                    <div class="footer-row">
+                                        <button
+                                            class="dashboard-text-btn"
+                                            on:click={() =>
+                                                openDashboard(event)}
                                         >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                                            ></path>
-                                        </svg>
-                                        <span
-                                            >{lang === "th"
-                                                ? "ดูสถิติ"
-                                                : "Stats"}</span
-                                        >
-                                    </button>
+                                            <svg
+                                                width="18"
+                                                height="18"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                                                ></path>
+                                            </svg>
+                                            <span
+                                                >{lang === "th"
+                                                    ? "ดูสถิติ"
+                                                    : "Stats"}</span
+                                            >
+                                        </button>
 
-                                    <div class="footer-actions">
-                                        {#if event.isLocked}
-                                            <button
-                                                class="status-btn"
-                                                style="background: #334155; cursor: not-allowed; display: flex; align-items: center; gap: 6px; width: auto;"
-                                                disabled
-                                            >
-                                                <svg
-                                                    width="16"
-                                                    height="16"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                    ><path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                                    ></path></svg
+                                        <div class="footer-actions">
+                                            {#if event.isLocked}
+                                                <button
+                                                    class="status-btn"
+                                                    style="background: #334155; cursor: not-allowed; display: flex; align-items: center; gap: 6px; width: auto;"
+                                                    disabled
                                                 >
-                                                {event.lockMessage ||
-                                                    t[lang].btn_locked}
-                                            </button>
-                                        {:else if !event.join_code && event.status !== "COMPLETED" && event.status !== "CANCELED"}
-                                            <!-- [NEW] ไม่ได้สมัครสำหรับวันนี้ -->
-                                            <button
-                                                class="status-btn"
-                                                style="background: #8b5cf6; cursor: not-allowed; opacity: 0.7;"
-                                                disabled
-                                            >
-                                                {lang === "th"
-                                                    ? "📝 สมัครจากหน้าค้นหา"
-                                                    : "📝 Register from Events"}
-                                            </button>
-                                        {:else if event.status === "COMPLETED"}
-                                            <button
-                                                class="status-btn"
-                                                style="background: #64748b; cursor: default; opacity: 0.9; width: auto; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;"
-                                            >
-                                                <svg
-                                                    width="16"
-                                                    height="16"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                    ><path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                    ></path></svg
+                                                    <svg
+                                                        width="16"
+                                                        height="16"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        ><path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                                        ></path></svg
+                                                    >
+                                                    {event.lockMessage ||
+                                                        t[lang].btn_locked}
+                                                </button>
+                                            {:else if !event.join_code && event.status !== "COMPLETED" && event.status !== "CANCELED"}
+                                                <button
+                                                    class="status-btn"
+                                                    style="background: #8b5cf6; cursor: not-allowed; opacity: 0.7;"
+                                                    disabled
                                                 >
-                                                {t[lang].btn_daily_wait}
-                                            </button>
-                                        {:else if event.status === "proof_submitted"}
-                                            <button
-                                                class="status-btn waiting-btn"
-                                                style="cursor: default;"
-                                            >
-                                                {t[lang].btn_waiting}
-                                            </button>
-                                        {:else if event.status === "CHECKED_IN"}
-                                            <button
-                                                class="status-btn sending-btn"
-                                                on:click={() =>
-                                                    openActionModal(event)}
-                                            >
-                                                {t[lang].btn_send_proof}
-                                            </button>
-                                        {:else if event.status === "REJECTED"}
-                                            <button
-                                                class="status-btn proof-btn"
-                                                on:click={() =>
-                                                    openActionModal(event)}
-                                            >
-                                                {t[lang].btn_send_image}
-                                            </button>
-                                        {:else if event.status === "CHECKED_OUT"}
-                                            <button
-                                                class="status-btn checkout-btn"
-                                                on:click={() =>
-                                                    openActionModal(event)}
-                                                >{t[lang].btn_checkout}</button
-                                            >
-                                        {:else if event.status === "JOINED"}
-                                            <button
-                                                class="status-btn register-btn"
-                                                on:click={() =>
-                                                    openActionModal(event)}
-                                            >
-                                                {t[lang].btn_checkin}
-                                            </button>
-                                        {/if}
+                                                    {lang === "th"
+                                                        ? "📝 สมัครจากหน้าค้นหา"
+                                                        : "📝 Register from Events"}
+                                                </button>
+                                            {:else if event.status === "COMPLETED"}
+                                                <button
+                                                    class="status-btn"
+                                                    style="background: #64748b; cursor: default; opacity: 0.9; width: auto; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;"
+                                                >
+                                                    <svg
+                                                        width="16"
+                                                        height="16"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        ><path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                        ></path></svg
+                                                    >
+                                                    {t[lang].btn_daily_wait}
+                                                </button>
+                                            {:else if event.status === "proof_submitted"}
+                                                <button
+                                                    class="status-btn waiting-btn"
+                                                    style="cursor: default;"
+                                                >
+                                                    {t[lang].btn_waiting}
+                                                </button>
+                                            {:else if event.status === "CHECKED_IN"}
+                                                <button
+                                                    class="status-btn sending-btn"
+                                                    on:click={() =>
+                                                        openActionModal(event)}
+                                                >
+                                                    {t[lang].btn_send_proof}
+                                                </button>
+                                            {:else if event.status === "REJECTED"}
+                                                <button
+                                                    class="status-btn proof-btn"
+                                                    on:click={() =>
+                                                        openActionModal(event)}
+                                                >
+                                                    {t[lang].btn_send_image}
+                                                </button>
+                                            {:else if event.status === "CHECKED_OUT"}
+                                                <button
+                                                    class="status-btn checkout-btn"
+                                                    on:click={() =>
+                                                        openActionModal(event)}
+                                                    >{t[lang]
+                                                        .btn_checkout}</button
+                                                >
+                                            {:else if event.status === "JOINED"}
+                                                <button
+                                                    class="status-btn register-btn"
+                                                    on:click={() =>
+                                                        openActionModal(event)}
+                                                >
+                                                    {t[lang].btn_checkin}
+                                                </button>
+                                            {/if}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -3007,117 +3020,61 @@
             <div class="events-grid">
                 {#each paginatedHistory as event, i}
                     <div class="event-card">
-                        <div
-                            class="card-image"
-                            use:lazyLoadBg={event.banner_image_url}
-                        ></div>
-                        <div class="card-content">
-                            <div class="card-header-row">
-                                <h3 class="card-title">{event.title}</h3>
-                                <div class="badges-col">
-                                    {#if event.isJoined}
-                                        <div
-                                            style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;"
-                                        >
-                                            <span
-                                                class="status-badge ended-normal"
-                                                >{t[lang].status_ended}</span
-                                            >
-
-                                            {#if event.completion_rank && event.completion_rank > 0}
-                                                <span
-                                                    class="status-badge"
-                                                    style="background:#fbbf24; color:#78350f; border:1px solid #f59e0b; font-size:0.7rem;"
-                                                >
-                                                    🏆 {t[lang].rank_label}
-                                                    {event.completion_rank}
-                                                </span>
-                                            {/if}
-
-                                            {#if historyTotalPages > 1}
-                                                <div class="pagination-bar">
-                                                    <button
-                                                        class="pagination-arrow"
-                                                        on:click={() =>
-                                                            changeHistoryPage(
-                                                                historyCurrentPage -
-                                                                    1,
-                                                            )}
-                                                        disabled={historyCurrentPage ===
-                                                            1}
-                                                        style="opacity: {historyCurrentPage ===
-                                                        1
-                                                            ? 0.4
-                                                            : 1};"
-                                                    >
-                                                        &#60;
-                                                    </button>
-                                                    {#each Array(historyTotalPages) as _, idx}
-                                                        <button
-                                                            class="pagination-page"
-                                                            class:active={historyCurrentPage ===
-                                                                idx + 1}
-                                                            on:click={() =>
-                                                                changeHistoryPage(
-                                                                    idx + 1,
-                                                                )}
-                                                            >{idx + 1}</button
-                                                        >
-                                                    {/each}
-                                                    <button
-                                                        class="pagination-arrow"
-                                                        on:click={() =>
-                                                            changeHistoryPage(
-                                                                historyCurrentPage +
-                                                                    1,
-                                                            )}
-                                                        disabled={historyCurrentPage ===
-                                                            historyTotalPages}
-                                                        style="opacity: {historyCurrentPage ===
-                                                        historyTotalPages
-                                                            ? 0.4
-                                                            : 1};"
-                                                    >
-                                                        &#62;
-                                                    </button>
-                                                </div>
-                                            {/if}
-
-                                            <span
-                                                class="status-badge"
-                                                style="background:#10b981; color:white; border:none; font-size:0.7rem;"
-                                            >
-                                                🏃 {event.completed_count} / {event.total_days}
-                                                {t[lang].dash_unit_days}
-                                            </span>
-                                        </div>
-                                    {:else}
+                        <div class="card-img-wrapper">
+                            <img
+                                class="card-img"
+                                src={event.banner_image_url}
+                                alt={event.title}
+                                loading="lazy"
+                                decoding="async"
+                            />
+                            <div class="status-badge-overlay">
+                                {#if event.isJoined}
+                                    <span class="status-badge ended-normal"
+                                        >{t[lang].status_ended}</span
+                                    >
+                                    {#if event.completion_rank && event.completion_rank > 0}
                                         <span
-                                            class="status-badge ended-canceled"
-                                            >CANCELED</span
+                                            class="status-badge"
+                                            style="background:#fbbf24; color:#78350f; border:1px solid #f59e0b; font-size:0.7rem; margin-top: 4px;"
                                         >
+                                            🏆 {t[lang].rank_label}
+                                            {event.completion_rank}
+                                        </span>
                                     {/if}
-                                </div>
+                                    <span
+                                        class="status-badge"
+                                        style="background:#10b981; color:white; border:none; font-size:0.7rem; margin-top: 4px;"
+                                    >
+                                        🏃 {event.completed_count} / {event.total_days}
+                                        {t[lang].dash_unit_days}
+                                    </span>
+                                {:else}
+                                    <span class="status-badge ended-canceled"
+                                        >CANCELED</span
+                                    >
+                                {/if}
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="card-header">
+                                <h3 class="card-title">{event.title}</h3>
                             </div>
 
-                            <p
-                                class="card-desc"
-                                class:expanded={event.isExpanded}
-                            >
-                                {event.description}
-                            </p>
-                            {#if event.isExpanded}
-                                {@const hConfig = holidaysMap[event.id]}
-                                {@const hasHoliday =
-                                    hConfig &&
-                                    (hConfig.excludeWeekends ||
-                                        (hConfig.holidays &&
-                                            hConfig.holidays.length > 0))}
+                            <div class="card-content-area">
+                                <p class="event-description-short">
+                                    {event.description.length > 80
+                                        ? event.description.substring(0, 80) +
+                                          "..."
+                                        : event.description}
+                                </p>
 
-                                <div class="info-grid" transition:slide|local>
-                                    <div class="info-pill">
+                                <div class="event-simple-meta">
+                                    <div class="meta-row">
                                         <svg
-                                            class="pill-icon"
+                                            width="16"
+                                            height="16"
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
@@ -3136,9 +3093,10 @@
                                         <span>{event.location}</span>
                                     </div>
 
-                                    <div class="info-pill">
+                                    <div class="meta-row">
                                         <svg
-                                            class="pill-icon"
+                                            width="16"
+                                            height="16"
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
@@ -3158,9 +3116,10 @@
                                         >
                                     </div>
 
-                                    <div class="info-pill">
+                                    <div class="meta-row">
                                         <svg
-                                            class="pill-icon"
+                                            width="16"
+                                            height="16"
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
@@ -3180,9 +3139,13 @@
                                         >
                                     </div>
 
-                                    <div class="info-pill highlight-pill">
+                                    <div
+                                        class="meta-row"
+                                        style="color:#fbbf24; font-weight:600;"
+                                    >
                                         <svg
-                                            class="pill-icon"
+                                            width="16"
+                                            height="16"
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
@@ -3196,52 +3159,88 @@
                                         <span>{event.distance_km} KM</span>
                                     </div>
                                 </div>
-                            {/if}
+                            </div>
 
                             <div class="card-footer-actions">
-                                <button
-                                    class="dashboard-text-btn"
-                                    on:click={() => openDashboard(event)}
-                                >
-                                    <svg
-                                        width="18"
-                                        height="18"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
+                                <div class="footer-row">
+                                    <button
+                                        class="dashboard-text-btn"
+                                        on:click={() => openDashboard(event)}
                                     >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                                        ></path>
-                                    </svg>
-                                    <span
-                                        >{lang === "th"
-                                            ? "ผลสรุป"
-                                            : "Summary"}</span
-                                    >
-                                </button>
+                                        <svg
+                                            width="18"
+                                            height="18"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                                            ></path>
+                                        </svg>
+                                        <span
+                                            >{lang === "th"
+                                                ? "ผลสรุป"
+                                                : "Summary"}</span
+                                        >
+                                    </button>
 
-                                {#if event.isJoined}
-                                    <button
-                                        class="status-btn completed-btn"
-                                        style="cursor: default; box-shadow: none;"
-                                        >COMPLETED</button
-                                    >
-                                {:else}
-                                    <button
-                                        class="status-btn canceled-btn"
-                                        style="cursor: default; box-shadow: none;"
-                                        >CANCELED</button
-                                    >
-                                {/if}
+                                    {#if event.isJoined}
+                                        <button
+                                            class="status-btn completed-btn"
+                                            style="cursor: default; box-shadow: none;"
+                                            >COMPLETED</button
+                                        >
+                                    {:else}
+                                        <button
+                                            class="status-btn canceled-btn"
+                                            style="cursor: default; box-shadow: none;"
+                                            >CANCELED</button
+                                        >
+                                    {/if}
+                                </div>
                             </div>
                         </div>
                     </div>
                 {/each}
             </div>
+
+            {#if historyTotalPages > 1}
+                <div class="pagination-bar">
+                    <button
+                        class="pagination-arrow"
+                        on:click={() =>
+                            changeHistoryPage(historyCurrentPage - 1)}
+                        disabled={historyCurrentPage === 1}
+                        style="opacity: {historyCurrentPage === 1 ? 0.4 : 1};"
+                    >
+                        &#60;
+                    </button>
+                    {#each Array(historyTotalPages) as _, idx}
+                        <button
+                            class="pagination-page"
+                            class:active={historyCurrentPage === idx + 1}
+                            on:click={() => changeHistoryPage(idx + 1)}
+                            >{idx + 1}</button
+                        >
+                    {/each}
+                    <button
+                        class="pagination-arrow"
+                        on:click={() =>
+                            changeHistoryPage(historyCurrentPage + 1)}
+                        disabled={historyCurrentPage === historyTotalPages}
+                        style="opacity: {historyCurrentPage ===
+                        historyTotalPages
+                            ? 0.4
+                            : 1};"
+                    >
+                        &#62;
+                    </button>
+                </div>
+            {/if}
 
             <footer class="app-footer">
                 <div class="footer-separator"></div>
@@ -4166,211 +4165,190 @@
         }
     }
 
+    /* --- REVERTED CARD THEME (Standard Event Card) --- */
     .event-card {
-        background: linear-gradient(
-            145deg,
-            rgba(30, 41, 59, 0.95),
-            rgba(15, 23, 42, 0.95)
-        );
-        border-radius: 18px;
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
         overflow: hidden;
+        transition: all 0.3s ease;
         display: flex;
         flex-direction: column;
-        border: 1px solid rgba(16, 185, 129, 0.12);
+        height: 100%;
+        position: relative;
         box-shadow:
-            0 12px 24px -6px rgba(0, 0, 0, 0.45),
-            0 0 0 1px rgba(255, 255, 255, 0.03);
-        transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            0 4px 6px -1px rgba(0, 0, 0, 0.1),
+            0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
     .event-card:hover {
-        transform: translateY(-6px);
-        border-color: rgba(16, 185, 129, 0.25);
+        transform: translateY(-4px);
         box-shadow:
-            0 22px 40px -10px rgba(0, 0, 0, 0.55),
-            0 0 0 1px rgba(16, 185, 129, 0.18);
+            0 20px 25px -5px rgba(0, 0, 0, 0.1),
+            0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-color: rgba(255, 255, 255, 0.2);
     }
-    .card-image {
-        height: 180px;
-        background-size: cover;
-        background-position: center;
+    .card-img-wrapper {
         width: 100%;
+        height: 200px;
+        overflow: hidden;
         position: relative;
-        background-color: #1e293b;
-        transition: opacity 0.3s ease;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        background: #0f172a;
     }
-    .card-image::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-            135deg,
-            rgba(16, 185, 129, 0.08) 0%,
-            transparent 50%,
-            rgba(59, 130, 246, 0.08) 100%
-        );
-        opacity: 0;
-        transition: opacity 0.3s;
-        z-index: 0;
+    .card-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
     }
-    .card-image:not(.lazy-loaded)::before {
-        opacity: 1;
+    .event-card:hover .card-img {
+        transform: scale(1.05);
     }
-    .card-image:not(.lazy-loaded)::after {
-        content: "📷";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 2.5rem;
-        opacity: 0.25;
-        z-index: 1;
-    }
-    .card-image:not(.lazy-loaded) {
-        opacity: 0.6;
-    }
-    .card-content {
-        padding: 20px;
-        flex: 1;
+
+    .card-body {
+        padding: 1.25rem;
         display: flex;
         flex-direction: column;
+        flex: 1;
     }
-    .card-header-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 12px;
-        gap: 10px;
+    .card-header {
+        margin-bottom: 0.75rem;
     }
     .card-title {
         font-size: 1.25rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #ffffff, #e0e7ff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        font-weight: 700;
+        color: #f8fafc;
         margin: 0;
-        line-height: 1.35;
-        flex: 1;
+        line-height: 1.3;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
-        min-height: 2.8em;
-        line-clamp: 2;
-        letter-spacing: 0.02em;
     }
-    .badges-col {
+
+    .card-content-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    .event-description-short {
+        color: #94a3b8;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .event-simple-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .meta-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #cbd5e1;
+        font-size: 0.85rem;
+    }
+    .meta-row svg {
+        color: #10b981;
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+    }
+
+    .status-badge-overlay {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        z-index: 10;
         display: flex;
         flex-direction: column;
         align-items: flex-end;
         gap: 6px;
-        flex-shrink: 0;
     }
 
+    /* Re-map existing badge styles to fit new structure if needed, or use specific ones */
     .status-badge {
-        font-size: 0.7rem;
-        font-weight: 800;
-        padding: 5px 12px;
-        border-radius: 16px;
-        letter-spacing: 0.5px;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
         text-transform: uppercase;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+        letter-spacing: 0.5px;
+        backdrop-filter: blur(4px); /* Keep slight blur for badges over image */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
     }
+
+    /* Keep existing badge colors but adapted */
     .status-badge.running {
-        color: #f59e0b;
-        border-color: rgba(245, 158, 11, 0.6);
-        background: rgba(245, 158, 11, 0.12);
-    }
-    .status-badge.ended-normal {
-        color: #94a3b8;
-        border: 1px solid #94a3b8;
-    }
-    .status-badge.ended-canceled {
-        color: #9f1239;
-        border: 1px solid #881337;
-        background-color: rgba(136, 19, 55, 0.1);
-    }
-    .status-badge.resubmit-badge {
-        color: #ef4444;
-        border: 1px solid rgba(239, 68, 68, 0.7);
-        background: rgba(239, 68, 68, 0.12);
+        /* JOINED */
+        background: rgba(16, 185, 129, 0.9);
+        color: #fff;
+        border: 1px solid #10b981;
     }
     .status-badge.proof-badge {
-        color: #d8b4fe;
-        border: 1px solid rgba(216, 180, 254, 0.7);
-        background: rgba(168, 85, 247, 0.12);
-    }
-
-    .count-badge {
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        /* CHECKED_IN */
+        background: rgba(59, 130, 246, 0.9);
         color: white;
-        font-size: 0.78rem;
-        font-weight: 800;
-        padding: 6px 12px;
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        white-space: nowrap;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.28);
-    }
-    .card-desc {
-        font-size: 0.9rem;
-        color: #94a3b8;
-        margin: 0 0 20px 0;
-        line-height: 1.6;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        min-height: 3.2em;
-        line-clamp: 2;
-    }
-    .card-desc.expanded {
-        -webkit-line-clamp: unset;
-        overflow: visible;
-        min-height: auto;
-        line-clamp: unset;
+        border: 1px solid #3b82f6;
     }
 
-    .info-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        margin-bottom: 24px;
+    .status-badge.resubmit-badge {
+        /* REJECTED */
+        background: rgba(239, 68, 68, 0.9);
+        color: white;
+        border: 1px solid #ef4444;
     }
-    .info-pill {
-        background: linear-gradient(
-            135deg,
-            rgba(30, 41, 59, 0.65),
-            rgba(15, 23, 42, 0.8)
-        );
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 10px;
-        padding: 12px;
+    .status-badge.completed-btn {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        border: 1px solid #10b981;
+    }
+    .status-badge.ended-canceled {
+        background: rgba(100, 116, 139, 0.9);
+        color: white;
+        border: 1px solid #64748b;
+    }
+
+    /* Locked State Overrides */
+    .event-card.locked-card .card-img-wrapper img {
+        filter: grayscale(100%);
+        opacity: 0.5;
+    }
+    .event-card.locked-card .card-body {
+        opacity: 0.6;
+        pointer-events: none; /* Disable interaction on body */
+    }
+    /* Re-enable pointer events for the lock button if it's in body? 
+       Actually the lock overlay is over image, but button is in footer.
+       We might want footer to be clickable if needed? 
+       For now follow previous logic: locked card usually has specific lock overlay. */
+
+    .card-footer-actions {
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
         display: flex;
-        align-items: flex-start;
+        flex-direction: column;
         gap: 10px;
-        font-size: 0.8rem;
-        color: #cbd5e1;
-        min-height: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
     }
-    .highlight-pill {
-        color: #fbbf24;
-        border-color: rgba(251, 191, 36, 0.3);
-    }
-    .highlight-pill .pill-icon {
-        stroke: #fbbf24;
-    }
-    .pill-icon {
-        width: 18px;
-        height: 18px;
-        opacity: 0.8;
-        flex-shrink: 0;
+
+    .footer-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
     }
 
     .card-footer-actions {
@@ -4442,13 +4420,6 @@
         color: #854d0e;
     }
 
-    .locked-card .card-image {
-        filter: grayscale(100%);
-        opacity: 0.85;
-    }
-    .locked-card .card-content {
-        opacity: 0.7;
-    }
     .lock-overlay {
         width: 100%;
         height: 100%;
@@ -4506,8 +4477,7 @@
             flex: 1 1 0;
             min-width: 0;
         }
-        .status-btn,
-        .cancel-btn {
+        .status-btn {
             width: 100%;
         }
     }
@@ -4998,22 +4968,6 @@
     }
 
     /* CANCEL BUTTON & MODAL */
-    .cancel-btn {
-        background: transparent;
-        border: 1px solid #ef4444;
-        color: #ef4444;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        margin-top: 8px;
-    }
-    .cancel-btn:hover {
-        background: rgba(239, 68, 68, 0.1);
-        transform: translateY(-1px);
-    }
 
     /* Strava verify button */
     .verify-strava-btn {
@@ -5034,82 +4988,6 @@
     }
     .verify-strava-btn:active {
         transform: translateY(0);
-    }
-
-    .cancel-modal {
-        max-width: 450px;
-    }
-    .cancel-options {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin: 20px 0;
-    }
-    .radio-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 16px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .radio-item:hover {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.2);
-    }
-    .radio-item input[type="radio"] {
-        width: 18px;
-        height: 18px;
-        accent-color: #ef4444;
-    }
-    .radio-label {
-        color: var(--text-main);
-        font-size: 0.95rem;
-    }
-    .reason-input {
-        margin-top: 12px;
-    }
-    .reason-input textarea {
-        width: 100%;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        padding: 12px;
-        color: var(--text-main);
-        font-size: 0.95rem;
-        resize: none;
-        box-sizing: border-box;
-    }
-    .reason-input textarea:focus {
-        outline: none;
-        border-color: #ef4444;
-    }
-    .action-row {
-        margin-top: 20px;
-        display: flex;
-        justify-content: center;
-    }
-    .cancel-confirm-btn {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: white;
-        border: none;
-        padding: 12px 32px;
-        border-radius: 10px;
-        font-size: 1rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .cancel-confirm-btn:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
-    }
-    .cancel-confirm-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
     }
 
     .pagination-bar {
