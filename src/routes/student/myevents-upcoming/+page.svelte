@@ -482,17 +482,26 @@
                                 );
                                 if (res.ok) {
                                     const data = await res.json();
-                                    holidaysCalendar[ev.id] = Array.isArray(
-                                        data,
-                                    )
+                                    const holidaysList = Array.isArray(data)
                                         ? data
                                         : [];
-                                    console.log(
-                                        `[DEBUG] Holidays for Event ${ev.id}:`,
-                                        holidaysCalendar[ev.id],
-                                    ); // [DEBUG LOG]
+                                    holidaysCalendar[ev.id] = holidaysList;
+
+                                    // [FIX] Populate holidaysMap for checkIsHoliday skip logic
+                                    holidaysMap[ev.id] = {
+                                        // Allow checkin only if allow_daily_checkin is true,
+                                        // else it might imply some days are excluded (custom logic fallback)
+                                        excludeWeekends:
+                                            ev.exclude_weekends || false,
+                                        holidays: holidaysList,
+                                    };
                                 } else {
                                     holidaysCalendar[ev.id] = [];
+                                    holidaysMap[ev.id] = {
+                                        excludeWeekends:
+                                            ev.exclude_weekends || false,
+                                        holidays: [],
+                                    };
                                 }
                             } catch (e) {
                                 holidaysCalendar[ev.id] = [];
