@@ -45,6 +45,14 @@
     max_checkins_per_user: number | null;
     checkin_count: number; // จำนวนครั้งที่ check-in แล้ว
     hasHistory?: boolean;
+    // [NEW] Pre-Register Status from API
+    preRegStatus?: {
+      registered_count: number;
+      max_limit: number;
+      is_full: boolean;
+      remaining: number;
+    };
+    serverCanRegisterToday?: boolean; // ผลจาก API check-daily-limit
   }
 
   // Interface สำหรับการแจ้งเตือนรางวัล
@@ -419,8 +427,10 @@
         });
 
       events = newEvents;
+      events = newEvents;
       await updateUserStatus(); // Ensure user status is updated after fetching events
       fetchUniqueParticipantCounts(); // ดึงจำนวนผู้เข้าร่วมที่ไม่ซ้ำ
+      fetchPreRegDetails(); // [NEW] ดึง Pre-Register Status สำหรับ Multi-day events
     } catch (error: any) {
       console.error("Error loading events:", error);
     } finally {
@@ -449,6 +459,86 @@
       });
     }
     // Force reactivity update
+    events = [...events];
+  }
+
+  // [NEW] Fetch Pre-Register Status & Daily Limit for Multi-day Events
+  async function fetchPreRegDetails() {
+    const token = getToken();
+    if (!token) return;
+
+    const multiDayEvents = events.filter(
+      (e) => e.event_type === "multi_day" && e.is_active,
+    );
+
+    // Fetch in parallel
+    await Promise.all(
+      multiDayEvents.map(async (event) => {
+        try {
+          const headers = {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          };
+
+          // 1. Fetch Total Status
+          const statusRes = await fetch(
+            `${BASE_URL}/api/participations/pre-register-status/${event.id}`,
+            { headers },
+          );
+          let statusData = null;
+          if (statusRes.ok) {
+            statusData = await statusRes.json();
+          }
+
+          // 2. Fetch Daily Limit Check
+          const dailyRes = await fetch(
+            `${BASE_URL}/api/participations/check-daily-limit/${event.id}`,
+            { headers },
+          );
+          let dailyData = null;
+          if (dailyRes.ok) {
+            dailyData = await dailyRes.json();
+          }
+
+          // Update Event Object
+          const index = events.findIndex((e) => e.id === event.id);
+          if (index !== -1) {
+            if (statusData) {
+              events[index].preRegStatus = {
+                registered_count: statusData.registered_count,
+                max_limit: statusData.max_limit,
+                is_full: statusData.is_full,
+                remaining: Math.max(
+                  0,
+                  statusData.max_limit - statusData.registered_count,
+                ),
+              };
+              // Override max_checkins_per_user with real data from server if available
+              if (statusData.max_limit) {
+                events[index].max_checkins_per_user = statusData.max_limit;
+              }
+              // Override checkin_count with real registered_count
+              if (statusData.registered_count !== undefined) {
+                events[index].checkin_count = statusData.registered_count;
+              }
+            }
+
+            if (dailyData) {
+              events[index].serverCanRegisterToday = dailyData.can_register;
+              // Update isJoinedToday logic based on server check
+              events[index].isJoinedToday = !dailyData.can_register;
+            }
+          }
+        } catch (e) {
+          console.error(
+            `Error fetching pre-reg status for event ${event.id}:`,
+            e,
+          );
+        }
+      }),
+    );
+
+    // Force update
     events = [...events];
   }
 
@@ -652,14 +742,16 @@
 
     // แยก logic ตาม event_type
     if (event.event_type === "multi_day") {
+      // [NEW] Prefer Server-Side Check
+      if (event.serverCanRegisterToday !== undefined) {
+        return event.serverCanRegisterToday;
+      }
+
       // Multi-day: เช็คจากจำนวน checkins แทนการเช็ควันที่
       if (event.max_checkins_per_user && event.max_checkins_per_user > 0) {
         // ถ้ามี max กำหนด เช็คจากจำนวนครั้งที่เช็คอินไปแล้ว
-        const canJoinMore =
-          (event.checkin_count || 0) < event.max_checkins_per_user;
-        console.log(
-          `[Event ${event.id}] Multi-day check: ${event.checkin_count}/${event.max_checkins_per_user} -> canJoin: ${canJoinMore}`,
-        );
+        const checkinCount = event.checkin_count || 0;
+        const canJoinMore = checkinCount < event.max_checkins_per_user;
         return canJoinMore && !event.isJoinedToday; // และต้องไม่ได้ join วันนี้ไปแล้ว
       }
       // Fallback: เช็ควันที่
@@ -719,7 +811,26 @@
       // Multi-day: ตรวจสอบตาม max_checkins_per_user
 
       // 1. เช็ควันนี้ลงทะเบียนแล้วหรือยัง
-      if (eventItem.isJoinedToday) {
+      // [NEW] Check server status first
+      if (eventItem.serverCanRegisterToday === false) {
+        Swal.fire({
+          icon: "info",
+          title:
+            lang === "th" ? "ลงทะเบียนวันนี้แล้ว" : "Already Registered Today",
+          text:
+            lang === "th"
+              ? "คุณได้ลงทะเบียนวันนี้ไปแล้ว กรุณารอถึงวันถัดไป"
+              : "You have already registered today. Please wait until tomorrow.",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#3b82f6",
+        });
+        return;
+      }
+
+      if (
+        eventItem.isJoinedToday &&
+        eventItem.serverCanRegisterToday === undefined
+      ) {
         Swal.fire({
           icon: "info",
           title:
@@ -1776,6 +1887,15 @@
                         >
                       {/if}
                     </div>
+                    <!-- [NEW] Show Remaining Quota -->
+                    {#if event.event_type === "multi_day" && event.preRegStatus && !event.is_full}
+                      <span class="status-badge quota-badge">
+                        {lang === "th" ? "สิทธิ์:" : "Quota:"}
+                        <strong style="margin-left:4px"
+                          >{event.preRegStatus.remaining}</strong
+                        >
+                      </span>
+                    {/if}
                   </div>
                 </div>
 
@@ -2005,6 +2125,7 @@
                 class="nav-btn"
                 onclick={() => changePage(currentPage - 1)}
                 disabled={currentPage === 1}
+                aria-label="Previous page"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -2030,6 +2151,7 @@
                 class="nav-btn"
                 onclick={() => changePage(currentPage + 1)}
                 disabled={currentPage === totalPages}
+                aria-label="Next page"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -3018,6 +3140,13 @@
     cursor: not-allowed;
     box-shadow: none;
     border: none;
+  }
+
+  .quota-badge {
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: #10b981 !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    font-weight: 600;
   }
 
   .cancel-direct-btn {

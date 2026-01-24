@@ -642,48 +642,7 @@
             let actualDist = p.actual_distance_km;
             let compRank = p.completion_rank;
 
-            // [NEW LOGIC] ตรวจสอบวัน: หากกิจกรรมที่สมัครมาไม่ใช่วันปัจจุบัน และ status ไม่ใช่ COMPLETED
-            // ให้ AUTO CANCEL ทันที (ระบบวันต่อวัน)
-            const recordDateStr = p.created_at || p.date || p.start_date;
-            if (recordDateStr) {
-                const recordDate = new Date(recordDateStr);
-                const today = getDebugDate();
-                recordDate.setHours(0, 0, 0, 0);
-                today.setHours(0, 0, 0, 0);
-
-                /*
-                // [MODIFIED] Removed Auto-Cancel logic to support Auto-Rejoin
-                // ถ้าวันที่ของ Record ไม่ใช่วันนี้ และ status ไม่ใช่ COMPLETED
-                if (
-                    recordDate.getTime() !== today.getTime() &&
-                    uiStatus !== "COMPLETED"
-                ) {
-                    console.log(
-                        `[AUTO CANCEL] Event ${ev.id}: Registered on different day (${recordDateStr}). Auto-canceling.`,
-                    );
-                    uiStatus = "CANCELED";
-                }
-                */
-            }
-            // Logic Draft Key
-            if (
-                uiStatus === "CHECKED_IN" &&
-                typeof localStorage !== "undefined"
-            ) {
-                const draftKey = `proof_draft_${p.id}`;
-                const draftJson = localStorage.getItem(draftKey);
-                if (draftJson) {
-                    try {
-                        const draft = JSON.parse(draftJson);
-                        if (draft.step && draft.step >= 2)
-                            uiStatus = "proof_submitted";
-                    } catch (e) {}
-                }
-            }
-
-            const count = completionCounts[ev.id] || 0;
-
-            // --- จัดการเรื่องวันและเวลา ---
+            // --- จัดการเรื่องวันและเวลา (MOVE UP) ---
             const startIso =
                 ev.event_date || ev.startDate || ev.event_start_date;
             const endIso = ev.event_end_date || ev.endDate;
@@ -736,6 +695,73 @@
             const isProjectEnded = projectEndDate && now > projectEndDate;
             const isProjectNotStarted =
                 projectStartDate && now < projectStartDate;
+
+            // [NEW LOGIC: Daily Reset]
+            // หากกิจกรรมนี้เป็นแบบทำได้หลายครั้ง (หรือยังไม่จบโครงการ)
+            // แต่ข้อมูลล่าสุด (p) เป็นของ "เมื่อวาน" (หรือวันก่อนหน้า)
+            // ให้ถือว่า "วันนี้ยังไม่ได้เริ่ม" -> Reset Status เป็น NULL / JOINED เพื่อให้ปุ่ม Check-in ขึ้นใหม่
+            // Prioritize updated_at to catch Status changes (Completed, Verified) today
+            const recordDateStr =
+                p.updated_at || p.created_at || p.date || p.start_date;
+            if (recordDateStr) {
+                const recordDate = new Date(recordDateStr);
+                const today = getDebugDate();
+                // Reset time to compare dates only
+                recordDate.setHours(0, 0, 0, 0);
+                today.setHours(0, 0, 0, 0);
+
+                // ถ้า recordDate < today (เป็นอดีต)
+                if (recordDate.getTime() < today.getTime()) {
+                    // แต่ถ้าสถานะเป็น JOINED อยู่แล้ว (สมัครไว้นานแล้วแต่วันนี้ยังไม่เช็คอิน) -> ก็ปล่อยไว้
+                    // แต่ถ้าสถานะเป็น CHECKED_IN, SUBMITTED, COMPLETED ของเมื่อวาน -> ต้อง Reset
+                    // เพื่อให้วันนี้เริ่มใหม่
+                    const isPastCompleted =
+                        uiStatus === "COMPLETED" ||
+                        uiStatus === "proof_submitted" ||
+                        uiStatus === "CHECKED_IN" ||
+                        uiStatus === "REJECTED";
+
+                    if (isPastCompleted) {
+                        // เช็คว่ากิจกรรมจบไปแล้วจริงๆ หรือยัง?
+                        if (!isProjectEnded && !isNextDayAfterEnd) {
+                            // ยังไม่จบโครงการ -> Reset เป็น "ยังไม่เริ่มของวันนี้"
+                            // โดยการจำลองว่า p (latest participation) นี้ "จบไปแล้ว"
+                            // เราต้องการให้ UI แสดงสถานะ "JOINED" (รอเช็คอิน) หรือ "Register" (ถ้าต้องสมัครใหม่ทุกวัน)
+                            // ตาม Guide: "Auto-Rejoin" system normally handles logic via /join API
+                            // แต่ใน UI เราต้องเคลียร์ State เพื่อให้ปุ่ม Check-in โผล่
+
+                            // Force state reset for UI rendering
+                            uiStatus = "JOINED";
+                            joinCode = ""; // Clear old PIN
+                            proofImg = undefined;
+
+                            // Log for debugging
+                            console.log(
+                                `🔄 Daily Reset for Event ${ev.id}: Last record ${recordDateStr} -> Reset to Ready for Today`,
+                            );
+                        }
+                    }
+                }
+            }
+            // Logic Draft Key
+            if (
+                uiStatus === "CHECKED_IN" &&
+                typeof localStorage !== "undefined"
+            ) {
+                const draftKey = `proof_draft_${p.id}`;
+                const draftJson = localStorage.getItem(draftKey);
+                if (draftJson) {
+                    try {
+                        const draft = JSON.parse(draftJson);
+                        if (draft.step && draft.step >= 2)
+                            uiStatus = "proof_submitted";
+                    } catch (e) {}
+                }
+            }
+
+            const count = completionCounts[ev.id] || 0;
+
+            // (MOVED UP) --- จัดการเรื่องวันและเวลา ---
 
             let isTimeOver = false;
             let isBeforeTime = false;
@@ -791,26 +817,18 @@
                                 : "Checkout Completed";
                     }
                 } else {
-                    // ถ้ายังไม่ใช่วันสุดท้าย
-                    if (isTodayTimeRemaining) {
-                        lockMessage =
-                            lang === "th"
-                                ? "เช็คเอาท์เรียบร้อย"
-                                : "Checkout Completed";
-                    } else {
-                        const nextDateStr = nextWorkingDate.toLocaleDateString(
-                            "th-TH",
-                            {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                            },
-                        );
-                        lockMessage =
-                            lang === "th"
-                                ? `เปิด ${nextDateStr}`
-                                : `Open ${nextDateStr}`;
-                    }
+                    // ถ้ายังไม่ใช่วันสุดท้าย -> แสดงวันถัดไปทันที (ไม่สนว่าเหลือเวลาวันนี้ไหม เพราะจบแล้ว)
+                    const nextDateStr = nextWorkingDate.toLocaleDateString(
+                        "th-TH",
+                        {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                        },
+                    );
+                    // [IMPROVED] Show "See you tomorrow" message
+                    const meetTmr = t[lang].status_daily_completed; // "เจอกันพรุ่งนี้"
+                    lockMessage = `${meetTmr} (${nextDateStr})`;
                 }
             } else if (uiStatus === "CHECKED_OUT") {
                 if (isTimeOver) {
