@@ -758,12 +758,27 @@
 
                             // Log for debugging
                             console.log(
-                                `🔄 Daily Reset for Event ${ev.id}: Last record ${recordDateStr} -> EXPIRING`,
+                                `🔄 Daily Reset for Event ${ev.id}: Last record ${recordDateStr} (${rStr}) vs Today (${tStr}) -> EXPIRING`,
+                            );
+                        } else {
+                            console.log(
+                                `ℹ️ Daily Reset SKIP for Event ${ev.id}: Project Ended or Next Day After End`,
                             );
                         }
+                    } else {
+                        console.log(
+                            `ℹ️ Daily Reset SKIP: Status ${uiStatus} is not considered 'Completed' for reset purposes`,
+                        );
                     }
+                } else {
+                    console.log(
+                        `ℹ️ Daily Reset CLAIMED: Record Date ${rStr} >= Today ${tStr}`,
+                    );
                 }
+            } else {
+                console.log(`ℹ️ Daily Reset SKIP: No recordDateStr value`);
             }
+
             // Logic Draft Key
             if (
                 uiStatus === "CHECKED_IN" &&
