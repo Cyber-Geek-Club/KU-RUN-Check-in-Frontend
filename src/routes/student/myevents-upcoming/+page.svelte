@@ -767,7 +767,6 @@
             // Logic Draft Key
             if (
                 uiStatus === "CHECKED_IN" &&
-                uiStatus !== "EXPIRED_RESET" &&
                 typeof localStorage !== "undefined"
             ) {
                 const draftKey = `proof_draft_${p.id}`;
