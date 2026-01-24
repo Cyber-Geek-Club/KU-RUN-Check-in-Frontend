@@ -720,12 +720,18 @@
             if (recordDateStr) {
                 const recordDate = new Date(recordDateStr);
                 const today = getDebugDate();
-                // Reset time to compare dates only
-                recordDate.setHours(0, 0, 0, 0);
-                today.setHours(0, 0, 0, 0);
 
-                // ถ้า recordDate < today (เป็นอดีต)
-                if (recordDate.getTime() < today.getTime()) {
+                // [FIX] Normalise to YYYY-MM-DD string for safe comparison
+                // prevent timezone shifting issues
+                const toDateStr = (d: Date) => {
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                };
+
+                const rStr = toDateStr(recordDate);
+                const tStr = toDateStr(today);
+
+                // ถ้าวันของ record น้อยกว่าวันนี้ (เป็นอดีต)
+                if (rStr < tStr) {
                     // แต่ถ้าสถานะเป็น JOINED อยู่แล้ว (สมัครไว้นานแล้วแต่วันนี้ยังไม่เช็คอิน) -> ก็ปล่อยไว้
                     // แต่ถ้าสถานะเป็น CHECKED_IN, SUBMITTED, COMPLETED ของเมื่อวาน -> ต้อง Reset
                     // เพื่อให้วันนี้เริ่มใหม่
