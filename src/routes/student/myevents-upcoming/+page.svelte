@@ -299,7 +299,6 @@
         distance_km: number;
         actual_distance_km?: number;
         banner_image_url: string;
-        proof_image_hash?: string;
         status:
             | "JOINED"
             | "CHECKED_IN"
@@ -617,316 +616,324 @@
         }
     }
 
-   function processData() {
-    const upcoming: EventItem[] = [];
-    const history: EventItem[] = [];
-    const now = getDebugDate();
+    function processData() {
+        const upcoming: EventItem[] = [];
+        const history: EventItem[] = [];
+        const now = getDebugDate();
 
-    // 1. นับจำนวนครั้งที่ทำสำเร็จ
-    const completionCounts: Record<number, number> = {};
-    rawParticipations.forEach((p) => {
-        if (p.status && p.status.toUpperCase() === "COMPLETED") {
-            completionCounts[p.event_id] =
-                (completionCounts[p.event_id] || 0) + 1;
-        }
-    });
-
-    // 2. หารายการล่าสุด
-    const latestParticipations: Record<number, any> = {};
-    rawParticipations.forEach((p) => {
-        if (
-            !latestParticipations[p.event_id] ||
-            p.id > latestParticipations[p.event_id].id
-        ) {
-            latestParticipations[p.event_id] = p;
-        }
-    });
-
-    // 3. Loop Events
-    Object.values(eventsMap).forEach((ev: any) => {
-        const p = latestParticipations[ev.id];
-        if (!p) return;
-
-        let uiStatus: EventItem["status"] = mapApiStatusToUi(p.status);
-        let participationId = p.id;
-        let proofImg = p.proof_image_url;
-        let rejectReason = p.rejection_reason;
-        const codes = normalizeCode(p);
-        let joinCode = codes.join_code;
-        let compCode = codes.completion_code;
-        let actualDist = p.actual_distance_km;
-        let compRank = p.completion_rank;
-
-        // --- จัดการเรื่องวันและเวลา ---
-        const startIso =
-            ev.event_date || ev.startDate || ev.event_start_date;
-        const endIso = ev.event_end_date || ev.endDate;
-
-        const extractTimeRaw = (isoStr: string) => {
-            if (!isoStr) return "";
-            const date = new Date(isoStr);
-            const bangkokHours = date.getHours();
-            const bangkokMinutes = date.getMinutes();
-            const hours = String(bangkokHours).padStart(2, "0");
-            const minutes = String(bangkokMinutes).padStart(2, "0");
-            return `${hours}:${minutes}`;
-        };
-
-        const startTimeStr = ev.start_time || extractTimeRaw(startIso);
-        const endTimeStr = ev.end_time || extractTimeRaw(endIso);
-
-        const parseDateOnly = (isoStr: string): Date | null => {
-            if (!isoStr) return null;
-            if (isoStr.includes("Z") || isoStr.includes("+")) {
-                const d = new Date(isoStr);
-                return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        // 1. นับจำนวนครั้งที่ทำสำเร็จ
+        const completionCounts: Record<number, number> = {};
+        rawParticipations.forEach((p) => {
+            if (p.status && p.status.toUpperCase() === "COMPLETED") {
+                completionCounts[p.event_id] =
+                    (completionCounts[p.event_id] || 0) + 1;
             }
-            const part = isoStr.includes("T")
-                ? isoStr.split("T")[0]
-                : isoStr;
-            const [y, m, d] = part.split("-").map(Number);
-            return new Date(y, m - 1, d);
-        };
+        });
 
-        const projectStartDate = parseDateOnly(startIso);
-        const projectEndDate = parseDateOnly(endIso);
+        // 2. หารายการล่าสุด
+        const latestParticipations: Record<number, any> = {};
+        rawParticipations.forEach((p) => {
+            if (
+                !latestParticipations[p.event_id] ||
+                p.id > latestParticipations[p.event_id].id
+            ) {
+                latestParticipations[p.event_id] = p;
+            }
+        });
 
-        if (projectStartDate) projectStartDate.setHours(0, 0, 0, 0);
-        if (projectEndDate) projectEndDate.setHours(23, 59, 59, 999);
+        // 3. Loop Events
+        Object.values(eventsMap).forEach((ev: any) => {
+            const p = latestParticipations[ev.id];
+            if (!p) return;
 
-        const nextWorkingDate = getNextWorkingDay(now, ev.id);
-        nextWorkingDate.setHours(0, 0, 0, 0);
+            let uiStatus: EventItem["status"] = mapApiStatusToUi(p.status);
+            let participationId = p.id;
+            let proofImg = p.proof_image_url;
+            let rejectReason = p.rejection_reason;
+            const codes = normalizeCode(p);
+            let joinCode = codes.join_code;
+            let compCode = codes.completion_code;
+            let actualDist = p.actual_distance_km;
+            let compRank = p.completion_rank;
 
-        const isNextDayAfterEnd = projectEndDate
-            ? nextWorkingDate.getTime() > projectEndDate.getTime()
-            : false;
+            // --- จัดการเรื่องวันและเวลา (MOVE UP) ---
+            const startIso =
+                ev.event_date || ev.startDate || ev.event_start_date;
+            const endIso = ev.event_end_date || ev.endDate;
 
-        const isProjectEnded = projectEndDate && now > projectEndDate;
-        const isProjectNotStarted =
-            projectStartDate && now < projectStartDate;
-
-        // ✅ [FIX 1] Daily Reset Logic - ใช้ created_at แทน updated_at
-        // สำหรับ CHECKED_IN/REJECTED ใช้ created_at เป็นหลัก
-        // สำหรับ COMPLETED/proof_submitted ใช้ updated_at เพื่อดูเวลาที่ทำเสร็จ
-        let recordDateStr;
-        
-        if (uiStatus === "CHECKED_IN" || uiStatus === "REJECTED") {
-            // ใช้วันที่สร้าง เพราะ updated_at อาจเปลี่ยนจากการ submit ล้มเหลว
-            recordDateStr = p.created_at || p.date || p.start_date;
-        } else {
-            // ใช้วันที่อัพเดทล่าสุด เพราะสะท้อนเวลาที่ทำเสร็จ
-            recordDateStr = p.updated_at || p.created_at || p.date || p.start_date;
-        }
-
-        if (recordDateStr) {
-            const recordDate = new Date(recordDateStr);
-            const today = getDebugDate();
-
-            const toDateStr = (d: Date) => {
-                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            const extractTimeRaw = (isoStr: string) => {
+                if (!isoStr) return "";
+                // [FIX] แปลง UTC เป็น Bangkok time ก่อนดึงเวลา
+                const date = new Date(isoStr);
+                const bangkokHours = date.getHours(); // getHours() จะใช้ local timezone อัตโนมัติ
+                const bangkokMinutes = date.getMinutes();
+                const hours = String(bangkokHours).padStart(2, "0");
+                const minutes = String(bangkokMinutes).padStart(2, "0");
+                return `${hours}:${minutes}`;
             };
 
-            const rStr = toDateStr(recordDate);
-            const tStr = toDateStr(today);
+            const startTimeStr = ev.start_time || extractTimeRaw(startIso);
+            const endTimeStr = ev.end_time || extractTimeRaw(endIso);
 
-            console.log(`📅 Event ${ev.id}: Record date = ${rStr}, Today = ${tStr}, Status = ${uiStatus}`);
+            // Parse date ให้ถูกต้องโดยพิจารณา timezone
+            const parseDateOnly = (isoStr: string): Date | null => {
+                if (!isoStr) return null;
+                // ถ้าเป็น ISO format ที่มี Z (UTC) ให้แปลงเป็น local time ก่อน
+                if (isoStr.includes("Z") || isoStr.includes("+")) {
+                    const d = new Date(isoStr);
+                    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                }
+                // ถ้าเป็น format ไม่มี timezone (YYYY-MM-DDTHH:mm:ss หรือ YYYY-MM-DD)
+                const part = isoStr.includes("T")
+                    ? isoStr.split("T")[0]
+                    : isoStr;
+                const [y, m, d] = part.split("-").map(Number);
+                return new Date(y, m - 1, d);
+            };
 
-            // ถ้าวันของ record น้อยกว่าวันนี้ (เป็นอดีต)
-            if (rStr < tStr) {
-                const isPastCompleted =
-                    uiStatus === "COMPLETED" ||
-                    uiStatus === "proof_submitted" ||
-                    uiStatus === "CHECKED_IN" ||
-                    uiStatus === "REJECTED";
+            const projectStartDate = parseDateOnly(startIso);
+            const projectEndDate = parseDateOnly(endIso);
 
-                if (isPastCompleted) {
-                    if (!isProjectEnded && !isNextDayAfterEnd) {
-                        // ✅ Reset สถานะเพื่อให้ User สามารถเริ่มวันใหม่ได้
-                        uiStatus = "EXPIRED_RESET";
-                        joinCode = "";
-                        proofImg = undefined;
+            if (projectStartDate) projectStartDate.setHours(0, 0, 0, 0);
+            if (projectEndDate) projectEndDate.setHours(23, 59, 59, 999);
 
-                        console.log(
-                            `🔄 Daily Reset for Event ${ev.id}: Record ${rStr} < Today ${tStr} -> Status EXPIRED_RESET`
-                        );
+            // หาวันทำการถัดไป
+            const nextWorkingDate = getNextWorkingDay(now, ev.id);
+            nextWorkingDate.setHours(0, 0, 0, 0);
+
+            // เช็คว่า "วันถัดไป" เกิน "วันจบโครงการ" หรือไม่? (ถ้าเกิน = นี่คือวันสุดท้าย)
+            const isNextDayAfterEnd = projectEndDate
+                ? nextWorkingDate.getTime() > projectEndDate.getTime()
+                : false;
+
+            const isProjectEnded = projectEndDate && now > projectEndDate;
+            const isProjectNotStarted =
+                projectStartDate && now < projectStartDate;
+
+            // [NEW LOGIC: Daily Reset]
+            // หากกิจกรรมนี้เป็นแบบทำได้หลายครั้ง (หรือยังไม่จบโครงการ)
+            // แต่ข้อมูลล่าสุด (p) เป็นของ "เมื่อวาน" (หรือวันก่อนหน้า)
+            // ให้ถือว่า "วันนี้ยังไม่ได้เริ่ม" -> Reset Status เป็น NULL / JOINED เพื่อให้ปุ่ม Check-in ขึ้นใหม่
+            // Prioritize updated_at to catch Status changes (Completed, Verified) today
+            const recordDateStr =
+                p.updated_at || p.created_at || p.date || p.start_date;
+            if (recordDateStr) {
+                const recordDate = new Date(recordDateStr);
+                const today = getDebugDate();
+
+                // [FIX] Normalise to YYYY-MM-DD string for safe comparison
+                // prevent timezone shifting issues
+                const toDateStr = (d: Date) => {
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                };
+
+                const rStr = toDateStr(recordDate);
+                const tStr = toDateStr(today);
+
+                // ถ้าวันของ record น้อยกว่าวันนี้ (เป็นอดีต)
+                if (rStr < tStr) {
+                    // แต่ถ้าสถานะเป็น JOINED อยู่แล้ว (สมัครไว้นานแล้วแต่วันนี้ยังไม่เช็คอิน) -> ก็ปล่อยไว้
+                    // แต่ถ้าสถานะเป็น CHECKED_IN, SUBMITTED, COMPLETED ของเมื่อวาน -> ต้อง Reset
+                    // เพื่อให้วันนี้เริ่มใหม่
+                    const isPastCompleted =
+                        uiStatus === "COMPLETED" ||
+                        uiStatus === "proof_submitted" ||
+                        uiStatus === "CHECKED_IN" ||
+                        uiStatus === "REJECTED";
+
+                    if (isPastCompleted) {
+                        // เช็คว่ากิจกรรมจบไปแล้วจริงๆ หรือยัง?
+                        if (!isProjectEnded && !isNextDayAfterEnd) {
+                            // ยังไม่จบโครงการ -> Reset เป็น "ยังไม่เริ่มของวันนี้"
+                            // โดยการจำลองว่า p (latest participation) นี้ "จบไปแล้ว"
+                            // เราต้องการให้ UI แสดงสถานะ "JOINED" (รอเช็คอิน) หรือ "Register" (ถ้าต้องสมัครใหม่ทุกวัน)
+                            // ตาม Guide: "Auto-Rejoin" system normally handles logic via /join API
+                            // แต่ใน UI เราต้องเคลียร์ State เพื่อให้ปุ่ม Check-in โผล่
+
+                            // Force state reset for UI rendering
+                            // [FIX] Use special status to allow user to Cancel old session
+                            uiStatus = "EXPIRED_RESET";
+                            joinCode = ""; // Clear old PIN
+                            proofImg = undefined;
+
+                            // Log for debugging
+                            console.log(
+                                `🔄 Daily Reset for Event ${ev.id}: Last record ${recordDateStr} -> EXPIRING`,
+                            );
+                        }
                     }
                 }
-            } else {
-                console.log(`✅ Event ${ev.id}: Record is from today, no reset needed`);
             }
-        }
-
-        // ✅ [FIX 2] Draft Key Logic - ตรวจสอบ localStorage
-        if (
-            uiStatus === "CHECKED_IN" &&
-            typeof localStorage !== "undefined"
-        ) {
-            const draftKey = `proof_draft_${p.id}`;
-            const draftJson = localStorage.getItem(draftKey);
-            if (draftJson) {
-                try {
-                    const draft = JSON.parse(draftJson);
-                    if (draft.step && draft.step >= 2) {
-                        uiStatus = "proof_submitted";
-                    }
-                } catch (e) {
-                    console.warn(`Failed to parse draft for participation ${p.id}:`, e);
+            // Logic Draft Key
+            if (
+                uiStatus === "CHECKED_IN" &&
+                typeof localStorage !== "undefined"
+            ) {
+                const draftKey = `proof_draft_${p.id}`;
+                const draftJson = localStorage.getItem(draftKey);
+                if (draftJson) {
+                    try {
+                        const draft = JSON.parse(draftJson);
+                        if (draft.step && draft.step >= 2)
+                            uiStatus = "proof_submitted";
+                    } catch (e) {}
                 }
             }
-        }
 
-        const count = completionCounts[ev.id] || 0;
+            const count = completionCounts[ev.id] || 0;
 
-        // --- จัดการเรื่องเวลา ---
-        let isTimeOver = false;
-        let isBeforeTime = false;
-        let isTodayTimeRemaining = false;
+            // (MOVED UP) --- จัดการเรื่องวันและเวลา ---
 
-        if (startTimeStr && endTimeStr) {
-            const [sh, sm] = startTimeStr.split(":").map(Number);
-            const [eh, em] = endTimeStr.split(":").map(Number);
+            let isTimeOver = false;
+            let isBeforeTime = false;
+            let isTodayTimeRemaining = false;
 
-            const todayStart = getDebugDate();
-            todayStart.setHours(sh, sm, 0, 0);
-            const todayEnd = getDebugDate();
-            todayEnd.setHours(eh, em, 59, 999);
+            if (startTimeStr && endTimeStr) {
+                const [sh, sm] = startTimeStr.split(":").map(Number);
+                const [eh, em] = endTimeStr.split(":").map(Number);
 
-            if (now < todayStart) isBeforeTime = true;
-            if (now > todayEnd) isTimeOver = true;
-            if (now <= todayEnd) isTodayTimeRemaining = true;
-        }
+                const todayStart = getDebugDate();
+                todayStart.setHours(sh, sm, 0, 0);
+                const todayEnd = getDebugDate();
+                todayEnd.setHours(eh, em, 59, 999);
 
-        // เช็คว่าเลยวันสุดท้ายแล้วหรือยัง
-        if (projectEndDate) {
-            const isFinalDayTimeOver = isNextDayAfterEnd && isTimeOver;
-            if (now > projectEndDate || isFinalDayTimeOver) {
-                if (uiStatus !== "EXPIRED_RESET") { // ✅ ไม่ override EXPIRED_RESET
+                if (now < todayStart) isBeforeTime = true;
+                if (now > todayEnd) isTimeOver = true;
+                if (now <= todayEnd) isTodayTimeRemaining = true;
+            }
+
+            // If the event's end date/time already passed (final day) or we are past the end date, mark as COMPLETED
+            if (projectEndDate) {
+                const isFinalDayTimeOver = isNextDayAfterEnd && isTimeOver;
+                if (now > projectEndDate || isFinalDayTimeOver) {
                     uiStatus = "COMPLETED";
                 }
             }
-        }
 
-        // --- Logic Lock & Message ---
-        let isLocked = false;
-        let lockMessage = t[lang].btn_locked;
+            // --- Logic Lock & Message ---
+            let isLocked = false;
+            let lockMessage = t[lang].btn_locked;
 
-        if (isProjectEnded) {
-            isLocked = true;
-            lockMessage = lang === "th" ? "จบกิจกรรม" : "Activity Ended";
-        } else if (isProjectNotStarted && uiStatus !== "JOINED") {
-            isLocked = true;
-            const openDate = getDisplayDate(startIso, undefined, lang);
-            lockMessage =
-                lang === "th" ? `เปิด ${openDate}` : `Open ${openDate}`;
-        } else if (uiStatus === "COMPLETED") {
-            isLocked = true;
-            if (isNextDayAfterEnd) {
-                if (isTimeOver) {
-                    lockMessage =
-                        lang === "th" ? "จบกิจกรรม" : "Activity Ended";
-                } else {
-                    lockMessage =
-                        lang === "th"
-                            ? "เช็คเอาท์เรียบร้อย"
-                            : "Checkout Completed";
-                }
-            } else {
-                const nextDateStr = nextWorkingDate.toLocaleDateString(
-                    "th-TH",
-                    {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                    },
-                );
-                const meetTmr = t[lang].status_daily_completed;
-                lockMessage = `${meetTmr} (${nextDateStr})`;
-            }
-        } else if (uiStatus === "CHECKED_OUT") {
-            if (isTimeOver) {
+            if (isProjectEnded) {
                 isLocked = true;
+                lockMessage = lang === "th" ? "จบกิจกรรม" : "Activity Ended";
+            } else if (isProjectNotStarted && uiStatus !== "JOINED") {
+                // [FIX] ถ้ากิจกรรมยังไม่เริ่ม แต่ user สมัครไว้แล้ว (JOINED) ก็ไม่ต้องล็อค
+                isLocked = true;
+                const openDate = getDisplayDate(startIso, undefined, lang);
                 lockMessage =
-                    lang === "th" ? "หมดเวลากิจกรรม" : "Time's up";
-            } else {
-                isLocked = false;
+                    lang === "th" ? `เปิด ${openDate}` : `Open ${openDate}`;
+            } else if (uiStatus === "COMPLETED") {
+                isLocked = true;
+                if (isNextDayAfterEnd) {
+                    // [แก้ไข 1] ถ้าเป็นวันสุดท้าย และหมดเวลาแล้ว -> จบกิจกรรม
+                    if (isTimeOver) {
+                        lockMessage =
+                            lang === "th" ? "จบกิจกรรม" : "Activity Ended";
+                    } else {
+                        // ถ้าวันสุดท้ายแต่ยังไม่หมดเวลา -> เช็คเอาท์เรียบร้อย (ยังโชว์ใน Upcoming)
+                        lockMessage =
+                            lang === "th"
+                                ? "เช็คเอาท์เรียบร้อย"
+                                : "Checkout Completed";
+                    }
+                } else {
+                    // ถ้ายังไม่ใช่วันสุดท้าย -> แสดงวันถัดไปทันที (ไม่สนว่าเหลือเวลาวันนี้ไหม เพราะจบแล้ว)
+                    const nextDateStr = nextWorkingDate.toLocaleDateString(
+                        "th-TH",
+                        {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                        },
+                    );
+                    // [IMPROVED] Show "See you tomorrow" message
+                    const meetTmr = t[lang].status_daily_completed; // "เจอกันพรุ่งนี้"
+                    lockMessage = `${meetTmr} (${nextDateStr})`;
+                }
+            } else if (uiStatus === "CHECKED_OUT") {
+                if (isTimeOver) {
+                    isLocked = true;
+                    lockMessage =
+                        lang === "th" ? "หมดเวลากิจกรรม" : "Time's up";
+                } else {
+                    isLocked = false;
+                }
+            } else if (isBeforeTime) {
+                isLocked = true;
+                lockMessage = lang === "th" ? "ยังไม่ถึงเวลา" : "Not yet time";
+            } else if (isTimeOver) {
+                isLocked = true;
+                lockMessage = lang === "th" ? "หมดเวลากิจกรรม" : "Time's up";
             }
-        } else if (uiStatus === "EXPIRED_RESET") {
-            // ✅ [FIX 3] EXPIRED_RESET ไม่ต้องล็อค เพื่อให้กดปุ่มได้
-            isLocked = false;
-            lockMessage = lang === "th" ? "เริ่มวันใหม่" : "Start New Day";
-        } else if (isBeforeTime) {
-            isLocked = true;
-            lockMessage = lang === "th" ? "ยังไม่ถึงเวลา" : "Not yet time";
-        } else if (isTimeOver) {
-            isLocked = true;
-            lockMessage = lang === "th" ? "หมดเวลากิจกรรม" : "Time's up";
-        }
 
-        // --- History Logic ---
-        const shouldGoToHistory =
-            isProjectEnded ||
-            uiStatus === "CANCELED" ||
-            (isNextDayAfterEnd && isTimeOver);
+            // --- History Logic (แก้ไข 2) ---
+            const shouldGoToHistory =
+                isProjectEnded ||
+                uiStatus === "CANCELED" ||
+                (isNextDayAfterEnd && isTimeOver);
+            // (isNextDayAfterEnd && isTimeOver)) &&
+            // uiStatus !== 'CHECKOUT';
 
-        if (shouldGoToHistory) {
-            if (count === 0) {
-                uiStatus = "CANCELED";
-            } else if (count >= 1) {
-                if (uiStatus !== "CANCELED") {
-                    uiStatus = "COMPLETED";
+            if (shouldGoToHistory) {
+                if (count === 0) {
+                    uiStatus = "CANCELED";
+                } else if (count >= 1) {
+                    if (uiStatus !== "CANCELED") {
+                        uiStatus = "COMPLETED";
+                    }
                 }
             }
-        }
 
-        const totalValidDays = calculateTotalValidDays(
-            startIso || "",
-            endIso || "",
-            ev?.id || 0,
-        );
+            const totalValidDays = calculateTotalValidDays(
+                startIso || "",
+                endIso || "",
+                ev?.id || 0,
+            );
 
-        const item: EventItem = {
-            id: ev.id,
-            participation_id: participationId,
-            title: ev.title || "Unknown Event",
-            description: ev.description || "",
-            location: ev.location || "-",
-            distance_km: ev.distance_km || 0,
-            actual_distance_km: actualDist,
-            banner_image_url:
-                resolveImageUrl(ev.banner_image_url) ||
-                "https://via.placeholder.com/400",
-            participant_count: ev.participant_count || 0,
-            max_participants: ev.max_participants || 0,
+            const item: EventItem = {
+                id: ev.id,
+                participation_id: participationId,
+                title: ev.title || "Unknown Event",
+                description: ev.description || "",
+                location: ev.location || "-",
+                distance_km: ev.distance_km || 0,
+                actual_distance_km: actualDist,
+                banner_image_url:
+                    resolveImageUrl(ev.banner_image_url) ||
+                    "https://via.placeholder.com/400",
+                participant_count: ev.participant_count || 0,
+                max_participants: ev.max_participants || 0,
 
-            join_code: joinCode,
-            completion_code: compCode,
-            rejection_reason: rejectReason,
-            proof_image_url: proofImg,
+                join_code: joinCode,
+                completion_code: compCode,
+                rejection_reason: rejectReason,
+                proof_image_url: proofImg,
 
-            raw_start_date: startIso,
-            raw_end_date: endIso,
-            raw_start_time: startTimeStr,
-            raw_end_time: endTimeStr,
+                raw_start_date: startIso,
+                raw_end_date: endIso,
+                raw_start_time: startTimeStr,
+                raw_end_time: endTimeStr,
 
-            status: uiStatus,
-            isJoined: true,
-            isExpanded: false,
+                status: uiStatus,
+                isJoined: true,
+                isExpanded: false,
 
-            completed_count: count,
-            isLocked: isLocked,
-            lockMessage: lockMessage,
-            completion_rank: compRank,
-            total_days: totalValidDays,
-            rejoin_count: p.rejoin_count ?? 0,
-        };
+                completed_count: count,
+                isLocked: isLocked,
+                lockMessage: lockMessage,
+                completion_rank: compRank,
+                total_days: totalValidDays,
+                rejoin_count: p.rejoin_count ?? 0,
+            };
 
-        if (shouldGoToHistory) history.push(item);
-        else upcoming.push(item);
-    });
+            if (shouldGoToHistory) history.push(item);
+            else upcoming.push(item);
+        });
 
-    upcomingEvents = upcoming;
-    historyEvents = history;
-}
+        upcomingEvents = upcoming;
+        historyEvents = history;
+    }
 
     function formatTime(start: string, end: string, currentLang: string) {
         if (!start) return "";
@@ -1998,203 +2005,132 @@
             saveDraft(3);
         }
     }
-
-    async function calculateImageHash(file: File): Promise<string> {
-    try {
-        // Read file as ArrayBuffer
-        const arrayBuffer = await file.arrayBuffer();
-        
-        // Calculate SHA-256 hash
-        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-        
-        // Convert to hex string
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        return hashHex;
-    } catch (error) {
-        console.error('❌ Failed to calculate image hash:', error);
-        // Fallback: use simple timestamp-based hash
-        return `fallback_${Date.now()}_${file.size}`;
-    }
-}
-
-   async function submitProofAction() {
-    if (!selectedEvent) return;
-    const token = getToken();
-    
-    if (!token) {
-        Swal.fire(t[lang].alert_error, t[lang].alert_session_expired, "error");
-        return;
-    }
-
-    // ========================================
-    // VALIDATION
-    // ========================================
-    
-    if (!selectedEvent.participation_id) {
-        Swal.fire("Error", "ไม่พบรหัสการเข้าร่วม (Participation ID)", "error");
-        return;
-    }
-
-    if (!sendingLink || !sendingLink.trim()) {
-        Swal.fire(t[lang].alert_warning, t[lang].alert_link_required, "warning");
-        return;
-    }
-
-    if (!isValidStravaLink(sendingLink.trim())) {
-        Swal.fire(t[lang].alert_error, t[lang].alert_link_invalid, "error");
-        return;
-    }
-
-    if (!stravaVerified) {
-        Swal.fire(
-            t[lang].alert_warning,
-            lang === "th"
-                ? 'กรุณากดปุ่ม "🔍 ตรวจสอบลิงก์" เพื่อยืนยัน Strava Link ก่อนส่งหลักฐาน'
-                : 'Please click "🔍 Verify Link" to confirm your Strava link before submitting',
-            "warning"
-        );
-        return;
-    }
-
-    if (!proofFile && !selectedEvent.proof_image_url) {
-        Swal.fire(
-            t[lang].alert_warning,
-            lang === "th" ? "กรุณาอัปโหลดรูปภาพหลักฐาน (บังคับ)" : "Please upload proof image (Required)",
-            "warning"
-        );
-        return;
-    }
-
-    // ========================================
-    // START PROCESSING
-    // ========================================
-    
-    try {
-        Swal.fire({
-            title: lang === "th" ? "กำลังส่งข้อมูล..." : "Submitting...",
-            html: lang === "th" ? "กรุณารอสักครู่" : "Please wait",
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
-
-        // ========================================
-        // 1. REFRESH PARTICIPATION STATUS
-        // ========================================
-        try {
-            const statusRes = await fetchMyStatus(selectedEvent.id);
-            if (statusRes) {
-                let statusData = null;
-                if (statusRes.codes && statusRes.codes.length > 0) {
-                    statusData = statusRes.codes[0];
-                } else if (normalizeCode(statusRes).join_code) {
-                    statusData = statusRes;
-                }
-
-                if (statusData && statusData.id && statusData.id !== selectedEvent.participation_id) {
-                    const oldId = selectedEvent.participation_id;
-                    selectedEvent.participation_id = statusData.id;
-                    currentParticipationId = statusData.id;
-
-                    // Migrate draft
-                    try {
-                        if (typeof localStorage !== "undefined" && oldId) {
-                            const oldKey = getDraftKey(oldId);
-                            const newKey = getDraftKey(statusData.id);
-                            const oldDraft = localStorage.getItem(oldKey);
-                            if (oldDraft) {
-                                localStorage.setItem(newKey, oldDraft);
-                                localStorage.removeItem(oldKey);
-                            }
-                        }
-                    } catch (e) {
-                        console.warn("Draft migration failed:", e);
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn("Failed to refresh participation status:", e);
+    async function submitProofAction() {
+        if (!selectedEvent) return;
+        const token = getToken();
+        if (!token) {
+            Swal.fire(
+                t[lang].alert_error,
+                t[lang].alert_session_expired,
+                "error",
+            );
+            return;
         }
 
-        // ========================================
-        // 2. UPLOAD IMAGE & CALCULATE HASH
-        // ========================================
-        let finalImageUrl = selectedEvent.proof_image_url || "";
-        let imageHash = ""; // ✅ เพิ่มตัวแปรนี้
+        // 1. Validate Participation ID
+        if (!selectedEvent.participation_id) {
+            Swal.fire(
+                "Error",
+                "ไม่พบรหัสการเข้าร่วม (Participation ID) - กรุณารีเฟรชหน้าจอ",
+                "error",
+            );
+            return;
+        }
 
-        if (proofFile) {
+        // 2. ✅ บังคับ: ต้องมี Strava Link
+        if (!sendingLink || sendingLink.trim() === "") {
+            Swal.fire(
+                t[lang].alert_warning,
+                t[lang].alert_link_required,
+                "warning",
+            );
+            return;
+        }
+
+        // 3. ✅ บังคับ: ต้องเป็น Strava Link ที่ถูกต้อง
+        if (!isValidStravaLink(sendingLink.trim())) {
+            Swal.fire(t[lang].alert_error, t[lang].alert_link_invalid, "error");
+            return;
+        }
+
+        // 4. ✅ บังคับ: ต้องกดปุ่มตรวจสอบ Strava แล้ว
+        if (!stravaVerified) {
+            Swal.fire(
+                t[lang].alert_warning,
+                lang === "th"
+                    ? 'กรุณากดปุ่ม "🔍 ตรวจสอบลิงก์" เพื่อยืนยัน Strava Link ก่อนส่งหลักฐาน'
+                    : 'Please click "🔍 Verify Link" to confirm your Strava link before submitting',
+                "warning",
+            );
+            return;
+        }
+
+        // 5. ✅ บังคับ: ต้องมีรูปภาพหลักฐาน
+        if (!proofFile && !selectedEvent.proof_image_url) {
+            Swal.fire(
+                t[lang].alert_warning,
+                lang === "th"
+                    ? "กรุณาอัปโหลดรูปภาพหลักฐาน (บังคับ)"
+                    : "Please upload proof image (Required)",
+                "warning",
+            );
+            return;
+        }
+
+        try {
+            // Ensure we have the latest participation context (fresh participation_id) before submitting
             try {
-                // ✅ Calculate hash BEFORE upload
-                console.log("🔐 Calculating image hash...");
-                imageHash = await calculateImageHash(proofFile);
-                console.log("✅ Image hash:", imageHash);
+                const statusRes = await fetchMyStatus(selectedEvent.id);
+                if (statusRes) {
+                    let statusData = null;
+                    if (statusRes.codes && statusRes.codes.length > 0)
+                        statusData = statusRes.codes[0];
+                    else if (normalizeCode(statusRes).join_code)
+                        statusData = statusRes;
+                    if (
+                        statusData &&
+                        statusData.id &&
+                        statusData.id !== selectedEvent.participation_id
+                    ) {
+                        const oldId = selectedEvent.participation_id;
+                        selectedEvent.participation_id = statusData.id;
+                        currentParticipationId = statusData.id;
+                        // migrate draft if present
+                        try {
+                            if (typeof localStorage !== "undefined" && oldId) {
+                                const oldKey = getDraftKey(oldId);
+                                const newKey = getDraftKey(statusData.id);
+                                const oldDraft = localStorage.getItem(oldKey);
+                                if (oldDraft) {
+                                    localStorage.setItem(newKey, oldDraft);
+                                    localStorage.removeItem(oldKey);
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                }
+            } catch (e) {
+                console.warn(
+                    "Failed to refresh participation status before submit",
+                    e,
+                );
+            }
 
-                // Upload image
+            Swal.showLoading();
+            let finalImageUrl = selectedEvent.proof_image_url || "";
+
+            // 4. Upload Image (If new file selected) - Using centralized uploadImage
+            if (proofFile) {
                 const { uploadImage } = await import("$lib/utils/imageUtils");
                 const upData = await uploadImage(proofFile, "proofs");
                 finalImageUrl = upData.url;
-                console.log("✅ Image uploaded:", finalImageUrl);
-            } catch (uploadErr: any) {
-                console.error("❌ Image upload failed:", uploadErr);
-                throw new Error(
-                    lang === "th" 
-                        ? `การอัปโหลดรูปภาพล้มเหลว: ${uploadErr.message || "ไม่ทราบสาเหตุ"}`
-                        : `Image upload failed: ${uploadErr.message || "Unknown error"}`
-                );
             }
-        } else if (selectedEvent.proof_image_url) {
-            // ✅ ถ้าใช้รูปเก่า ให้ส่ง hash เดิม (ถ้ามี)
-            imageHash = selectedEvent.proof_image_hash || `existing_${Date.now()}`;
-        }
 
-        // ========================================
-        // 3. PREPARE PAYLOAD (✅ เพิ่ม image_hash)
-        // ========================================
-        const payload = {
-            proof_image_url: finalImageUrl,
-            image_hash: imageHash, // ✅ เพิ่มบรรทัดนี้
-            strava_link: sendingLink.trim(),
-            actual_distance_km: Number(distanceInput),
-        };
+            // 5. Prepare Payload
+            const payload = {
+                proof_image_url: finalImageUrl,
+                strava_link: sendingLink,
+                actual_distance_km: Number(distanceInput),
+            };
 
-        console.log("📤 Sending Payload:", payload);
+            // เริ่มต้นด้วยการเดาว่าเป็น POST (หรือ PUT ถ้า REJECTED)
+            let isResubmit = selectedEvent.status === "REJECTED";
+            let endpoint = isResubmit
+                ? `${BASE_URL}/api/participations/${selectedEvent.participation_id}/resubmit-proof`
+                : `${BASE_URL}/api/participations/${selectedEvent.participation_id}/submit-proof`;
+            let method = isResubmit ? "PUT" : "POST";
 
-        // ========================================
-        // 4. DETERMINE METHOD & ENDPOINT
-        // ========================================
-        const isResubmit = selectedEvent.status === "REJECTED";
-        let endpoint = isResubmit
-            ? `${BASE_URL}/api/participations/${selectedEvent.participation_id}/resubmit-proof`
-            : `${BASE_URL}/api/participations/${selectedEvent.participation_id}/submit-proof`;
-        let method = isResubmit ? "PUT" : "POST";
-
-        console.log(`🔄 Initial Request: ${method} ${endpoint}`);
-
-        // ========================================
-        // 5. FIRST ATTEMPT
-        // ========================================
-        let res = await fetch(endpoint, {
-            method: method,
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        });
-
-        console.log(`📥 First Response: ${res.status} ${res.statusText}`);
-
-        // ========================================
-        // 6. AUTO-RETRY LOGIC (POST → PUT)
-        // ========================================
-        if (!res.ok && res.status === 400 && method === "POST") {
-            console.warn("⚠️ POST failed (400). Switching to PUT (Resubmit)...");
-
-            endpoint = `${BASE_URL}/api/participations/${selectedEvent.participation_id}/resubmit-proof`;
-            method = "PUT";
-
-            res = await fetch(endpoint, {
+            let res = await fetch(endpoint, {
                 method: method,
                 headers: {
                     "Content-Type": "application/json",
@@ -2203,90 +2139,58 @@
                 body: JSON.stringify(payload),
             });
 
-            console.log(`📥 Retry Response: ${res.status} ${res.statusText}`);
-        }
+            // [FIX: AUTO RETRY] ถ้าส่ง POST แล้วเจอ Error 400 (Invalid participation)
+            // แสดงว่า Backend ต้องการให้ส่งแบบ PUT (Resubmit) -> ให้ลองส่งใหม่ทันที
+            if (!res.ok && res.status === 400 && method === "POST") {
+                console.warn(
+                    "⚠️ POST failed (400). Switching to RESUBMIT (PUT)...",
+                );
 
-        // ========================================
-        // 7. HANDLE RESPONSE
-        // ========================================
-        if (res.ok) {
-            const responseData = await res.json().catch(() => ({}));
-            console.log("✅ Submit Success:", responseData);
+                endpoint = `${BASE_URL}/api/participations/${selectedEvent.participation_id}/resubmit-proof`;
+                method = "PUT";
 
-            Swal.fire({
-                icon: "success",
-                title: t[lang].alert_success_title,
-                text: t[lang].alert_submit_success,
-                timer: 2000,
-                showConfirmButton: true
-            });
-
-            if (currentParticipationId) {
-                clearDraft(currentParticipationId);
-            }
-
-            if (selectedEvent) {
-                updateEventInLists(selectedEvent.id, {
-                    status: "proof_submitted",
-                    proof_image_url: finalImageUrl || undefined,
-                    proof_image_hash: imageHash || undefined, // ✅ เพิ่ม
+                res = await fetch(endpoint, {
+                    method: method,
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(payload),
                 });
             }
 
-            closeModal();
-            await loadData();
+            if (res.ok) {
+                Swal.fire(
+                    t[lang].alert_success_title,
+                    t[lang].alert_submit_success,
+                    "success",
+                );
+                if (currentParticipationId) clearDraft(currentParticipationId);
 
-        } else {
-            // ========================================
-            // ERROR HANDLING
-            // ========================================
-            let errorMessage = "";
-            
-            try {
-                const errData = await res.json();
-                console.error("❌ API Error Response:", errData);
-                errorMessage = errData.detail || errData.message || errData.error || "";
-            } catch (e) {
-                const errText = await res.text().catch(() => "");
-                console.error("❌ Non-JSON Error Response:", errText);
-                errorMessage = errText;
-            }
-
-            if (!errorMessage || errorMessage.trim() === "") {
-                if (res.status === 400) {
-                    errorMessage = lang === "th" 
-                        ? "ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง"
-                        : "Invalid data. Please check again.";
-                } else if (res.status === 404) {
-                    errorMessage = lang === "th"
-                        ? "ไม่พบข้อมูลการเข้าร่วม"
-                        : "Participation not found";
-                } else if (res.status === 500) {
-                    errorMessage = lang === "th"
-                        ? "เซิร์ฟเวอร์เกิดข้อผิดพลาด"
-                        : "Server error";
-                } else {
-                    errorMessage = `HTTP ${res.status}: ${res.statusText}`;
+                if (selectedEvent) {
+                    // Optimistic local update for immediate UX
+                    updateEventInLists(selectedEvent.id, {
+                        status: "proof_submitted",
+                        proof_image_url: finalImageUrl || undefined,
+                    });
                 }
+                closeModal();
+                // Reconcile authoritative state from server
+                await loadData();
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                console.error("❌ Submit Error Detail:", errData);
+                throw new Error(
+                    errData.message ||
+                        errData.detail ||
+                        `Submit Failed (${res.status})`,
+                );
             }
-
-            throw new Error(errorMessage);
+        } catch (err: any) {
+            console.error(err);
+            Swal.fire(t[lang].alert_error, err.message, "error");
         }
-
-    } catch (err: any) {
-        console.error("❌ Submit Proof Error:", err);
-
-        Swal.fire({
-            icon: "error",
-            title: t[lang].alert_error,
-            html: `<div style="text-align: left;">
-                <p><strong>${lang === "th" ? "เกิดข้อผิดพลาด" : "Error occurred"}:</strong></p>
-                <p style="color: #666; font-size: 0.9em;">${err.message || "Unknown error"}</p>
-            </div>`,
-            confirmButtonText: "OK"
-        });
     }
-}
 
     function handleBackToStrava() {
         if (selectedEvent) {
@@ -2300,68 +2204,49 @@
     }
 
     async function cancelParticipation(participationId: number) {
-    if (!participationId) return;
+        if (!participationId) return;
 
-    const result = await Swal.fire({
-        title: t[lang].alert_warning,
-        text:
-            lang === "th"
-                ? "ต้องการเริ่มวันใหม่หรือไม่? (ข้อมูลเก่าจะถูกล้าง)"
-                : "Start a new day? (Old data will be cleared)",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#ef4444",
-        confirmButtonText: lang === "th" ? "ยืนยัน" : "Confirm",
-        cancelButtonText: t[lang].modal_close,
-    });
+        const result = await Swal.fire({
+            title: t[lang].alert_warning,
+            text:
+                lang === "th"
+                    ? "ต้องการเริ่มวันใหม่หรือไม่? (ข้อมูลเก่าจะถูกล้าง)"
+                    : "Start a new day? (Old data will be cleared)",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            confirmButtonText: lang === "th" ? "ยืนยัน" : "Confirm",
+            cancelButtonText: t[lang].modal_close,
+        });
 
-    if (!result.isConfirmed) return;
+        if (!result.isConfirmed) return;
 
-    try {
-        const token = getToken();
-        Swal.showLoading();
-        
-        const res = await fetch(
-            `${BASE_URL}/api/participations/${participationId}/cancel`,
-            {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
+        try {
+            const token = getToken();
+            Swal.showLoading();
+            const res = await fetch(
+                `${BASE_URL}/api/participations/${participationId}/cancel`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
                 },
-                // ✅ เพิ่มส่วนนี้ - ส่ง body พร้อม cancellation_reason
-                body: JSON.stringify({
-                    cancellation_reason: lang === "th"
-                        ? "ผู้ใช้ยกเลิกเพื่อเริ่มวันใหม่"
-                        : "User cancelled to start new day"
-                })
-            }
-        );
+            );
 
-        if (res.ok) {
-            await loadData(); // Reload
-            Swal.fire({
-                icon: "success",
-                title: lang === "th" ? "สำเร็จ" : "Success",
-                text: lang === "th" ? "เริ่มวันใหม่สำเร็จ" : "New day started",
-                timer: 1500,
-                showConfirmButton: false
-            });
-        } else {
-            // ✅ แสดง Error Message ที่ชัดเจนขึ้น
-            const errData = await res.json().catch(() => ({}));
-            const errorMsg = errData.detail || errData.message || "Cancel failed";
-            throw new Error(errorMsg);
+            if (res.ok) {
+                await loadData(); // Reload
+                Swal.close();
+            } else {
+                throw new Error("Cancel failed");
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire("Error", "Failed to cancel old session", "error");
         }
-    } catch (e: any) {
-        console.error(e);
-        Swal.fire(
-            "Error", 
-            e.message || "Failed to cancel old session", 
-            "error"
-        );
     }
-}
+
     // --- AUTO-REFRESH POLLING FUNCTIONS ---
     function startPolling() {
         if (pollInterval) return; // Already polling
