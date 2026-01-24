@@ -306,7 +306,8 @@
             | "proof_submitted"
             | "CHECKED_OUT"
             | "COMPLETED"
-            | "CANCELED";
+            | "CANCELED"
+            | "EXPIRED_RESET"; // [NEW]
 
         participant_count: number;
         max_participants: number;
@@ -744,13 +745,14 @@
                             // แต่ใน UI เราต้องเคลียร์ State เพื่อให้ปุ่ม Check-in โผล่
 
                             // Force state reset for UI rendering
-                            uiStatus = "JOINED";
+                            // [FIX] Use special status to allow user to Cancel old session
+                            uiStatus = "EXPIRED_RESET";
                             joinCode = ""; // Clear old PIN
                             proofImg = undefined;
 
                             // Log for debugging
                             console.log(
-                                `🔄 Daily Reset for Event ${ev.id}: Last record ${recordDateStr} -> Reset to Ready for Today`,
+                                `🔄 Daily Reset for Event ${ev.id}: Last record ${recordDateStr} -> EXPIRING`,
                             );
                         }
                     }
@@ -2195,6 +2197,50 @@
         }
     }
 
+    async function cancelParticipation(participationId: number) {
+        if (!participationId) return;
+
+        const result = await Swal.fire({
+            title: t[lang].alert_warning,
+            text:
+                lang === "th"
+                    ? "ต้องการเริ่มวันใหม่หรือไม่? (ข้อมูลเก่าจะถูกล้าง)"
+                    : "Start a new day? (Old data will be cleared)",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            confirmButtonText: lang === "th" ? "ยืนยัน" : "Confirm",
+            cancelButtonText: t[lang].modal_close,
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            const token = getToken();
+            Swal.showLoading();
+            const res = await fetch(
+                `${BASE_URL}/api/participations/${participationId}/cancel`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                },
+            );
+
+            if (res.ok) {
+                await loadData(); // Reload
+                Swal.close();
+            } else {
+                throw new Error("Cancel failed");
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire("Error", "Failed to cancel old session", "error");
+        }
+    }
+
     // --- AUTO-REFRESH POLLING FUNCTIONS ---
     function startPolling() {
         if (pollInterval) return; // Already polling
@@ -2939,6 +2985,18 @@
                                             >
                                                 {t[lang].btn_waiting}
                                             </button>
+                                        {:else if event.status === "EXPIRED_RESET"}
+                                            <button
+                                                class="status-btn canceled-btn"
+                                                on:click={() =>
+                                                    cancelParticipation(
+                                                        event.participation_id,
+                                                    )}
+                                            >
+                                                {lang === "th"
+                                                    ? "เริ่มวันใหม่"
+                                                    : "New Day"}
+                                            </button>
                                         {:else if event.status === "CHECKED_IN"}
                                             <button
                                                 class="status-btn sending-btn"
@@ -3322,6 +3380,7 @@
                         CHECKED_OUT: 4,
                         COMPLETED: 5,
                         CANCELED: 0,
+                        EXPIRED_RESET: 0,
                     }}
                     {@const currentStep = stepMap[selectedEvent.status] || 0}
 
