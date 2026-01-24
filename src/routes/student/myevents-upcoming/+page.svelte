@@ -2159,6 +2159,37 @@
                 });
             }
 
+            // [FIX] Fallback for Stuck State (Old Session)
+            // If both POST and PUT fail with 400, it likely means the session is expired/invalid
+            // but the UI still showed "Submit Proof".
+            // We should offer the user to "Start New Day"
+            if (!res.ok && res.status === 400) {
+                const errText = await res.text();
+                console.error("❌ Submit Error Detail:", errText);
+
+                if (selectedEvent && selectedEvent.participation_id) {
+                    const confirmNew = await Swal.fire({
+                        title: t[lang].alert_warning,
+                        text:
+                            lang === "th"
+                                ? "ไม่สามารถส่งหลักฐานได้ เนื่องจากรายการอาจหมดอายุแล้ว ต้องการเริ่มวันใหม่หรือไม่?"
+                                : "Submission failed. Session might be expired. Start a new day?",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonText:
+                            lang === "th" ? "เริ่มวันใหม่" : "Start New Day",
+                        confirmButtonColor: "#ef4444",
+                    });
+
+                    if (confirmNew.isConfirmed) {
+                        await cancelParticipation(
+                            selectedEvent.participation_id,
+                        );
+                        return; // Stop here, page will reload
+                    }
+                }
+            }
+
             if (res.ok) {
                 Swal.fire(
                     t[lang].alert_success_title,
