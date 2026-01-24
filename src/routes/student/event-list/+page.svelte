@@ -1887,15 +1887,6 @@
                         >
                       {/if}
                     </div>
-                    <!-- [NEW] Show Remaining Quota -->
-                    {#if event.event_type === "multi_day" && event.preRegStatus && !event.is_full}
-                      <span class="status-badge quota-badge">
-                        {lang === "th" ? "สิทธิ์:" : "Quota:"}
-                        <strong style="margin-left:4px"
-                          >{event.preRegStatus.remaining}</strong
-                        >
-                      </span>
-                    {/if}
                   </div>
                 </div>
 
@@ -3140,13 +3131,6 @@
     cursor: not-allowed;
     box-shadow: none;
     border: none;
-  }
-
-  .quota-badge {
-    background: rgba(16, 185, 129, 0.15) !important;
-    color: #10b981 !important;
-    border: 1px solid rgba(16, 185, 129, 0.3) !important;
-    font-weight: 600;
   }
 
   .cancel-direct-btn {

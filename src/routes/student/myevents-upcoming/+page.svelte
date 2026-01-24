@@ -487,6 +487,10 @@
                                     )
                                         ? data
                                         : [];
+                                    console.log(
+                                        `[DEBUG] Holidays for Event ${ev.id}:`,
+                                        holidaysCalendar[ev.id],
+                                    ); // [DEBUG LOG]
                                 } else {
                                     holidaysCalendar[ev.id] = [];
                                 }
@@ -1531,7 +1535,13 @@
         const m = String(date.getMonth() + 1).padStart(2, "0");
         const d = String(date.getDate()).padStart(2, "0");
         const dateStr = `${y}-${m}-${d}`;
-        if (config.holidays && config.holidays.includes(dateStr)) {
+        // console.log(`[DEBUG] Checking Holiday: ${dateStr} for Event ${eventId}`, config.holidays); // [DEBUG LOG optional]
+        if (
+            config.holidays &&
+            config.holidays.some(
+                (h: any) => h.holiday_date === dateStr || h === dateStr,
+            )
+        ) {
             return true;
         }
 
