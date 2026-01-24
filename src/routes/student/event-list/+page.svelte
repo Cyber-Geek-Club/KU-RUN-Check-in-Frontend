@@ -481,23 +481,39 @@
           };
 
           // 1. Fetch Total Status
-          const statusRes = await fetch(
-            `${BASE_URL}/api/participations/pre-register-status/${event.id}`,
-            { headers },
-          );
           let statusData = null;
-          if (statusRes.ok) {
-            statusData = await statusRes.json();
+          try {
+            const statusRes = await fetch(
+              `${BASE_URL}/api/participations/pre-register-status/${event.id}`,
+              { headers },
+            );
+            if (statusRes.ok) {
+              statusData = await statusRes.json();
+            }
+          } catch (err) {
+            console.warn(`Failed to fetch status for event ${event.id}`, err);
           }
 
           // 2. Fetch Daily Limit Check
-          const dailyRes = await fetch(
-            `${BASE_URL}/api/participations/check-daily-limit/${event.id}`,
-            { headers },
-          );
           let dailyData = null;
-          if (dailyRes.ok) {
-            dailyData = await dailyRes.json();
+          try {
+            // [FIX] Add error handling for daily limit check which causes 500
+            const dailyRes = await fetch(
+              `${BASE_URL}/api/participations/check-daily-limit/${event.id}`,
+              { headers },
+            );
+            if (dailyRes.ok) {
+              dailyData = await dailyRes.json();
+            } else {
+              console.warn(
+                `Daily limit check failed for ${event.id}: ${dailyRes.status}`,
+              );
+            }
+          } catch (err) {
+            console.warn(
+              `Daily limit check network error for ${event.id}`,
+              err,
+            );
           }
 
           // Update Event Object
@@ -531,7 +547,7 @@
           }
         } catch (e) {
           console.error(
-            `Error fetching pre-reg status for event ${event.id}:`,
+            `Error processing pre-reg details for event ${event.id}:`,
             e,
           );
         }
