@@ -2120,26 +2120,27 @@
                         // [FIX] Use same Priority Logic as processData to pick the Best ID
                         const list = statusRes.codes;
 
-                        // Helper: Status Priority
+                        // Helper: Status Priority for SUBMISSION (Actionable First)
                         const getStatusPriority = (s: string) => {
                             if (!s) return 0;
                             const status = s.toLowerCase();
-                            if (status === "completed" || status === "finished")
-                                return 5;
+                            // For submission, we want Actionable statuses first
+                            if (status === "checked_in") return 10;
+                            if (status === "rejected") return 10;
                             if (
-                                status === "checked_out" ||
-                                status === "pass" ||
-                                status === "verified"
-                            )
-                                return 4;
-                            if (
-                                status.includes("submit") ||
+                                status.includes("wait") ||
                                 status.includes("pending") ||
-                                status.includes("wait")
+                                status.includes("submit")
                             )
-                                return 3;
-                            if (status === "checked_in") return 2;
-                            if (status === "rejected") return 2;
+                                return 5;
+
+                            // Completed/Joined are lower priority for "Submit Proof" context
+                            if (
+                                status === "completed" ||
+                                status === "finished" ||
+                                status === "checked_out"
+                            )
+                                return 1;
                             if (status === "joined") return 1;
                             return 0;
                         };
@@ -2171,6 +2172,11 @@
                     ) {
                         const oldId = selectedEvent.participation_id;
                         selectedEvent.participation_id = statusData.id;
+                        if (statusData.status) {
+                            selectedEvent.status = mapApiStatusToUi(
+                                statusData.status,
+                            );
+                        }
                         currentParticipationId = statusData.id;
                         // migrate draft if present
                         try {
