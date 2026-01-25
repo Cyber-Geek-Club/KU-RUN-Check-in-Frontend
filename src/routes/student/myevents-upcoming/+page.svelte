@@ -667,20 +667,26 @@
             const list = groupedMap[eid];
 
             // Sort: Date (Desc) -> Status Priority (Desc) -> ID (Desc)
+            // Sort: Date (Desc) -> ID (Desc) -> Priority (Desc)
             list.sort((a: any, b: any) => {
                 // 1. Date
                 const da = a.created_at || a.date || a.start_date || "";
                 const db = b.created_at || b.date || b.start_date || "";
-                // Simple string comparison for ISO dates works well
-                if (da !== db) return da < db ? 1 : -1;
+                
+                // Only compare if BOTH have valid dates
+                if (da && db && da !== db) return da < db ? 1 : -1;
+                
+                // If one has date and other doesn't? Assume Date > No Date? 
+                // Actually, relying on ID is safer if dates are missing/partial.
+                // So if any ambiguity, go to ID.
 
-                // 2. Priority (ถ้าวันที่เท่ากัน ให้เลือก Status ที่ไปไกลกว่า)
+                // 2. ID (Desc) - Primary Fallback for "Latest"
+                if (a.id !== b.id) return b.id - a.id;
+
+                // 3. Priority (Tie-breaker)
                 const pa = getStatusPriority(a.status);
                 const pb = getStatusPriority(b.status);
-                if (pa !== pb) return pb - pa;
-
-                // 3. ID (ถ้าทุกอย่างเท่ากัน เอา ID ล่าสุด)
-                return b.id - a.id;
+                return pb - pa;
             });
 
             // Pick top 1
@@ -1354,25 +1360,19 @@
                     const list = statusRes.codes;
                     list.sort((a: any, b: any) => {
                         // 1. Date Desc
-                        const da = (
-                            a.created_at ||
-                            a.date ||
-                            a.start_date ||
-                            ""
-                        ).split("T")[0];
-                        const db = (
-                            b.created_at ||
-                            b.date ||
-                            b.start_date ||
-                            ""
-                        ).split("T")[0];
-                        if (da !== db) return da < db ? 1 : -1;
-                        // 2. Priority Desc
+                        const da = (a.created_at || a.date || a.start_date || "").split("T")[0];
+                        const db = (b.created_at || b.date || b.start_date || "").split("T")[0];
+                        
+                        // Only compare if BOTH have valid dates
+                        if (da && db && da !== db) return da < db ? 1 : -1;
+                        
+                        // 2. ID Desc (Primary Fallback)
+                        if (a.id !== b.id) return b.id - a.id;
+
+                        // 3. Priority Desc
                         const pa = getStatusPriority(a.status);
                         const pb = getStatusPriority(b.status);
-                        if (pa !== pb) return pb - pa;
-                        // 3. ID Desc
-                        return b.id - a.id;
+                        return pb - pa;
                     });
                     bestStatus = list[0];
                 } else if (statusRes.join_code || statusRes.status) {
@@ -2221,7 +2221,8 @@
                         };
 
                         list.sort((a: any, b: any) => {
-                            // 1. Date Desc (YYYY-MM-DD only)
+                        list.sort((a: any, b: any) => {
+                            // 1. Date Desc
                             const da = (
                                 a.created_at ||
                                 a.date ||
@@ -2234,15 +2235,17 @@
                                 b.start_date ||
                                 ""
                             ).split("T")[0];
-                            if (da !== db) return da < db ? 1 : -1;
+                             
+                            // Only compare if BOTH have valid dates
+                            if (da && db && da !== db) return da < db ? 1 : -1;
 
-                            // 2. Priority Desc (Actionable First for Same Date)
+                            // 2. ID Desc (Primary Fallback)
+                            if (a.id !== b.id) return b.id - a.id;
+
+                            // 3. Priority Desc
                             const pa = getStatusPriority(a.status);
                             const pb = getStatusPriority(b.status);
-                            if (pa !== pb) return pb - pa;
-
-                            // 3. ID Desc
-                            return b.id - a.id;
+                            return pb - pa;
                         });
 
                         statusData = list[0]; // Pick the best one
