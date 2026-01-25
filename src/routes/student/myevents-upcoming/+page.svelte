@@ -4504,11 +4504,7 @@
         color: #94a3b8;
         border: 1px solid #94a3b8;
     }
-    .status-badge.ended-canceled {
-        color: #9f1239;
-        border: 1px solid #881337;
-        background-color: rgba(136, 19, 55, 0.1);
-    }
+
     .status-badge.resubmit-badge {
         color: #ef4444;
         border: 1px solid rgba(239, 68, 68, 0.7);
@@ -4650,9 +4646,7 @@
     .completed-btn {
         background: #10b981;
     }
-    .canceled-btn {
-        background: #ef4444;
-    }
+
     .waiting-btn {
         background: #facc15;
         color: #854d0e;
