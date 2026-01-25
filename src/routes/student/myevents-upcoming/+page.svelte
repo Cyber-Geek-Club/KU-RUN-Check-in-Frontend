@@ -2225,6 +2225,8 @@
                 distance_km: Number(distanceInput), // [FIX] Add this field as backup
             };
 
+            console.log("🛠️ Status Check Result:", statusData); // [DEBUG] Check what status we used
+
             // เริ่มต้นด้วยการเดาว่าเป็น POST (หรือ PUT ถ้า REJECTED)
             let isResubmit = selectedEvent.status === "REJECTED";
             let endpoint = isResubmit
@@ -2251,8 +2253,14 @@
             // [FIX: AUTO RETRY] ถ้าส่ง POST แล้วเจอ Error 400 (Invalid participation)
             // แสดงว่า Backend ต้องการให้ส่งแบบ PUT (Resubmit) -> ให้ลองส่งใหม่ทันที
             if (!res.ok && res.status === 400 && method === "POST") {
+                const postErr = await res
+                    .clone()
+                    .json()
+                    .catch(() => ({})); // [DEBUG] Capture body
                 console.warn(
-                    "⚠️ POST failed (400). Switching to RESUBMIT (PUT)...",
+                    "⚠️ POST failed (400). Error:",
+                    JSON.stringify(postErr),
+                    "\nSwitching to RESUBMIT (PUT)...",
                 );
 
                 endpoint = `${BASE_URL}/api/participations/${selectedEvent.participation_id}/resubmit-proof`;
