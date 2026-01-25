@@ -2221,7 +2221,6 @@
                         };
 
                         list.sort((a: any, b: any) => {
-                        list.sort((a: any, b: any) => {
                             // 1. Date Desc
                             const da = (
                                 a.created_at ||
