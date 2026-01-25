@@ -2146,14 +2146,22 @@
                         };
 
                         list.sort((a: any, b: any) => {
-                            // 1. Date Desc
-                            const da =
-                                a.created_at || a.date || a.start_date || "";
-                            const db =
-                                b.created_at || b.date || b.start_date || "";
+                            // 1. Date Desc (YYYY-MM-DD only)
+                            const da = (
+                                a.created_at ||
+                                a.date ||
+                                a.start_date ||
+                                ""
+                            ).split("T")[0];
+                            const db = (
+                                b.created_at ||
+                                b.date ||
+                                b.start_date ||
+                                ""
+                            ).split("T")[0];
                             if (da !== db) return da < db ? 1 : -1;
 
-                            // 2. Priority Desc
+                            // 2. Priority Desc (Actionable First for Same Date)
                             const pa = getStatusPriority(a.status);
                             const pb = getStatusPriority(b.status);
                             if (pa !== pb) return pb - pa;
