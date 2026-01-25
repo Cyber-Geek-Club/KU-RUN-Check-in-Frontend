@@ -2070,6 +2070,8 @@
             return;
         }
 
+        let statusData: any = null; // [FIX] Define at function scope for logging visibility
+
         // 2. ✅ บังคับ: ต้องมี Strava Link
         if (!sendingLink || sendingLink.trim() === "") {
             Swal.fire(
@@ -2112,7 +2114,7 @@
 
         try {
             // Ensure we have the latest participation context (fresh participation_id) before submitting
-            let statusData: any = null; // [FIX] Move to higher scope
+            // let statusData: any = null; // [FIX] Moved to top of function
             try {
                 const statusRes = await fetchMyStatus(selectedEvent.id);
                 if (statusRes) {
