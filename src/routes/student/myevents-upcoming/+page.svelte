@@ -672,11 +672,11 @@
                 // 1. Date
                 const da = a.created_at || a.date || a.start_date || "";
                 const db = b.created_at || b.date || b.start_date || "";
-                
+
                 // Only compare if BOTH have valid dates
                 if (da && db && da !== db) return da < db ? 1 : -1;
-                
-                // If one has date and other doesn't? Assume Date > No Date? 
+
+                // If one has date and other doesn't? Assume Date > No Date?
                 // Actually, relying on ID is safer if dates are missing/partial.
                 // So if any ambiguity, go to ID.
 
@@ -1360,12 +1360,22 @@
                     const list = statusRes.codes;
                     list.sort((a: any, b: any) => {
                         // 1. Date Desc
-                        const da = (a.created_at || a.date || a.start_date || "").split("T")[0];
-                        const db = (b.created_at || b.date || b.start_date || "").split("T")[0];
-                        
+                        const da = (
+                            a.created_at ||
+                            a.date ||
+                            a.start_date ||
+                            ""
+                        ).split("T")[0];
+                        const db = (
+                            b.created_at ||
+                            b.date ||
+                            b.start_date ||
+                            ""
+                        ).split("T")[0];
+
                         // Only compare if BOTH have valid dates
                         if (da && db && da !== db) return da < db ? 1 : -1;
-                        
+
                         // 2. ID Desc (Primary Fallback)
                         if (a.id !== b.id) return b.id - a.id;
 
@@ -2234,7 +2244,7 @@
                                 b.start_date ||
                                 ""
                             ).split("T")[0];
-                             
+
                             // Only compare if BOTH have valid dates
                             if (da && db && da !== db) return da < db ? 1 : -1;
 
