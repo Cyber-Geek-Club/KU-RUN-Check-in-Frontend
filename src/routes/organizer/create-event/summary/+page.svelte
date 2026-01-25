@@ -1,12 +1,12 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { goto } from '$app/navigation';
-  import { eventForm } from '../../_lib/stores/eventForm';
-  import { appState } from '../../_lib/stores/appState';
-  import { t } from '../../_lib/i18n';
+  import { eventForm } from '$lib/stores/eventForm';
+  import { appState } from '$lib/stores/appState';
+  import { t } from '$lib/i18n';
   import { onMount } from 'svelte';
   import { resolveImageUrl as resolveApiImageUrl } from '$lib/utils/imageUtils';
-  // ✅ Import endpoints เพื่อใช้ URL ที่ถูกต้อง
-  import { endpoints } from '../../_lib/api/endpoints';
+  // âœ… Import endpoints à¹€à¸žà¸·à¹ˆà¸­à¹ƒà¸Šà¹‰ URL à¸—à¸µà¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡
+  import { endpoints } from '$lib/api/endpoints';
 
   $: lang = $appState.currentLang;
   $: storeData = $eventForm as any;
@@ -52,7 +52,7 @@
   function formatDate(day: string, month: string, year: string) {
     if (!day || !month || !year) return '';
     const monthNames = lang === 'th'
-      ? ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+      ? ['à¸¡.à¸„.', 'à¸.à¸ž.', 'à¸¡à¸µ.à¸„.', 'à¹€à¸¡.à¸¢.', 'à¸ž.à¸„.', 'à¸¡à¸´.à¸¢.', 'à¸.à¸„.', 'à¸ª.à¸„.', 'à¸.à¸¢.', 'à¸•.à¸„.', 'à¸ž.à¸¢.', 'à¸˜.à¸„.']
       : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthIndex = parseInt(month) - 1;
     return `${day} ${monthNames[monthIndex]} ${year}`;
@@ -60,37 +60,37 @@
 
   function getEventTypeLabel(type: string) {
     const types: Record<string, { th: string; en: string }> = {
-      single_day: { th: 'กิจกรรมวันเดียว', en: 'Single Day Event' },
-      multi_day: { th: 'กิจกรรมหลายวัน', en: 'Multi-Day Event' }
+      single_day: { th: 'à¸à¸´à¸ˆà¸à¸£à¸£à¸¡à¸§à¸±à¸™à¹€à¸”à¸µà¸¢à¸§', en: 'Single Day Event' },
+      multi_day: { th: 'à¸à¸´à¸ˆà¸à¸£à¸£à¸¡à¸«à¸¥à¸²à¸¢à¸§à¸±à¸™', en: 'Multi-Day Event' }
     };
     return types[type]?.[lang] || type;
   }
 
   function getHolidayModeLabel(mode: string | null) {
-    if (!mode) return lang === 'th' ? 'ไม่มี' : 'None';
+    if (!mode) return lang === 'th' ? 'à¹„à¸¡à¹ˆà¸¡à¸µ' : 'None';
     const modes: Record<string, { th: string; en: string }> = {
-      weekends: { th: 'ไม่นับวันหยุดสุดสัปดาห์', en: 'Exclude Weekends' },
-      none: { th: 'ไม่มีวันหยุด', en: 'No Holidays' },
-      specific: { th: `${formData.holidays.length} วันที่เลือก`, en: `${formData.holidays.length} specific dates` }
+      weekends: { th: 'à¹„à¸¡à¹ˆà¸™à¸±à¸šà¸§à¸±à¸™à¸«à¸¢à¸¸à¸”à¸ªà¸¸à¸”à¸ªà¸±à¸›à¸”à¸²à¸«à¹Œ', en: 'Exclude Weekends' },
+      none: { th: 'à¹„à¸¡à¹ˆà¸¡à¸µà¸§à¸±à¸™à¸«à¸¢à¸¸à¸”', en: 'No Holidays' },
+      specific: { th: `${formData.holidays.length} à¸§à¸±à¸™à¸—à¸µà¹ˆà¹€à¸¥à¸·à¸­à¸`, en: `${formData.holidays.length} specific dates` }
     };
     return modes[mode]?.[lang] || mode;
   }
 
-  // ✅ แก้ไข handleSubmit ให้ทำงาน 3 Steps: Event -> Reward(s) -> Config
+  // âœ… à¹à¸à¹‰à¹„à¸‚ handleSubmit à¹ƒà¸«à¹‰à¸—à¸³à¸‡à¸²à¸™ 3 Steps: Event -> Reward(s) -> Config
   async function handleSubmit() {
     isSubmitting = true;
     error = '';
-    console.log("🚀 [START] handleSubmit initiated..."); 
+    console.log("ðŸš€ [START] handleSubmit initiated..."); 
 
     try {
       // =========================================================
       // STEP 1: Create/Update Event
       // =========================================================
-      console.log("📦 [STEP 1] Preparing Event Data..."); 
+      console.log("ðŸ“¦ [STEP 1] Preparing Event Data..."); 
       const formDataToSend = new FormData();
 
       Object.entries(formData).forEach(([key, value]) => {
-        // แยก rewards ไว้ทำทีหลัง ไม่ส่งไป endpoint events
+        // à¹à¸¢à¸ rewards à¹„à¸§à¹‰à¸—à¸³à¸—à¸µà¸«à¸¥à¸±à¸‡ à¹„à¸¡à¹ˆà¸ªà¹ˆà¸‡à¹„à¸› endpoint events
         if (key === 'rewards' || key === 'totalRewards') return;
         
         if (value !== null && value !== undefined) {
@@ -108,7 +108,7 @@
         ? endpoints.events.update(editingEventId)
         : endpoints.events.create;
       
-      console.log(`🔗 Sending Event to: ${eventUrl}`);
+      console.log(`ðŸ”— Sending Event to: ${eventUrl}`);
 
       const eventResponse = await fetch(eventUrl, {
         method: editingEventId ? 'PUT' : 'POST',
@@ -120,38 +120,38 @@
 
       if (!eventResponse.ok) {
         const errData = await eventResponse.json().catch(() => ({}));
-        console.error("❌ Event Creation Failed:", errData);
+        console.error("âŒ Event Creation Failed:", errData);
         throw new Error(errData.detail || errData.message || 'Failed to submit event');
       }
 
       const eventResult = await eventResponse.json();
-      // รับ ID ให้ชัวร์ รองรับทั้ง structure { id: 1 } และ { data: { id: 1 } }
+      // à¸£à¸±à¸š ID à¹ƒà¸«à¹‰à¸Šà¸±à¸§à¸£à¹Œ à¸£à¸­à¸‡à¸£à¸±à¸šà¸—à¸±à¹‰à¸‡ structure { id: 1 } à¹à¸¥à¸° { data: { id: 1 } }
       const eventId = eventResult.id || eventResult.data?.id || editingEventId;
       
-      console.log("✅ [STEP 1 SUCCESS] Event ID:", eventId);
+      console.log("âœ… [STEP 1 SUCCESS] Event ID:", eventId);
 
       // =========================================================
-      // STEP 2: Create Rewards Individually (เพื่อเอา reward_id)
+      // STEP 2: Create Rewards Individually (à¹€à¸žà¸·à¹ˆà¸­à¹€à¸­à¸² reward_id)
       // =========================================================
       if (eventId && formData.rewards && formData.rewards.length > 0) {
-          console.log(`🏆 [STEP 2] Processing ${formData.rewards.length} rewards...`);
+          console.log(`ðŸ† [STEP 2] Processing ${formData.rewards.length} rewards...`);
           
-          // เก็บ Tier ที่สร้างสำเร็จและมี ID แล้ว เตรียมส่งไป Config
+          // à¹€à¸à¹‡à¸š Tier à¸—à¸µà¹ˆà¸ªà¸£à¹‰à¸²à¸‡à¸ªà¸³à¹€à¸£à¹‡à¸ˆà¹à¸¥à¸°à¸¡à¸µ ID à¹à¸¥à¹‰à¸§ à¹€à¸•à¸£à¸µà¸¢à¸¡à¸ªà¹ˆà¸‡à¹„à¸› Config
           const validTiers = [];
 
-          // วนลูปสร้าง Reward ทีละอัน
+          // à¸§à¸™à¸¥à¸¹à¸›à¸ªà¸£à¹‰à¸²à¸‡ Reward à¸—à¸µà¸¥à¸°à¸­à¸±à¸™
           for (const [index, r] of formData.rewards.entries()) {
-              console.log(`   🔸 Creating Reward #${index + 1}: ${r.name}`);
+              console.log(`   ðŸ”¸ Creating Reward #${index + 1}: ${r.name}`);
 
               const rewardPayload = {
                   name: r.name,
                   description: `Reward Tier ${index + 1} for Event ${eventId}`,
                   required_completions: Number(r.requirement),
-                  time_period_days: 60, // หรือคำนวณจากระยะเวลากิจกรรม
+                  time_period_days: 60, // à¸«à¸£à¸·à¸­à¸„à¸³à¸™à¸§à¸“à¸ˆà¸²à¸à¸£à¸°à¸¢à¸°à¹€à¸§à¸¥à¸²à¸à¸´à¸ˆà¸à¸£à¸£à¸¡
                   meta: { event_id: eventId }
               };
 
-              // ยิง API สร้าง Reward (endpoints.rewards.createReward ต้องมีค่าเป็น '/api/rewards')
+              // à¸¢à¸´à¸‡ API à¸ªà¸£à¹‰à¸²à¸‡ Reward (endpoints.rewards.createReward à¸•à¹‰à¸­à¸‡à¸¡à¸µà¸„à¹ˆà¸²à¹€à¸›à¹‡à¸™ '/api/rewards')
               const rewardRes = await fetch(endpoints.rewards.createReward, {
                   method: 'POST',
                   headers: {
@@ -162,19 +162,19 @@
               });
 
               if (!rewardRes.ok) {
-                  console.error(`      ❌ Failed to create reward #${index+1}`);
-                  continue; // ข้ามตัวที่พังไป แต่ทำตัวถัดไปต่อ
+                  console.error(`      âŒ Failed to create reward #${index+1}`);
+                  continue; // à¸‚à¹‰à¸²à¸¡à¸•à¸±à¸§à¸—à¸µà¹ˆà¸žà¸±à¸‡à¹„à¸› à¹à¸•à¹ˆà¸—à¸³à¸•à¸±à¸§à¸–à¸±à¸”à¹„à¸›à¸•à¹ˆà¸­
               }
 
               const rewardData = await rewardRes.json();
               const newRewardId = rewardData.id || rewardData.data?.id;
               
-              console.log(`      ✅ Created! Reward ID: ${newRewardId}`);
+              console.log(`      âœ… Created! Reward ID: ${newRewardId}`);
 
               if (newRewardId) {
                   validTiers.push({
                       tier: index + 1,
-                      reward_id: newRewardId, // ✅ ต้องส่ง ID นี้ไปผูกกับ Config
+                      reward_id: newRewardId, // âœ… à¸•à¹‰à¸­à¸‡à¸ªà¹ˆà¸‡ ID à¸™à¸µà¹‰à¹„à¸›à¸œà¸¹à¸à¸à¸±à¸š Config
                       reward_name: r.name,
                       required_completions: Number(r.requirement),
                       quantity: 0, // unlimited
@@ -185,10 +185,10 @@
           }
 
           // =========================================================
-          // STEP 3: Create Leaderboard Config (ใช้ข้อมูลจาก Step 2)
+          // STEP 3: Create Leaderboard Config (à¹ƒà¸Šà¹‰à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸ˆà¸²à¸ Step 2)
           // =========================================================
           if (validTiers.length > 0) {
-              console.log("⚙️ [STEP 3] Creating Leaderboard Config...");
+              console.log("âš™ï¸ [STEP 3] Creating Leaderboard Config...");
               
               let endsAtStr = new Date().toISOString();
               if (formData.eYear && formData.eMonth && formData.eDay && formData.endTime) {
@@ -207,7 +207,7 @@
                   required_completions: 1, 
                   starts_at: new Date().toISOString(),
                   ends_at: new Date(endsAtStr).toISOString(),
-                  reward_tiers: validTiers // ✅ ส่ง array ที่มี reward_id แล้ว
+                  reward_tiers: validTiers // âœ… à¸ªà¹ˆà¸‡ array à¸—à¸µà¹ˆà¸¡à¸µ reward_id à¹à¸¥à¹‰à¸§
               };
 
               const configRes = await fetch(endpoints.rewards.createConfig, {
@@ -220,23 +220,23 @@
               });
 
               if (configRes.ok) {
-                  console.log("✅ [STEP 3 SUCCESS] Config Created");
+                  console.log("âœ… [STEP 3 SUCCESS] Config Created");
               } else {
-                  console.warn("⚠️ [STEP 3 FAILED] Could not create config:", await configRes.text());
+                  console.warn("âš ï¸ [STEP 3 FAILED] Could not create config:", await configRes.text());
               }
           } else {
-              console.warn("⚠️ No rewards were created successfully, skipping config creation.");
+              console.warn("âš ï¸ No rewards were created successfully, skipping config creation.");
           }
       } else {
-          console.log("ℹ️ No rewards selected, skipping Step 2 & 3.");
+          console.log("â„¹ï¸ No rewards selected, skipping Step 2 & 3.");
       }
       
-      console.log("🏁 [FINISH] Redirecting to event list...");
+      console.log("ðŸ [FINISH] Redirecting to event list...");
       eventForm.reset();
       goto('/organizer/events');
       
     } catch (err: any) {
-      console.error("💥 Critical Error in handleSubmit:", err);
+      console.error("ðŸ’¥ Critical Error in handleSubmit:", err);
       error = err.message || 'An error occurred';
       isSubmitting = false;
     }
@@ -260,9 +260,9 @@
     </div>
     <div>
       <h3 class="ce-summary-title">{lang === 'th' ?
-        'ตรวจสอบข้อมูลก่อนเผยแพร่' : 'Review Before Publishing'}</h3>
+        'à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸à¹ˆà¸­à¸™à¹€à¸œà¸¢à¹à¸žà¸£à¹ˆ' : 'Review Before Publishing'}</h3>
       <p class="ce-summary-desc">{lang === 'th' ?
-        'กรุณาตรวจสอบข้อมูลให้ถูกต้องก่อนเผยแพร่กิจกรรม' : 'Please verify all information before publishing your event'}</p>
+        'à¸à¸£à¸¸à¸“à¸²à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¹ƒà¸«à¹‰à¸–à¸¹à¸à¸•à¹‰à¸­à¸‡à¸à¹ˆà¸­à¸™à¹€à¸œà¸¢à¹à¸žà¸£à¹ˆà¸à¸´à¸ˆà¸à¸£à¸£à¸¡' : 'Please verify all information before publishing your event'}</p>
     </div>
   </div>
 
@@ -272,7 +272,7 @@
         <svg class="ce-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
         </svg>
-        <span>{lang === 'th' ? 'ข้อมูลทั่วไป' : 'General Information'}</span>
+        <span>{lang === 'th' ? 'à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸—à¸±à¹ˆà¸§à¹„à¸›' : 'General Information'}</span>
       </div>
       <button type="button" class="ce-btn-edit" on:click={() => handleEdit('general')}>
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -324,7 +324,7 @@
         <svg class="ce-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
         </svg>
-        <span>{lang === 'th' ? 'วันเวลาและจำนวน' : 'Date, Time & Capacity'}</span>
+        <span>{lang === 'th' ? 'à¸§à¸±à¸™à¹€à¸§à¸¥à¸²à¹à¸¥à¸°à¸ˆà¸³à¸™à¸§à¸™' : 'Date, Time & Capacity'}</span>
       </div>
       <button type="button" class="ce-btn-edit" on:click={() => handleEdit('capacity')}>
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -357,7 +357,7 @@
 
       <div class="ce-summary-item">
         <span class="ce-summary-label">{t('capacityLabel')}</span>
-        <span class="ce-summary-value-highlight">{formData.totalSlots || '-'} {lang === 'th' ? 'ที่นั่ง' : 'slots'}</span>
+        <span class="ce-summary-value-highlight">{formData.totalSlots || '-'} {lang === 'th' ? 'à¸—à¸µà¹ˆà¸™à¸±à¹ˆà¸‡' : 'slots'}</span>
       </div>
 
       <div class="ce-summary-item">
@@ -378,7 +378,7 @@
         <svg class="ce-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
         </svg>
-        <span>{lang === 'th' ? 'รางวัล' : 'Rewards'}</span>
+        <span>{lang === 'th' ? 'à¸£à¸²à¸‡à¸§à¸±à¸¥' : 'Rewards'}</span>
       </div>
       <button type="button" class="ce-btn-edit" on:click={() => handleEdit('rewards')}>
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -389,15 +389,15 @@
     </div>
 
     <div class="ce-summary-item" style="margin-bottom: 16px;">
-      <span class="ce-summary-label">{lang === 'th' ? 'จำนวนของรางวัลทั้งหมด' : 'Total Reward Items'}</span>
-      <span class="ce-summary-value-highlight">{formData.totalRewards || 0} {lang === 'th' ? 'ชิ้น' : 'items'}</span>
+      <span class="ce-summary-label">{lang === 'th' ? 'à¸ˆà¸³à¸™à¸§à¸™à¸‚à¸­à¸‡à¸£à¸²à¸‡à¸§à¸±à¸¥à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”' : 'Total Reward Items'}</span>
+      <span class="ce-summary-value-highlight">{formData.totalRewards || 0} {lang === 'th' ? 'à¸Šà¸´à¹‰à¸™' : 'items'}</span>
     </div>
 
     {#if formData.rewards.length > 0}
       <div class="ce-rewards-grid">
         {#each formData.rewards.sort((a: any, b: any) => (a.requirement || 0) - (b.requirement || 0)) as reward}
           <div class="ce-reward-summary-card">
-            <div class="ce-reward-rounds">{reward.requirement || 0} {lang === 'th' ? 'รอบ' : 'rounds'}</div>
+            <div class="ce-reward-rounds">{reward.requirement || 0} {lang === 'th' ? 'à¸£à¸­à¸š' : 'rounds'}</div>
             <div class="ce-reward-name">{reward.name || '-'}</div>
           </div>
         {/each}
@@ -407,14 +407,14 @@
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
         </svg>
-        <span>{lang === 'th' ? 'ยังไม่มีรางวัล' : 'No rewards configured'}</span>
+        <span>{lang === 'th' ? 'à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¸¡à¸µà¸£à¸²à¸‡à¸§à¸±à¸¥' : 'No rewards configured'}</span>
       </div>
     {/if}
   </div>
 
   {#if error}
     <div class="ce-error-msg">
-      ⚠️ {error}
+      âš ï¸ {error}
     </div>
   {/if}
 
@@ -434,7 +434,7 @@
         </svg>
       {/if}
       {editingEventId ?
-        (lang === 'th' ? 'บันทึกการแก้ไข' : 'Save Changes') : (lang === 'th' ? 'เผยแพร่กิจกรรม' : 'Publish Event')}
+        (lang === 'th' ? 'à¸šà¸±à¸™à¸—à¸¶à¸à¸à¸²à¸£à¹à¸à¹‰à¹„à¸‚' : 'Save Changes') : (lang === 'th' ? 'à¹€à¸œà¸¢à¹à¸žà¸£à¹ˆà¸à¸´à¸ˆà¸à¸£à¸£à¸¡' : 'Publish Event')}
     </button>
   </div>
 </div>
@@ -657,3 +657,4 @@
     }
   }
 </style>
+

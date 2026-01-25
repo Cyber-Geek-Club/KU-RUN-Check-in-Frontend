@@ -1,6 +1,6 @@
-=== rewards/./_components/LeaderboardTable.svelte ===
+﻿=== rewards/./_components/LeaderboardTable.svelte ===
 <script lang="ts">
-  import { appState } from '../../_lib/stores/appState';
+  import { appState } from '$lib/stores/appState';
   
   export let leaderboard: any[];
   export let selectedUsers: Set<number>;
@@ -19,7 +19,7 @@
   }
   
   function getTierIcon(tier: string) {
-    return tier.toLowerCase() === 'gold' ? '🥇' : tier.toLowerCase() === 'silver' ? '🥈' : tier.toLowerCase() === 'bronze' ? '🥉' : '🏆';
+    return tier.toLowerCase() === 'gold' ? 'ðŸ¥‡' : tier.toLowerCase() === 'silver' ? 'ðŸ¥ˆ' : tier.toLowerCase() === 'bronze' ? 'ðŸ¥‰' : 'ðŸ†';
   }
 </script>
 
@@ -39,11 +39,11 @@
             selectedUsers = new Set(selectedUsers);
           }} />
         </th>
-        <th class="col-rank">{lang === 'th' ? 'อันดับ' : 'Rank'}</th>
-        <th>{lang === 'th' ? 'ผู้เข้าร่วม' : 'Participant'}</th>
-        <th class="col-center">{lang === 'th' ? 'รอบ' : 'Rounds'}</th>
-        <th class="col-center">{lang === 'th' ? 'คะแนน' : 'Points'}</th>
-        <th class="col-tier">{lang === 'th' ? 'ระดับ' : 'Tier'}</th>
+        <th class="col-rank">{lang === 'th' ? 'à¸­à¸±à¸™à¸”à¸±à¸š' : 'Rank'}</th>
+        <th>{lang === 'th' ? 'à¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡' : 'Participant'}</th>
+        <th class="col-center">{lang === 'th' ? 'à¸£à¸­à¸š' : 'Rounds'}</th>
+        <th class="col-center">{lang === 'th' ? 'à¸„à¸°à¹à¸™à¸™' : 'Points'}</th>
+        <th class="col-tier">{lang === 'th' ? 'à¸£à¸°à¸”à¸±à¸š' : 'Tier'}</th>
       </tr>
     </thead>
     <tbody>
@@ -58,7 +58,7 @@
           </td>
           <td class="col-rank">
             <div class="rank-badge" class:top-three={i < 3}>
-              {i < 3 ? (i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉') : `#${i + 1}`}
+              {i < 3 ? (i === 0 ? 'ðŸ¥‡' : i === 1 ? 'ðŸ¥ˆ' : 'ðŸ¥‰') : `#${i + 1}`}
             </div>
           </td>
           <td>
@@ -105,3 +105,4 @@
   .user-email { font-size: 0.75rem; color: var(--text-muted); }
   .tier-badge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; color: white; }
 </style>
+

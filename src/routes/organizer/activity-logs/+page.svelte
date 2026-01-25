@@ -1,9 +1,9 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount } from "svelte";
 
   // Import real API client and endpoints
-  import { api, API_BASE_URL } from "../_lib/api/client";
-  import { endpoints } from "../_lib/api/endpoints";
+  import { api, API_BASE_URL } from "$lib/api/client";
+  import { endpoints } from "$lib/api/endpoints";
   import Swal from "sweetalert2";
 
   import {
@@ -178,63 +178,63 @@
 
   const translations = {
     th: {
-      activityLogs: "บันทึกกิจกรรม",
-      selectEvent: "เลือกกิจกรรม",
-      backToEvents: "กลับไปเลือกกิจกรรม",
-      loading: "กำลังโหลด...",
-      syncing: "กำลังอัปเดต...",
-      noEvents: "ไม่มีกิจกรรม",
-      noData: "ไม่มีข้อมูล",
-      viewLogs: "ดูบันทึก",
-      export: "ส่งออก",
-      exportCSV: "ส่งออก CSV",
-      exportJSON: "ส่งออก JSON",
-      name: "ชื่อ",
-      email: "อีเมล",
-      nisitId: "รหัสนิสิต",
-      role: "บทบาท",
-      action: "การกระทำ",
-      timestamp: "เวลา",
-      details: "รายละเอียด",
-      search: "ค้นหา...",
-      allActions: "ทุกการกระทำ",
-      allRoles: "ทุกบทบาท",
-      reset: "รีเซ็ต",
-      apply: "ใช้งาน",
-      showingResults: "แสดง",
-      of: "จาก",
-      results: "รายการ",
-      totalLogs: "รายการทั้งหมด",
-      registrations: "ลงทะเบียน",
-      checkIns: "เช็คอิน",
-      completed: "เสร็จสิ้น",
-      cancelled: "ยกเลิก",
-      uniqueUsers: "ผู้เข้าร่วม",
-      participant: "ผู้เข้าร่วม",
-      officer: "เจ้าหน้าที่",
-      batch: "รุ่น",
-      autoRefresh: "รีเฟรชอัตโนมัติ",
-      newLogs: "รายการใหม่",
-      refresh: "รีเฟรช",
-      viewDetails: "ดูรายละเอียด",
-      participantDetails: "รายละเอียดผู้เข้าร่วม",
-      participationHistory: "ประวัติการเข้าร่วม",
-      totalDays: "จำนวนวันที่เข้าร่วม",
-      completedDays: "วันที่เสร็จสมบูรณ์",
-      totalDistance: "ระยะทางรวม",
-      firstJoin: "เข้าร่วมครั้งแรก",
-      lastActive: "ครั้งล่าสุด",
-      date: "วันที่",
-      distance: "ระยะทาง",
-      proofImage: "รูปหลักฐาน",
-      close: "ปิด",
-      refreshData: "อัปเดตข้อมูลล่าสุด",
-      selectSnapshot: "เลือกช่วงเวลา (Snapshot)",
-      autoCreated: "อัปเดตอัตโนมัติ",
-      deleteSnapshot: "ลบ",
-      confirmDelete: "ยืนยันการลบ?",
-      deleteSuccess: "ลบเรียบร้อยแล้ว",
-      noImage: "ไม่มีรูป",
+      activityLogs: "à¸šà¸±à¸™à¸—à¸¶à¸à¸à¸´à¸ˆà¸à¸£à¸£à¸¡",
+      selectEvent: "à¹€à¸¥à¸·à¸­à¸à¸à¸´à¸ˆà¸à¸£à¸£à¸¡",
+      backToEvents: "à¸à¸¥à¸±à¸šà¹„à¸›à¹€à¸¥à¸·à¸­à¸à¸à¸´à¸ˆà¸à¸£à¸£à¸¡",
+      loading: "à¸à¸³à¸¥à¸±à¸‡à¹‚à¸«à¸¥à¸”...",
+      syncing: "à¸à¸³à¸¥à¸±à¸‡à¸­à¸±à¸›à¹€à¸”à¸•...",
+      noEvents: "à¹„à¸¡à¹ˆà¸¡à¸µà¸à¸´à¸ˆà¸à¸£à¸£à¸¡",
+      noData: "à¹„à¸¡à¹ˆà¸¡à¸µà¸‚à¹‰à¸­à¸¡à¸¹à¸¥",
+      viewLogs: "à¸”à¸¹à¸šà¸±à¸™à¸—à¸¶à¸",
+      export: "à¸ªà¹ˆà¸‡à¸­à¸­à¸",
+      exportCSV: "à¸ªà¹ˆà¸‡à¸­à¸­à¸ CSV",
+      exportJSON: "à¸ªà¹ˆà¸‡à¸­à¸­à¸ JSON",
+      name: "à¸Šà¸·à¹ˆà¸­",
+      email: "à¸­à¸µà¹€à¸¡à¸¥",
+      nisitId: "à¸£à¸«à¸±à¸ªà¸™à¸´à¸ªà¸´à¸•",
+      role: "à¸šà¸—à¸šà¸²à¸—",
+      action: "à¸à¸²à¸£à¸à¸£à¸°à¸—à¸³",
+      timestamp: "à¹€à¸§à¸¥à¸²",
+      details: "à¸£à¸²à¸¢à¸¥à¸°à¹€à¸­à¸µà¸¢à¸”",
+      search: "à¸„à¹‰à¸™à¸«à¸²...",
+      allActions: "à¸—à¸¸à¸à¸à¸²à¸£à¸à¸£à¸°à¸—à¸³",
+      allRoles: "à¸—à¸¸à¸à¸šà¸—à¸šà¸²à¸—",
+      reset: "à¸£à¸µà¹€à¸‹à¹‡à¸•",
+      apply: "à¹ƒà¸Šà¹‰à¸‡à¸²à¸™",
+      showingResults: "à¹à¸ªà¸”à¸‡",
+      of: "à¸ˆà¸²à¸",
+      results: "à¸£à¸²à¸¢à¸à¸²à¸£",
+      totalLogs: "à¸£à¸²à¸¢à¸à¸²à¸£à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”",
+      registrations: "à¸¥à¸‡à¸—à¸°à¹€à¸šà¸µà¸¢à¸™",
+      checkIns: "à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™",
+      completed: "à¹€à¸ªà¸£à¹‡à¸ˆà¸ªà¸´à¹‰à¸™",
+      cancelled: "à¸¢à¸à¹€à¸¥à¸´à¸",
+      uniqueUsers: "à¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡",
+      participant: "à¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡",
+      officer: "à¹€à¸ˆà¹‰à¸²à¸«à¸™à¹‰à¸²à¸—à¸µà¹ˆ",
+      batch: "à¸£à¸¸à¹ˆà¸™",
+      autoRefresh: "à¸£à¸µà¹€à¸Ÿà¸£à¸Šà¸­à¸±à¸•à¹‚à¸™à¸¡à¸±à¸•à¸´",
+      newLogs: "à¸£à¸²à¸¢à¸à¸²à¸£à¹ƒà¸«à¸¡à¹ˆ",
+      refresh: "à¸£à¸µà¹€à¸Ÿà¸£à¸Š",
+      viewDetails: "à¸”à¸¹à¸£à¸²à¸¢à¸¥à¸°à¹€à¸­à¸µà¸¢à¸”",
+      participantDetails: "à¸£à¸²à¸¢à¸¥à¸°à¹€à¸­à¸µà¸¢à¸”à¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡",
+      participationHistory: "à¸›à¸£à¸°à¸§à¸±à¸•à¸´à¸à¸²à¸£à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡",
+      totalDays: "à¸ˆà¸³à¸™à¸§à¸™à¸§à¸±à¸™à¸—à¸µà¹ˆà¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡",
+      completedDays: "à¸§à¸±à¸™à¸—à¸µà¹ˆà¹€à¸ªà¸£à¹‡à¸ˆà¸ªà¸¡à¸šà¸¹à¸£à¸“à¹Œ",
+      totalDistance: "à¸£à¸°à¸¢à¸°à¸—à¸²à¸‡à¸£à¸§à¸¡",
+      firstJoin: "à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡à¸„à¸£à¸±à¹‰à¸‡à¹à¸£à¸",
+      lastActive: "à¸„à¸£à¸±à¹‰à¸‡à¸¥à¹ˆà¸²à¸ªà¸¸à¸”",
+      date: "à¸§à¸±à¸™à¸—à¸µà¹ˆ",
+      distance: "à¸£à¸°à¸¢à¸°à¸—à¸²à¸‡",
+      proofImage: "à¸£à¸¹à¸›à¸«à¸¥à¸±à¸à¸à¸²à¸™",
+      close: "à¸›à¸´à¸”",
+      refreshData: "à¸­à¸±à¸›à¹€à¸”à¸•à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸¥à¹ˆà¸²à¸ªà¸¸à¸”",
+      selectSnapshot: "à¹€à¸¥à¸·à¸­à¸à¸Šà¹ˆà¸§à¸‡à¹€à¸§à¸¥à¸² (Snapshot)",
+      autoCreated: "à¸­à¸±à¸›à¹€à¸”à¸•à¸­à¸±à¸•à¹‚à¸™à¸¡à¸±à¸•à¸´",
+      deleteSnapshot: "à¸¥à¸š",
+      confirmDelete: "à¸¢à¸·à¸™à¸¢à¸±à¸™à¸à¸²à¸£à¸¥à¸š?",
+      deleteSuccess: "à¸¥à¸šà¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢à¹à¸¥à¹‰à¸§",
+      noImage: "à¹„à¸¡à¹ˆà¸¡à¸µà¸£à¸¹à¸›",
     },
     en: {
       activityLogs: "Activity Logs",
@@ -327,7 +327,7 @@
     return getActionConfig(action).color;
   }
 
-  // ✅ Helper to extract the REAL timestamp from snapshot entry based on action
+  // âœ… Helper to extract the REAL timestamp from snapshot entry based on action
   function getEntryTimestamp(e: any): string {
     const act = (e.action || e.status || "").toLowerCase();
     let ts = null;
@@ -359,14 +359,14 @@
   }
 
   function getEventStatusLabel(status: string) {
-    if (!status) return currentLang === "th" ? "ปิดใช้งาน" : "Closed";
+    if (!status) return currentLang === "th" ? "à¸›à¸´à¸”à¹ƒà¸Šà¹‰à¸‡à¸²à¸™" : "Closed";
     const s = String(status).toLowerCase();
     if (s === "active" || s === "open" || s === "ongoing")
-      return currentLang === "th" ? "เปิดใช้งาน" : "Active";
+      return currentLang === "th" ? "à¹€à¸›à¸´à¸”à¹ƒà¸Šà¹‰à¸‡à¸²à¸™" : "Active";
     if (s === "closed" || s === "cancelled" || s === "ended")
-      return currentLang === "th" ? "ปิดใช้งาน" : "Closed";
+      return currentLang === "th" ? "à¸›à¸´à¸”à¹ƒà¸Šà¹‰à¸‡à¸²à¸™" : "Closed";
     if (s === "draft" || s === "planned")
-      return currentLang === "th" ? "ร่าง" : "Draft";
+      return currentLang === "th" ? "à¸£à¹ˆà¸²à¸‡" : "Draft";
     return status;
   }
 
@@ -503,7 +503,7 @@
                 String(e.user_id) === String(userId) ||
                 String(e.userId) === String(userId)
               ) {
-                // ✅ Use helper to get correct timestamp
+                // âœ… Use helper to get correct timestamp
                 const realTime = getEntryTimestamp(e);
 
                 matched.push({
@@ -517,7 +517,7 @@
                   action: normalizeAction(
                     e.action || e.status || "registration",
                   ),
-                  timestamp: realTime, // ✅ Use real timestamp
+                  timestamp: realTime, // âœ… Use real timestamp
                   participationDate: realTime.split("T")[0],
                   details: null,
                   metadata: e.metadata || {},
@@ -617,7 +617,7 @@
 
       // entries fetched
       logs = allEntries.map((e: any) => {
-        // ✅ Use helper here too for main table consistency
+        // âœ… Use helper here too for main table consistency
         const realTime = getEntryTimestamp(e);
 
         return {
@@ -629,7 +629,7 @@
           userNisitId: (e.metadata && e.metadata.nisit_id) || "",
           userRole: (e.metadata && e.metadata.role) || "participant",
           action: normalizeAction(e.action || e.status || "registration"),
-          timestamp: realTime, // ✅ Use real timestamp
+          timestamp: realTime, // âœ… Use real timestamp
           participationDate: realTime.split("T")[0],
           details: null,
           metadata: e.metadata || {},
@@ -2799,7 +2799,7 @@
     flex-wrap: wrap;
     gap: 1.5rem;
 
-    /* ✅ เพิ่ม 2 บรรทัดนี้ */
+    /* âœ… à¹€à¸žà¸´à¹ˆà¸¡ 2 à¸šà¸£à¸£à¸—à¸±à¸”à¸™à¸µà¹‰ */
     position: relative;
     z-index: 30;
   }
@@ -3011,7 +3011,7 @@
     margin-bottom: 2rem;
     overflow: visible;
 
-    /* ✅ เพิ่ม 2 บรรทัดนี้ */
+    /* âœ… à¹€à¸žà¸´à¹ˆà¸¡ 2 à¸šà¸£à¸£à¸—à¸±à¸”à¸™à¸µà¹‰ */
     position: relative;
     z-index: 20;
   }
@@ -3105,7 +3105,7 @@
     color: #10b981;
   }
 
-  /* 🔥 Custom Snapshot Dropdown Styles */
+  /* ðŸ”¥ Custom Snapshot Dropdown Styles */
   .snapshot-trigger {
     min-width: 280px;
     flex: 2;
@@ -3864,3 +3864,4 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 </style>
+

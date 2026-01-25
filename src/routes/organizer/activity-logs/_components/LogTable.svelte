@@ -1,6 +1,6 @@
-<script lang="ts">
-  import { appState } from '../../_lib/stores/appState';
-  import { formatDate } from '../../_lib/utils/dateTime';
+﻿<script lang="ts">
+  import { appState } from '$lib/stores/appState';
+  import { formatDate } from '$lib/utils/dateTime';
   
   export let logs: any[];
   export let onViewTimeline: (log: any) => void;
@@ -23,14 +23,14 @@
   
   function getActionLabel(action: string) {
     const labels: Record<string, { th: string; en: string }> = {
-      check_in: { th: 'เช็คอิน', en: 'Check-in' },
-      check_out: { th: 'เช็คเอาท์', en: 'Check-out' },
-      register: { th: 'ลงทะเบียน', en: 'Register' },
-      approve: { th: 'อนุมัติ', en: 'Approve' },
-      reject: { th: 'ปฏิเสธ', en: 'Reject' },
-      create: { th: 'สร้าง', en: 'Create' },
-      update: { th: 'แก้ไข', en: 'Update' },
-      delete: { th: 'ลบ', en: 'Delete' }
+      check_in: { th: 'à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™', en: 'Check-in' },
+      check_out: { th: 'à¹€à¸Šà¹‡à¸„à¹€à¸­à¸²à¸—à¹Œ', en: 'Check-out' },
+      register: { th: 'à¸¥à¸‡à¸—à¸°à¹€à¸šà¸µà¸¢à¸™', en: 'Register' },
+      approve: { th: 'à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´', en: 'Approve' },
+      reject: { th: 'à¸›à¸à¸´à¹€à¸ªà¸˜', en: 'Reject' },
+      create: { th: 'à¸ªà¸£à¹‰à¸²à¸‡', en: 'Create' },
+      update: { th: 'à¹à¸à¹‰à¹„à¸‚', en: 'Update' },
+      delete: { th: 'à¸¥à¸š', en: 'Delete' }
     };
     return labels[action]?.[lang] || action;
   }
@@ -40,11 +40,11 @@
   <table class="log-table">
     <thead>
       <tr>
-        <th>{lang === 'th' ? 'เวลา' : 'Time'}</th>
-        <th>{lang === 'th' ? 'การกระทำ' : 'Action'}</th>
-        <th>{lang === 'th' ? 'ผู้ใช้' : 'User'}</th>
-        <th>{lang === 'th' ? 'กิจกรรม' : 'Event'}</th>
-        <th>{lang === 'th' ? 'รายละเอียด' : 'Details'}</th>
+        <th>{lang === 'th' ? 'à¹€à¸§à¸¥à¸²' : 'Time'}</th>
+        <th>{lang === 'th' ? 'à¸à¸²à¸£à¸à¸£à¸°à¸—à¸³' : 'Action'}</th>
+        <th>{lang === 'th' ? 'à¸œà¸¹à¹‰à¹ƒà¸Šà¹‰' : 'User'}</th>
+        <th>{lang === 'th' ? 'à¸à¸´à¸ˆà¸à¸£à¸£à¸¡' : 'Event'}</th>
+        <th>{lang === 'th' ? 'à¸£à¸²à¸¢à¸¥à¸°à¹€à¸­à¸µà¸¢à¸”' : 'Details'}</th>
         <th></th>
       </tr>
     </thead>
@@ -66,7 +66,7 @@
           <td>{log.eventName || log.eventId || '-'}</td>
           <td class="details">{log.details || '-'}</td>
           <td>
-            <button class="btn-timeline" aria-label={lang === 'th' ? 'แสดงไทม์ไลน์' : 'View timeline'} on:click={() => onViewTimeline(log)}>
+            <button class="btn-timeline" aria-label={lang === 'th' ? 'à¹à¸ªà¸”à¸‡à¹„à¸—à¸¡à¹Œà¹„à¸¥à¸™à¹Œ' : 'View timeline'} on:click={() => onViewTimeline(log)}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -96,3 +96,5 @@
   .btn-timeline svg { width: 16px; height: 16px; }
   @media (max-width: 768px) { .log-table thead th, .log-row td { padding: 0.75rem 0.5rem; font-size: 0.75rem; } }
 </style>
+
+

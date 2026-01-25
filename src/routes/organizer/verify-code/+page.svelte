@@ -1,10 +1,10 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import jsQR from "jsqr";
 
-  // ✅ Import API Endpoints
-  import { endpoints } from "../_lib/api/endpoints";
-  import { api, API_BASE_URL } from "../_lib/api/client";
+  // âœ… Import API Endpoints
+  import { endpoints } from "$lib/api/endpoints";
+  import { api, API_BASE_URL } from "$lib/api/client";
 
   // Language
   type Language = "th" | "en";
@@ -17,29 +17,29 @@
 
   const translations = {
     th: {
-      checkIn: "เช็คอิน",
-      checkOut: "เช็คเอาท์",
-      typeSingle: "วันเดียว",
-      typeMulti: "หลายวัน",
-      participantCheckIn: "เช็คอินผู้เข้าร่วม",
-      participantCheckOut: "เช็คเอาท์ผู้เข้าร่วม",
-      verifyParticipantCode: "ตรวจสอบรหัสผู้เข้าร่วมงาน",
-      verifyParticipantCodeOut: "ตรวจสอบรหัสเช็คเอาท์",
-      pinCode: "รหัส PIN",
-      scanQR: "สแกน QR",
-      enterDigitCode: "กรอกรหัส 5 หลัก", // ✅ แก้ข้อความ
-      autoCheckInEnabled: "Auto Check-in เปิดอยู่",
-      autoCheckOutEnabled: "Auto Check-out เปิดอยู่",
-      pressCheckIn: "กดปุ่มเพื่อเช็คอิน",
-      pressCheckOut: "กดปุ่มเพื่อเช็คเอาท์",
-      checkInSuccess: "เช็คอินสำเร็จ", // ✅ เพิ่ม
-      checkOutSuccess: "เช็คเอาท์สำเร็จ",
-      invalidCode: "รหัสไม่ถูกต้อง",
-      alreadyCheckedIn: "เช็คอินแล้ว",
-      notCheckedIn: "ยังไม่ได้เช็คอิน",
-      eventNotFound: "ไม่พบกิจกรรม",
-      cameraAccessDenied: "ไม่สามารถเข้าถึงกล้องได้",
-      pointCameraAtQR: "เล็งกล้องไปที่ QR code ของผู้เข้าร่วม",
+      checkIn: "à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™",
+      checkOut: "à¹€à¸Šà¹‡à¸„à¹€à¸­à¸²à¸—à¹Œ",
+      typeSingle: "à¸§à¸±à¸™à¹€à¸”à¸µà¸¢à¸§",
+      typeMulti: "à¸«à¸¥à¸²à¸¢à¸§à¸±à¸™",
+      participantCheckIn: "à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™à¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡",
+      participantCheckOut: "à¹€à¸Šà¹‡à¸„à¹€à¸­à¸²à¸—à¹Œà¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡",
+      verifyParticipantCode: "à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸£à¸«à¸±à¸ªà¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡à¸‡à¸²à¸™",
+      verifyParticipantCodeOut: "à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸£à¸«à¸±à¸ªà¹€à¸Šà¹‡à¸„à¹€à¸­à¸²à¸—à¹Œ",
+      pinCode: "à¸£à¸«à¸±à¸ª PIN",
+      scanQR: "à¸ªà¹à¸à¸™ QR",
+      enterDigitCode: "à¸à¸£à¸­à¸à¸£à¸«à¸±à¸ª 5 à¸«à¸¥à¸±à¸", // âœ… à¹à¸à¹‰à¸‚à¹‰à¸­à¸„à¸§à¸²à¸¡
+      autoCheckInEnabled: "Auto Check-in à¹€à¸›à¸´à¸”à¸­à¸¢à¸¹à¹ˆ",
+      autoCheckOutEnabled: "Auto Check-out à¹€à¸›à¸´à¸”à¸­à¸¢à¸¹à¹ˆ",
+      pressCheckIn: "à¸à¸”à¸›à¸¸à¹ˆà¸¡à¹€à¸žà¸·à¹ˆà¸­à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™",
+      pressCheckOut: "à¸à¸”à¸›à¸¸à¹ˆà¸¡à¹€à¸žà¸·à¹ˆà¸­à¹€à¸Šà¹‡à¸„à¹€à¸­à¸²à¸—à¹Œ",
+      checkInSuccess: "à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™à¸ªà¸³à¹€à¸£à¹‡à¸ˆ", // âœ… à¹€à¸žà¸´à¹ˆà¸¡
+      checkOutSuccess: "à¹€à¸Šà¹‡à¸„à¹€à¸­à¸²à¸—à¹Œà¸ªà¸³à¹€à¸£à¹‡à¸ˆ",
+      invalidCode: "à¸£à¸«à¸±à¸ªà¹„à¸¡à¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡",
+      alreadyCheckedIn: "à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™à¹à¸¥à¹‰à¸§",
+      notCheckedIn: "à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¹„à¸”à¹‰à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™",
+      eventNotFound: "à¹„à¸¡à¹ˆà¸žà¸šà¸à¸´à¸ˆà¸à¸£à¸£à¸¡",
+      cameraAccessDenied: "à¹„à¸¡à¹ˆà¸ªà¸²à¸¡à¸²à¸£à¸–à¹€à¸‚à¹‰à¸²à¸–à¸¶à¸‡à¸à¸¥à¹‰à¸­à¸‡à¹„à¸”à¹‰",
+      pointCameraAtQR: "à¹€à¸¥à¹‡à¸‡à¸à¸¥à¹‰à¸­à¸‡à¹„à¸›à¸—à¸µà¹ˆ QR code à¸‚à¸­à¸‡à¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡",
     },
     en: {
       checkIn: "Check In",
@@ -52,12 +52,12 @@
       verifyParticipantCodeOut: "Verify check-out code",
       pinCode: "PIN Code",
       scanQR: "Scan QR",
-      enterDigitCode: "Enter 5-digit code", // ✅ แก้ข้อความ
+      enterDigitCode: "Enter 5-digit code", // âœ… à¹à¸à¹‰à¸‚à¹‰à¸­à¸„à¸§à¸²à¸¡
       autoCheckInEnabled: "Auto Check-in enabled",
       autoCheckOutEnabled: "Auto Check-out enabled",
       pressCheckIn: "Press button to check-in",
       pressCheckOut: "Press button to check-out",
-      checkInSuccess: "Check-in successful", // ✅ เพิ่ม
+      checkInSuccess: "Check-in successful", // âœ… à¹€à¸žà¸´à¹ˆà¸¡
       checkOutSuccess: "Check-out successful",
       invalidCode: "Invalid code",
       alreadyCheckedIn: "Already checked in",
@@ -74,7 +74,7 @@
   let verifyActionMode: "checkin" | "checkout" = "checkin";
   let verifyMode: "pin" | "qr" = "pin";
 
-  // ✅ [เพิ่ม] State สำหรับเลือกประเภทกิจกรรม (Single/Multi)
+  // âœ… [à¹€à¸žà¸´à¹ˆà¸¡] State à¸ªà¸³à¸«à¸£à¸±à¸šà¹€à¸¥à¸·à¸­à¸à¸›à¸£à¸°à¹€à¸ à¸—à¸à¸´à¸ˆà¸à¸£à¸£à¸¡ (Single/Multi)
   let eventTypeMode: "single" | "multi" = "single";
 
   let autoCheckIn = false;
@@ -85,18 +85,18 @@
   let verifyErrorMessage = "";
   let verifyErrorIndex: number | null = null;
 
-  // ✅ [ลบ] eventsList, selectedEventId, dropdownOpen, dropdownRef ออก เพราะไม่ใช้แล้ว
+  // âœ… [à¸¥à¸š] eventsList, selectedEventId, dropdownOpen, dropdownRef à¸­à¸­à¸ à¹€à¸žà¸£à¸²à¸°à¹„à¸¡à¹ˆà¹ƒà¸Šà¹‰à¹à¸¥à¹‰à¸§
 
   // Check-in mode: 'multi' => check-in daily, 'single' => single-day check-in
   let checkInMode: "multi" | "single" =
     import.meta.env.VITE_CHECKIN_MODE === "single" ? "single" : "multi";
   if (!import.meta.env.VITE_CHECKIN_MODE) {
     console.info(
-      'VITE_CHECKIN_MODE not set — defaulting to "multi" (check-in-daily)',
+      'VITE_CHECKIN_MODE not set â€” defaulting to "multi" (check-in-daily)',
     );
   }
 
-  // ✅ [แก้ไข 1] PIN Mode: เหลือ 5 ช่อง
+  // âœ… [à¹à¸à¹‰à¹„à¸‚ 1] PIN Mode: à¹€à¸«à¸¥à¸·à¸­ 5 à¸Šà¹ˆà¸­à¸‡
   let pins = ["", "", "", "", ""];
   let pinInputRefs: HTMLInputElement[] = [];
 
@@ -119,7 +119,7 @@
     lastCheckOutSuccess = false;
   }
 
-  // ✅ [เพิ่ม] ฟังก์ชันสลับประเภทกิจกรรม
+  // âœ… [à¹€à¸žà¸´à¹ˆà¸¡] à¸Ÿà¸±à¸‡à¸à¹Œà¸Šà¸±à¸™à¸ªà¸¥à¸±à¸šà¸›à¸£à¸°à¹€à¸ à¸—à¸à¸´à¸ˆà¸à¸£à¸£à¸¡
   function switchEventTypeMode(mode: "single" | "multi") {
     eventTypeMode = mode;
     clearPins();
@@ -138,10 +138,10 @@
     }
   }
 
-  // ✅ [ลบ] handleEventSelect, toggleDropdown, selectEventById ออก
+  // âœ… [à¸¥à¸š] handleEventSelect, toggleDropdown, selectEventById à¸­à¸­à¸
 
   function clearPins() {
-    pins = ["", "", "", "", ""]; // ✅ 5 ช่อง
+    pins = ["", "", "", "", ""]; // âœ… 5 à¸Šà¹ˆà¸­à¸‡
     verifyErrorMessage = "";
     verifyErrorIndex = null;
     pinInputRefs[0]?.focus();
@@ -158,7 +158,7 @@
 
     pins[index] = value;
 
-    // ✅ [แก้ไข 2] เลื่อน focus: index < 4 (เพราะช่องสุดท้ายคือ index 4)
+    // âœ… [à¹à¸à¹‰à¹„à¸‚ 2] à¹€à¸¥à¸·à¹ˆà¸­à¸™ focus: index < 4 (à¹€à¸žà¸£à¸²à¸°à¸Šà¹ˆà¸­à¸‡à¸ªà¸¸à¸”à¸—à¹‰à¸²à¸¢à¸„à¸·à¸­ index 4)
     if (value && index < 4) {
       pinInputRefs[index + 1]?.focus();
     }
@@ -181,13 +181,13 @@
 
   async function handleVerifyPin() {
     const code = pins.join("");
-    // ✅ [แก้ไข 3] ตรวจสอบความยาว 5 หลัก
+    // âœ… [à¹à¸à¹‰à¹„à¸‚ 3] à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸„à¸§à¸²à¸¡à¸¢à¸²à¸§ 5 à¸«à¸¥à¸±à¸
     if (code.length !== 5) return;
 
     verifyCode(code, "pin");
   }
 
-  // ✅ Unified Verification Logic with Real API
+  // âœ… Unified Verification Logic with Real API
   async function verifyCode(code: string, type: "pin" | "qr") {
     if (isVerifying) return;
 
@@ -196,12 +196,12 @@
     verifyErrorIndex = null;
 
     try {
-      // ✅ เลือก Endpoint ตามโหมดที่ผู้ใช้เลือก (Single หรือ Multi)
+      // âœ… à¹€à¸¥à¸·à¸­à¸ Endpoint à¸•à¸²à¸¡à¹‚à¸«à¸¡à¸”à¸—à¸µà¹ˆà¸œà¸¹à¹‰à¹ƒà¸Šà¹‰à¹€à¸¥à¸·à¸­à¸ (Single à¸«à¸£à¸·à¸­ Multi)
       let endpoint = "";
       if (verifyActionMode === "checkout") {
         endpoint = endpoints.participations.checkoutByCode;
       } else {
-        // ถ้าเป็น Check-in ให้ดูว่าเลือก Activity (Single) หรือ Project (Multi/Daily) จาก Toggle
+        // à¸–à¹‰à¸²à¹€à¸›à¹‡à¸™ Check-in à¹ƒà¸«à¹‰à¸”à¸¹à¸§à¹ˆà¸²à¹€à¸¥à¸·à¸­à¸ Activity (Single) à¸«à¸£à¸·à¸­ Project (Multi/Daily) à¸ˆà¸²à¸ Toggle
         endpoint =
           eventTypeMode === "multi"
             ? endpoints.participations.checkInDaily
@@ -220,7 +220,7 @@
       } catch (err: any) {
         const status = err?.response?.status;
 
-        // ✅ [แก้ไขจุดที่ 1] เพิ่มเงื่อนไข status === 404 และ 400 เพื่อให้สลับ API อัตโนมัติเมื่อหาไม่เจอ
+        // âœ… [à¹à¸à¹‰à¹„à¸‚à¸ˆà¸¸à¸”à¸—à¸µà¹ˆ 1] à¹€à¸žà¸´à¹ˆà¸¡à¹€à¸‡à¸·à¹ˆà¸­à¸™à¹„à¸‚ status === 404 à¹à¸¥à¸° 400 à¹€à¸žà¸·à¹ˆà¸­à¹ƒà¸«à¹‰à¸ªà¸¥à¸±à¸š API à¸­à¸±à¸•à¹‚à¸™à¸¡à¸±à¸•à¸´à¹€à¸¡à¸·à¹ˆà¸­à¸«à¸²à¹„à¸¡à¹ˆà¹€à¸ˆà¸­
         // Only attempt automatic fallback for check-in actions when backend rejects (422, 404, or 400)
         if (
           verifyActionMode === "checkin" &&
@@ -263,7 +263,7 @@
         }, 3000);
       }
 
-      // แสดง Success ใน QR Mode ด้วย
+      // à¹à¸ªà¸”à¸‡ Success à¹ƒà¸™ QR Mode à¸”à¹‰à¸§à¸¢
       if (type === "qr") {
         qrSuccessShow = true;
         setTimeout(() => {
@@ -280,7 +280,7 @@
 
       if (type === "pin") clearPins();
     } catch (error: any) {
-      // ✅ [ลบ] Logic การ Lookup ผ่าน selectedEventId ออก เพราะเราไม่มี Event Select แล้ว
+      // âœ… [à¸¥à¸š] Logic à¸à¸²à¸£ Lookup à¸œà¹ˆà¸²à¸™ selectedEventId à¸­à¸­à¸ à¹€à¸žà¸£à¸²à¸°à¹€à¸£à¸²à¹„à¸¡à¹ˆà¸¡à¸µ Event Select à¹à¸¥à¹‰à¸§
       verifyErrorMessage =
         error.response?.data?.message ||
         error.response?.data?.detail ||
@@ -305,12 +305,12 @@
     }
   }
 
-  // ✅ QR Scanner (Improved Error Handling)
+  // âœ… QR Scanner (Improved Error Handling)
   async function startCamera() {
     cameraError = "";
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      cameraError = "ไม่พบกล้องในอุปกรณ์นี้";
+      cameraError = "à¹„à¸¡à¹ˆà¸žà¸šà¸à¸¥à¹‰à¸­à¸‡à¹ƒà¸™à¸­à¸¸à¸›à¸à¸£à¸“à¹Œà¸™à¸µà¹‰";
       return;
     }
 
@@ -348,9 +348,9 @@
         error.name === "NotFoundError" ||
         error.name === "DevicesNotFoundError"
       ) {
-        cameraError = "ไม่พบกล้อง";
+        cameraError = "à¹„à¸¡à¹ˆà¸žà¸šà¸à¸¥à¹‰à¸­à¸‡";
       } else if (error.name === "NotAllowedError") {
-        cameraError = "กรุณาอนุญาตให้เข้าถึงกล้อง";
+        cameraError = "à¸à¸£à¸¸à¸“à¸²à¸­à¸™à¸¸à¸à¸²à¸•à¹ƒà¸«à¹‰à¹€à¸‚à¹‰à¸²à¸–à¸¶à¸‡à¸à¸¥à¹‰à¸­à¸‡";
       } else {
         cameraError = lang.cameraAccessDenied;
       }
@@ -403,12 +403,12 @@
 
   onMount(() => {
     pinInputRefs[0]?.focus();
-    // ✅ [ลบ] ส่วนโหลด Event List ออก
+    // âœ… [à¸¥à¸š] à¸ªà¹ˆà¸§à¸™à¹‚à¸«à¸¥à¸” Event List à¸­à¸­à¸
   });
 
   onDestroy(() => {
     stopCamera();
-    // ✅ [ลบ] event listener ของ dropdown ออก
+    // âœ… [à¸¥à¸š] event listener à¸‚à¸­à¸‡ dropdown à¸­à¸­à¸
   });
 </script>
 
@@ -631,7 +631,7 @@
         <div class="vc-success-info">
           <span class="vc-success-label"
             >{currentLang === "th"
-              ? "เช็คอินสำเร็จ"
+              ? "à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™à¸ªà¸³à¹€à¸£à¹‡à¸ˆ"
               : "Check-in Successful"}</span
           >
           <span class="vc-success-name">{lastParticipantName}</span>
@@ -696,32 +696,32 @@
             title={autoCheckIn
               ? verifyActionMode === "checkout"
                 ? currentLang === "th"
-                  ? "ปิด Auto Check Out"
+                  ? "à¸›à¸´à¸” Auto Check Out"
                   : "Disable Auto Check Out"
                 : currentLang === "th"
-                  ? "ปิด Auto Check In"
+                  ? "à¸›à¸´à¸” Auto Check In"
                   : "Disable Auto Check In"
               : verifyActionMode === "checkout"
                 ? currentLang === "th"
-                  ? "เปิด Auto Check Out"
+                  ? "à¹€à¸›à¸´à¸” Auto Check Out"
                   : "Enable Auto Check Out"
                 : currentLang === "th"
-                  ? "เปิด Auto Check In"
+                  ? "à¹€à¸›à¸´à¸” Auto Check In"
                   : "Enable Auto Check In"}
             aria-label={autoCheckIn
               ? verifyActionMode === "checkout"
                 ? currentLang === "th"
-                  ? "ปิด Auto Check Out"
+                  ? "à¸›à¸´à¸” Auto Check Out"
                   : "Disable Auto Check Out"
                 : currentLang === "th"
-                  ? "ปิด Auto Check In"
+                  ? "à¸›à¸´à¸” Auto Check In"
                   : "Disable Auto Check In"
               : verifyActionMode === "checkout"
                 ? currentLang === "th"
-                  ? "เปิด Auto Check Out"
+                  ? "à¹€à¸›à¸´à¸” Auto Check Out"
                   : "Enable Auto Check Out"
                 : currentLang === "th"
-                  ? "เปิด Auto Check In"
+                  ? "à¹€à¸›à¸´à¸” Auto Check In"
                   : "Enable Auto Check In"}
           >
             <span class="vc-switch-knob"></span>
@@ -784,7 +784,7 @@
               <span class="vc-loader"></span>
               <span
                 >{currentLang === "th"
-                  ? "กำลังตรวจสอบ..."
+                  ? "à¸à¸³à¸¥à¸±à¸‡à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸š..."
                   : "Verifying..."}</span
               >
             {:else if verifyActionMode === "checkout"}
@@ -822,7 +822,7 @@
             <span class="vc-loader lg"></span>
             <span
               >{currentLang === "th"
-                ? "กำลังตรวจสอบรหัส..."
+                ? "à¸à¸³à¸¥à¸±à¸‡à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸£à¸«à¸±à¸ª..."
                 : "Verifying code..."}</span
             >
           </div>
@@ -830,11 +830,11 @@
 
         <p class="vc-hint">
           {#if autoCheckIn}
-            {lang.enterDigitCode} • {verifyActionMode === "checkout"
+            {lang.enterDigitCode} â€¢ {verifyActionMode === "checkout"
               ? lang.autoCheckOutEnabled
               : lang.autoCheckInEnabled}
           {:else}
-            {lang.enterDigitCode} • {verifyActionMode === "checkout"
+            {lang.enterDigitCode} â€¢ {verifyActionMode === "checkout"
               ? lang.pressCheckOut
               : lang.pressCheckIn}
           {/if}
@@ -842,7 +842,7 @@
       </div>
 
       <div class="vc-qr-mode" class:active={verifyMode === "qr"}>
-        <!-- 🔒 QR Lock Overlay -->
+        <!-- ðŸ”’ QR Lock Overlay -->
         <div class="qr-lock-overlay">
           <div class="qr-lock-content">
             <div class="qr-lock-icon">
@@ -859,11 +859,11 @@
               </svg>
             </div>
             <h3 class="qr-lock-title">
-              {currentLang === "th" ? "รอการอัพเดท" : "Coming Soon"}
+              {currentLang === "th" ? "à¸£à¸­à¸à¸²à¸£à¸­à¸±à¸žà¹€à¸”à¸—" : "Coming Soon"}
             </h3>
             <p class="qr-lock-hint">
               {currentLang === "th"
-                ? "กรุณาใช้รหัส PIN แทน"
+                ? "à¸à¸£à¸¸à¸“à¸²à¹ƒà¸Šà¹‰à¸£à¸«à¸±à¸ª PIN à¹à¸—à¸™"
                 : "Please use PIN Code"}
             </p>
           </div>
@@ -957,10 +957,10 @@
                   >
                     {verifyActionMode === "checkout"
                       ? currentLang === "th"
-                        ? "เช็คเอาท์สำเร็จ!"
+                        ? "à¹€à¸Šà¹‡à¸„à¹€à¸­à¸²à¸—à¹Œà¸ªà¸³à¹€à¸£à¹‡à¸ˆ!"
                         : "Check-out Success!"
                       : currentLang === "th"
-                        ? "เช็คอินสำเร็จ!"
+                        ? "à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™à¸ªà¸³à¹€à¸£à¹‡à¸ˆ!"
                         : "Check-in Success!"}
                   </span>
                 </div>
@@ -1055,7 +1055,7 @@
     grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
     background: rgba(15, 23, 42, 0.5);
-    padding: 0.5rem; /* Padding นี้ต้องถูกนำไปคิดใน Slider */
+    padding: 0.5rem; /* Padding à¸™à¸µà¹‰à¸•à¹‰à¸­à¸‡à¸–à¸¹à¸à¸™à¸³à¹„à¸›à¸„à¸´à¸”à¹ƒà¸™ Slider */
     border-radius: 16px;
     margin-bottom: 2rem;
   }
@@ -1095,7 +1095,7 @@
     position: absolute;
     top: 0.5rem;
     left: 0.5rem;
-    /* ✅ แก้ไข: ลบ Padding (0.5rem) และครึ่งหนึ่งของ Gap (0.25rem) ออกจาก 50% */
+    /* âœ… à¹à¸à¹‰à¹„à¸‚: à¸¥à¸š Padding (0.5rem) à¹à¸¥à¸°à¸„à¸£à¸¶à¹ˆà¸‡à¸«à¸™à¸¶à¹ˆà¸‡à¸‚à¸­à¸‡ Gap (0.25rem) à¸­à¸­à¸à¸ˆà¸²à¸ 50% */
     width: calc(50% - 0.5rem - 0.25rem);
     height: calc(100% - 1rem);
     background: linear-gradient(135deg, #10b981, #059669);
@@ -1105,17 +1105,17 @@
   }
 
   .vc-action-slider.checkout {
-    /* ✅ แก้ไข: เลื่อนไป 100% ของตัวเอง + Gap (0.5rem) */
+    /* âœ… à¹à¸à¹‰à¹„à¸‚: à¹€à¸¥à¸·à¹ˆà¸­à¸™à¹„à¸› 100% à¸‚à¸­à¸‡à¸•à¸±à¸§à¹€à¸­à¸‡ + Gap (0.5rem) */
     transform: translateX(calc(100% + 0.5rem));
     background: linear-gradient(135deg, #f59e0b, #d97706);
   }
 
-  /* ✅ Type Selector (New) */
+  /* âœ… Type Selector (New) */
   .vc-type-selector {
     /* layout vars */
     --vc-type-gap: 0.5rem;
     --vc-type-pad-vertical: 0.45rem;
-    --vc-type-pad-horizontal: 0.7rem; /* ค่านี้สำคัญ */
+    --vc-type-pad-horizontal: 0.7rem; /* à¸„à¹ˆà¸²à¸™à¸µà¹‰à¸ªà¸³à¸„à¸±à¸ */
 
     position: relative;
     display: grid;
@@ -1156,7 +1156,7 @@
     top: var(--vc-type-pad-vertical);
     left: var(--vc-type-pad-horizontal);
 
-    /* ✅ แก้ไข: คำนวณความกว้างให้พอดีโดยลบ Padding แนวนอนออกด้วย */
+    /* âœ… à¹à¸à¹‰à¹„à¸‚: à¸„à¸³à¸™à¸§à¸“à¸„à¸§à¸²à¸¡à¸à¸§à¹‰à¸²à¸‡à¹ƒà¸«à¹‰à¸žà¸­à¸”à¸µà¹‚à¸”à¸¢à¸¥à¸š Padding à¹à¸™à¸§à¸™à¸­à¸™à¸­à¸­à¸à¸”à¹‰à¸§à¸¢ */
     width: calc(50% - var(--vc-type-pad-horizontal) - (var(--vc-type-gap) / 2));
 
     height: calc(100% - (var(--vc-type-pad-vertical) * 2));
@@ -1167,7 +1167,7 @@
   }
 
   .vc-type-slider.multi {
-    /* ✅ แก้ไข: เลื่อนไป 100% ของตัวเอง + Gap */
+    /* âœ… à¹à¸à¹‰à¹„à¸‚: à¹€à¸¥à¸·à¹ˆà¸­à¸™à¹„à¸› 100% à¸‚à¸­à¸‡à¸•à¸±à¸§à¹€à¸­à¸‡ + Gap */
     transform: translateX(calc(100% + var(--vc-type-gap)));
   }
 
@@ -1506,7 +1506,7 @@
 
   .vc-pin-row {
     display: grid;
-    /* ✅ แก้เป็น 5 คอลัมน์ */
+    /* âœ… à¹à¸à¹‰à¹€à¸›à¹‡à¸™ 5 à¸„à¸­à¸¥à¸±à¸¡à¸™à¹Œ */
     grid-template-columns: repeat(5, 1fr);
     gap: 0.75rem;
   }
@@ -2002,7 +2002,7 @@
   }
 
   .qr-lock-hint::before {
-    content: "→";
+    content: "â†’";
     font-size: 1.25rem;
     animation: bounce 2s infinite;
   }
@@ -2040,3 +2040,4 @@
     }
   }
 </style>
+

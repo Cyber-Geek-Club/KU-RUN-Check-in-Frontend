@@ -1,5 +1,5 @@
-<script lang="ts">
-  import { appState } from '../../_lib/stores/appState';
+﻿<script lang="ts">
+  import { appState } from '$lib/stores/appState';
   
   export let onExport: (format: 'csv' | 'json') => void;
   
@@ -13,7 +13,7 @@
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
     </svg>
-    {lang === 'th' ? 'ส่งออก' : 'Export'}
+    {lang === 'th' ? 'à¸ªà¹ˆà¸‡à¸­à¸­à¸' : 'Export'}
   </button>
   
   {#if showMenu}
@@ -44,3 +44,5 @@
   .menu-item:hover { background: var(--bg-alt); }
   .menu-item svg { width: 16px; height: 16px; }
 </style>
+
+

@@ -1,6 +1,6 @@
-=== rewards/./_components/TierFilter.svelte ===
+﻿=== rewards/./_components/TierFilter.svelte ===
 <script lang="ts">
-  import { appState } from '../../_lib/stores/appState';
+  import { appState } from '$lib/stores/appState';
   
   export let selectedTier: string;
   export let tiers: any[];
@@ -9,14 +9,14 @@
 </script>
 
 <div class="tier-filter">
-  <div class="filter-label">{lang === 'th' ? 'กรองตามระดับ' : 'Filter by Tier'}</div>
+  <div class="filter-label">{lang === 'th' ? 'à¸à¸£à¸­à¸‡à¸•à¸²à¸¡à¸£à¸°à¸”à¸±à¸š' : 'Filter by Tier'}</div>
   <div class="tier-buttons">
     <button 
       class="tier-btn" 
       class:active={selectedTier === 'all'}
       on:click={() => selectedTier = 'all'}
     >
-      {lang === 'th' ? 'ทั้งหมด' : 'All'}
+      {lang === 'th' ? 'à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”' : 'All'}
     </button>
     {#each tiers as tier}
       <button 
@@ -38,3 +38,4 @@
   .tier-btn:hover { background: var(--bg-alt); border-color: var(--primary); }
   .tier-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 </style>
+

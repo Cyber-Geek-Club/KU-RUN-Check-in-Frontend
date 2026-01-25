@@ -1,8 +1,8 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount } from "svelte";
   import Swal from "sweetalert2";
   import { fade, slide } from "svelte/transition";
-  import { api, API_BASE_URL } from "../_lib/api/client";
+  import { api, API_BASE_URL } from "$lib/api/client";
 
   // --- Language ---
   import { writable } from "svelte/store";
@@ -20,24 +20,24 @@
   });
 
   const titleOptions = {
-    th: ["นาย", "นาง", "นางสาว"],
+    th: ["à¸™à¸²à¸¢", "à¸™à¸²à¸‡", "à¸™à¸²à¸‡à¸ªà¸²à¸§"],
     en: ["Mr.", "Mrs.", "Ms."],
   };
 
   const roleOptions = [
-    { value: "student", label: { th: "นิสิต", en: "Student" } },
-    { value: "organizer", label: { th: "ผู้จัดงาน", en: "Organizer" } },
-    { value: "officer", label: { th: "เจ้าหน้าที่", en: "Officer" } },
+    { value: "student", label: { th: "à¸™à¸´à¸ªà¸´à¸•", en: "Student" } },
+    { value: "organizer", label: { th: "à¸œà¸¹à¹‰à¸ˆà¸±à¸”à¸‡à¸²à¸™", en: "Organizer" } },
+    { value: "officer", label: { th: "à¹€à¸ˆà¹‰à¸²à¸«à¸™à¹‰à¸²à¸—à¸µà¹ˆ", en: "Officer" } },
   ];
 
-  // ตัวอย่าง department list (ฝ่ายจัดการ/ฝ่ายงาน ไม่ใช่ภาควิชาอาจารย์)
+  // à¸•à¸±à¸§à¸­à¸¢à¹ˆà¸²à¸‡ department list (à¸à¹ˆà¸²à¸¢à¸ˆà¸±à¸”à¸à¸²à¸£/à¸à¹ˆà¸²à¸¢à¸‡à¸²à¸™ à¹„à¸¡à¹ˆà¹ƒà¸Šà¹ˆà¸ à¸²à¸„à¸§à¸´à¸Šà¸²à¸­à¸²à¸ˆà¸²à¸£à¸¢à¹Œ)
   const departmentOptions = [
-    { th: "ฝ่ายทะเบียน", en: "Registration Office" },
-    { th: "ฝ่ายกิจการนิสิต", en: "Student Affairs" },
-    { th: "ฝ่ายการเงิน", en: "Finance Office" },
-    { th: "ฝ่ายเทคโนโลยีสารสนเทศ", en: "IT Office" },
-    { th: "ฝ่ายประชาสัมพันธ์", en: "Public Relations" },
-    { th: "ฝ่ายจัดงานกิจกรรม", en: "Event Management" },
+    { th: "à¸à¹ˆà¸²à¸¢à¸—à¸°à¹€à¸šà¸µà¸¢à¸™", en: "Registration Office" },
+    { th: "à¸à¹ˆà¸²à¸¢à¸à¸´à¸ˆà¸à¸²à¸£à¸™à¸´à¸ªà¸´à¸•", en: "Student Affairs" },
+    { th: "à¸à¹ˆà¸²à¸¢à¸à¸²à¸£à¹€à¸‡à¸´à¸™", en: "Finance Office" },
+    { th: "à¸à¹ˆà¸²à¸¢à¹€à¸—à¸„à¹‚à¸™à¹‚à¸¥à¸¢à¸µà¸ªà¸²à¸£à¸ªà¸™à¹€à¸—à¸¨", en: "IT Office" },
+    { th: "à¸à¹ˆà¸²à¸¢à¸›à¸£à¸°à¸Šà¸²à¸ªà¸±à¸¡à¸žà¸±à¸™à¸˜à¹Œ", en: "Public Relations" },
+    { th: "à¸à¹ˆà¸²à¸¢à¸ˆà¸±à¸”à¸‡à¸²à¸™à¸à¸´à¸ˆà¸à¸£à¸£à¸¡", en: "Event Management" },
   ];
 
   let currentLang: Lang = "th";
@@ -54,35 +54,35 @@
   }));
   $: selectedDepartmentLabel =
     departmentLabelOptions.find((d) => d.value === userData.department)
-      ?.label || (currentLang === "th" ? "เลือกฝ่ายงาน" : "Select Department");
+      ?.label || (currentLang === "th" ? "à¹€à¸¥à¸·à¸­à¸à¸à¹ˆà¸²à¸¢à¸‡à¸²à¸™" : "Select Department");
 
   const translations = {
     th: {
-      accountSettings: "ตั้งค่าบัญชี (ผู้จัดงาน)",
-      manageProfile: "จัดการข้อมูลส่วนตัวและหน่วยงาน",
-      personalInfo: "ข้อมูลส่วนตัว",
-      workInfo: "ข้อมูลการทำงาน",
-      security: "ความปลอดภัย",
-      title: "คำนำหน้า",
-      firstName: "ชื่อจริง",
-      lastName: "นามสกุล",
-      emailAddress: "อีเมล",
-      organization: "หน่วยงาน / สังกัด",
-      position: "ตำแหน่ง",
-      password: "รหัสผ่าน",
-      changePassword: "เปลี่ยนรหัสผ่าน",
-      saveChanges: "บันทึกการเปลี่ยนแปลง",
-      saving: "กำลังบันทึก...",
-      selectTitle: "เลือกคำนำหน้า",
-      enterFirstName: "กรอกชื่อจริง",
-      enterLastName: "กรอกนามสกุล",
-      enterOrg: "กรอกชื่อหน่วยงาน",
-      enterPos: "กรอกตำแหน่ง",
-      successTitle: "สำเร็จ",
-      successMsg: "อัปเดตข้อมูลเรียบร้อยแล้ว",
-      errorTitle: "เกิดข้อผิดพลาด",
-      errorMsg: "ไม่สามารถบันทึกข้อมูลได้",
-      fillAll: "กรุณากรอกข้อมูลให้ครบถ้วน",
+      accountSettings: "à¸•à¸±à¹‰à¸‡à¸„à¹ˆà¸²à¸šà¸±à¸à¸Šà¸µ (à¸œà¸¹à¹‰à¸ˆà¸±à¸”à¸‡à¸²à¸™)",
+      manageProfile: "à¸ˆà¸±à¸”à¸à¸²à¸£à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸ªà¹ˆà¸§à¸™à¸•à¸±à¸§à¹à¸¥à¸°à¸«à¸™à¹ˆà¸§à¸¢à¸‡à¸²à¸™",
+      personalInfo: "à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸ªà¹ˆà¸§à¸™à¸•à¸±à¸§",
+      workInfo: "à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸à¸²à¸£à¸—à¸³à¸‡à¸²à¸™",
+      security: "à¸„à¸§à¸²à¸¡à¸›à¸¥à¸­à¸”à¸ à¸±à¸¢",
+      title: "à¸„à¸³à¸™à¸³à¸«à¸™à¹‰à¸²",
+      firstName: "à¸Šà¸·à¹ˆà¸­à¸ˆà¸£à¸´à¸‡",
+      lastName: "à¸™à¸²à¸¡à¸ªà¸à¸¸à¸¥",
+      emailAddress: "à¸­à¸µà¹€à¸¡à¸¥",
+      organization: "à¸«à¸™à¹ˆà¸§à¸¢à¸‡à¸²à¸™ / à¸ªà¸±à¸‡à¸à¸±à¸”",
+      position: "à¸•à¸³à¹à¸«à¸™à¹ˆà¸‡",
+      password: "à¸£à¸«à¸±à¸ªà¸œà¹ˆà¸²à¸™",
+      changePassword: "à¹€à¸›à¸¥à¸µà¹ˆà¸¢à¸™à¸£à¸«à¸±à¸ªà¸œà¹ˆà¸²à¸™",
+      saveChanges: "à¸šà¸±à¸™à¸—à¸¶à¸à¸à¸²à¸£à¹€à¸›à¸¥à¸µà¹ˆà¸¢à¸™à¹à¸›à¸¥à¸‡",
+      saving: "à¸à¸³à¸¥à¸±à¸‡à¸šà¸±à¸™à¸—à¸¶à¸...",
+      selectTitle: "à¹€à¸¥à¸·à¸­à¸à¸„à¸³à¸™à¸³à¸«à¸™à¹‰à¸²",
+      enterFirstName: "à¸à¸£à¸­à¸à¸Šà¸·à¹ˆà¸­à¸ˆà¸£à¸´à¸‡",
+      enterLastName: "à¸à¸£à¸­à¸à¸™à¸²à¸¡à¸ªà¸à¸¸à¸¥",
+      enterOrg: "à¸à¸£à¸­à¸à¸Šà¸·à¹ˆà¸­à¸«à¸™à¹ˆà¸§à¸¢à¸‡à¸²à¸™",
+      enterPos: "à¸à¸£à¸­à¸à¸•à¸³à¹à¸«à¸™à¹ˆà¸‡",
+      successTitle: "à¸ªà¸³à¹€à¸£à¹‡à¸ˆ",
+      successMsg: "à¸­à¸±à¸›à¹€à¸”à¸•à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢à¹à¸¥à¹‰à¸§",
+      errorTitle: "à¹€à¸à¸´à¸”à¸‚à¹‰à¸­à¸œà¸´à¸”à¸žà¸¥à¸²à¸”",
+      errorMsg: "à¹„à¸¡à¹ˆà¸ªà¸²à¸¡à¸²à¸£à¸–à¸šà¸±à¸™à¸—à¸¶à¸à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¹„à¸”à¹‰",
+      fillAll: "à¸à¸£à¸¸à¸“à¸²à¸à¸£à¸­à¸à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¹ƒà¸«à¹‰à¸„à¸£à¸šà¸–à¹‰à¸§à¸™",
     },
     en: {
       accountSettings: "Organizer Settings",
@@ -155,7 +155,7 @@
   async function loadProfile() {
     loading = true;
     try {
-      // ดึง user_id จาก localStorage หรือ user_info
+      // à¸”à¸¶à¸‡ user_id à¸ˆà¸²à¸ localStorage à¸«à¸£à¸·à¸­ user_info
       let userId = "";
       if (typeof localStorage !== "undefined") {
         const userInfo = localStorage.getItem("user_info");
@@ -199,7 +199,7 @@
       Swal.fire({
         icon: "error",
         title: "API Error",
-        text: "ไม่พบข้อมูลผู้ใช้หรือ user_id",
+        text: "à¹„à¸¡à¹ˆà¸žà¸šà¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸œà¸¹à¹‰à¹ƒà¸Šà¹‰à¸«à¸£à¸·à¸­ user_id",
         customClass: { popup: "swal-dark" },
       });
     } finally {
@@ -434,7 +434,7 @@
         <div class="card-content">
           <div class="form-field" style="position:relative;">
             <label for="department-select"
-              >{currentLang === "th" ? "ฝ่ายงาน" : "Department"}</label
+              >{currentLang === "th" ? "à¸à¹ˆà¸²à¸¢à¸‡à¸²à¸™" : "Department"}</label
             >
             <div class="custom-select">
               <button
@@ -505,7 +505,7 @@
               <input
                 id="password-display"
                 type="password"
-                value="••••••••••••"
+                value="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 disabled
               />
               <svg
@@ -919,3 +919,4 @@
 
   /* removed unused .lang-btn styles (no longer referenced) */
 </style>
+

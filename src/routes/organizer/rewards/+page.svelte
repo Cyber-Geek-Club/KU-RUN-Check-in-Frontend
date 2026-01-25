@@ -1,8 +1,8 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount, afterUpdate, onDestroy, tick } from "svelte";
-  import { api, API_BASE_URL } from "../_lib/api/client";
+  import { api, API_BASE_URL } from "$lib/api/client";
   import Swal from "sweetalert2";
-  import { endpoints } from "../_lib/api/endpoints"; //
+  import { endpoints } from "$lib/api/endpoints"; //
   import { resolveImageUrl } from "$lib/utils/imageUtils";
 
   const IMAGE_PLACEHOLDER =
@@ -28,7 +28,7 @@
     Swal.fire({ icon: "error", title: lang.error, text: detail });
   }
 
-  // ===== Types (ปรับให้ตรงกับ Backend Pydantic Schemas) =====
+  // ===== Types (à¸›à¸£à¸±à¸šà¹ƒà¸«à¹‰à¸•à¸£à¸‡à¸à¸±à¸š Backend Pydantic Schemas) =====
   interface Event {
     id: number;
     title: string;
@@ -43,7 +43,7 @@
     distance_km?: number;
   }
 
-  // โครงสร้างข้อมูล Entry ที่ได้จาก API /api/reward-leaderboards/configs/{id}/entries
+  // à¹‚à¸„à¸£à¸‡à¸ªà¸£à¹‰à¸²à¸‡à¸‚à¹‰à¸­à¸¡à¸¹à¸¥ Entry à¸—à¸µà¹ˆà¹„à¸”à¹‰à¸ˆà¸²à¸ API /api/reward-leaderboards/configs/{id}/entries
   interface RewardEntry {
     id: number; // Entry ID
     user_id: number;
@@ -133,84 +133,84 @@
 
   const translations = {
     th: {
-      rewardManagement: "จัดการรางวัล",
-      selectEvent: "เลือกกิจกรรม",
-      backToEvents: "กลับไปเลือกกิจกรรม",
-      loading: "กำลังโหลด...",
-      noEvents: "ไม่มีกิจกรรม",
-      noData: "ไม่มีข้อมูล (กรุณากดคำนวณอันดับ)",
-      viewRewards: "ดูรางวัล",
-      calculateRanks: "คำนวณอันดับ",
-      finalizeLeaderboard: "ยืนยันผลรางวัล",
-      resetLeaderboard: "รีเซ็ตผลรางวัล",
-      export: "ส่งออก",
-      exportPNG: "ส่งออกรูปภาพ",
-      exportPDF: "ส่งออก PDF",
-      exportCSV: "ส่งออก CSV",
-      exportJSON: "ส่งออก JSON",
-      rank: "อันดับ",
-      name: "ชื่อ",
-      email: "อีเมล",
-      nisitId: "รหัสนิสิต",
-      completions: "จำนวนครั้ง",
-      status: "สถานะ",
-      reward: "รางวัล",
-      rewardedAt: "ได้รับรางวัลเมื่อ",
-      qualified: "มีสิทธิ์",
-      rewarded: "ได้รับรางวัลแล้ว",
-      notQualified: "ไม่ผ่านเกณฑ์",
-      pending: "รอดำเนินการ",
-      finalized: "ยืนยันแล้ว",
-      notFinalized: "ยังไม่ยืนยัน",
-      enabled: "เปิดใช้งาน",
-      disabled: "ปิดใช้งาน",
-      totalParticipants: "ผู้เข้าร่วมทั้งหมด",
-      totalRewarded: "ได้รับรางวัลแล้ว",
-      totalQualified: "มีสิทธิ์รับรางวัล",
-      totalPending: "รอดำเนินการ",
-      averageCompletions: "เฉลี่ยจำนวนครั้ง",
-      topCompletion: "สูงสุด",
-      search: "ค้นหา...",
-      filterByStatus: "กรองตามสถานะ",
-      filterByTier: "กรองตามระดับ",
-      allStatus: "ทุกสถานะ",
-      allTiers: "ทุกระดับ",
-      reset: "รีเซ็ต",
-      apply: "ใช้งาน",
-      showingResults: "แสดง",
-      of: "จาก",
-      results: "รายการ",
-      confirmCalculate: "คุณต้องการคำนวณอันดับหรือไม่?",
+      rewardManagement: "à¸ˆà¸±à¸”à¸à¸²à¸£à¸£à¸²à¸‡à¸§à¸±à¸¥",
+      selectEvent: "à¹€à¸¥à¸·à¸­à¸à¸à¸´à¸ˆà¸à¸£à¸£à¸¡",
+      backToEvents: "à¸à¸¥à¸±à¸šà¹„à¸›à¹€à¸¥à¸·à¸­à¸à¸à¸´à¸ˆà¸à¸£à¸£à¸¡",
+      loading: "à¸à¸³à¸¥à¸±à¸‡à¹‚à¸«à¸¥à¸”...",
+      noEvents: "à¹„à¸¡à¹ˆà¸¡à¸µà¸à¸´à¸ˆà¸à¸£à¸£à¸¡",
+      noData: "à¹„à¸¡à¹ˆà¸¡à¸µà¸‚à¹‰à¸­à¸¡à¸¹à¸¥ (à¸à¸£à¸¸à¸“à¸²à¸à¸”à¸„à¸³à¸™à¸§à¸“à¸­à¸±à¸™à¸”à¸±à¸š)",
+      viewRewards: "à¸”à¸¹à¸£à¸²à¸‡à¸§à¸±à¸¥",
+      calculateRanks: "à¸„à¸³à¸™à¸§à¸“à¸­à¸±à¸™à¸”à¸±à¸š",
+      finalizeLeaderboard: "à¸¢à¸·à¸™à¸¢à¸±à¸™à¸œà¸¥à¸£à¸²à¸‡à¸§à¸±à¸¥",
+      resetLeaderboard: "à¸£à¸µà¹€à¸‹à¹‡à¸•à¸œà¸¥à¸£à¸²à¸‡à¸§à¸±à¸¥",
+      export: "à¸ªà¹ˆà¸‡à¸­à¸­à¸",
+      exportPNG: "à¸ªà¹ˆà¸‡à¸­à¸­à¸à¸£à¸¹à¸›à¸ à¸²à¸ž",
+      exportPDF: "à¸ªà¹ˆà¸‡à¸­à¸­à¸ PDF",
+      exportCSV: "à¸ªà¹ˆà¸‡à¸­à¸­à¸ CSV",
+      exportJSON: "à¸ªà¹ˆà¸‡à¸­à¸­à¸ JSON",
+      rank: "à¸­à¸±à¸™à¸”à¸±à¸š",
+      name: "à¸Šà¸·à¹ˆà¸­",
+      email: "à¸­à¸µà¹€à¸¡à¸¥",
+      nisitId: "à¸£à¸«à¸±à¸ªà¸™à¸´à¸ªà¸´à¸•",
+      completions: "à¸ˆà¸³à¸™à¸§à¸™à¸„à¸£à¸±à¹‰à¸‡",
+      status: "à¸ªà¸–à¸²à¸™à¸°",
+      reward: "à¸£à¸²à¸‡à¸§à¸±à¸¥",
+      rewardedAt: "à¹„à¸”à¹‰à¸£à¸±à¸šà¸£à¸²à¸‡à¸§à¸±à¸¥à¹€à¸¡à¸·à¹ˆà¸­",
+      qualified: "à¸¡à¸µà¸ªà¸´à¸—à¸˜à¸´à¹Œ",
+      rewarded: "à¹„à¸”à¹‰à¸£à¸±à¸šà¸£à¸²à¸‡à¸§à¸±à¸¥à¹à¸¥à¹‰à¸§",
+      notQualified: "à¹„à¸¡à¹ˆà¸œà¹ˆà¸²à¸™à¹€à¸à¸“à¸‘à¹Œ",
+      pending: "à¸£à¸­à¸”à¸³à¹€à¸™à¸´à¸™à¸à¸²à¸£",
+      finalized: "à¸¢à¸·à¸™à¸¢à¸±à¸™à¹à¸¥à¹‰à¸§",
+      notFinalized: "à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¸¢à¸·à¸™à¸¢à¸±à¸™",
+      enabled: "à¹€à¸›à¸´à¸”à¹ƒà¸Šà¹‰à¸‡à¸²à¸™",
+      disabled: "à¸›à¸´à¸”à¹ƒà¸Šà¹‰à¸‡à¸²à¸™",
+      totalParticipants: "à¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”",
+      totalRewarded: "à¹„à¸”à¹‰à¸£à¸±à¸šà¸£à¸²à¸‡à¸§à¸±à¸¥à¹à¸¥à¹‰à¸§",
+      totalQualified: "à¸¡à¸µà¸ªà¸´à¸—à¸˜à¸´à¹Œà¸£à¸±à¸šà¸£à¸²à¸‡à¸§à¸±à¸¥",
+      totalPending: "à¸£à¸­à¸”à¸³à¹€à¸™à¸´à¸™à¸à¸²à¸£",
+      averageCompletions: "à¹€à¸‰à¸¥à¸µà¹ˆà¸¢à¸ˆà¸³à¸™à¸§à¸™à¸„à¸£à¸±à¹‰à¸‡",
+      topCompletion: "à¸ªà¸¹à¸‡à¸ªà¸¸à¸”",
+      search: "à¸„à¹‰à¸™à¸«à¸²...",
+      filterByStatus: "à¸à¸£à¸­à¸‡à¸•à¸²à¸¡à¸ªà¸–à¸²à¸™à¸°",
+      filterByTier: "à¸à¸£à¸­à¸‡à¸•à¸²à¸¡à¸£à¸°à¸”à¸±à¸š",
+      allStatus: "à¸—à¸¸à¸à¸ªà¸–à¸²à¸™à¸°",
+      allTiers: "à¸—à¸¸à¸à¸£à¸°à¸”à¸±à¸š",
+      reset: "à¸£à¸µà¹€à¸‹à¹‡à¸•",
+      apply: "à¹ƒà¸Šà¹‰à¸‡à¸²à¸™",
+      showingResults: "à¹à¸ªà¸”à¸‡",
+      of: "à¸ˆà¸²à¸",
+      results: "à¸£à¸²à¸¢à¸à¸²à¸£",
+      confirmCalculate: "à¸„à¸¸à¸“à¸•à¹‰à¸­à¸‡à¸à¸²à¸£à¸„à¸³à¸™à¸§à¸“à¸­à¸±à¸™à¸”à¸±à¸šà¸«à¸£à¸·à¸­à¹„à¸¡à¹ˆ?",
       confirmCalculateText:
-        "ระบบจะดึงข้อมูลการเข้าร่วมและจัดอันดับใหม่ (Preview)",
-      confirmFinalize: "ยืนยันการแจกรางวัล?",
+        "à¸£à¸°à¸šà¸šà¸ˆà¸°à¸”à¸¶à¸‡à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸à¸²à¸£à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡à¹à¸¥à¸°à¸ˆà¸±à¸”à¸­à¸±à¸™à¸”à¸±à¸šà¹ƒà¸«à¸¡à¹ˆ (Preview)",
+      confirmFinalize: "à¸¢à¸·à¸™à¸¢à¸±à¸™à¸à¸²à¸£à¹à¸ˆà¸à¸£à¸²à¸‡à¸§à¸±à¸¥?",
       confirmFinalizeText:
-        "เมื่อยืนยันแล้วจะไม่สามารถแก้ไขได้ รางวัลจะถูกแจกให้ผู้ได้รับตามอันดับทันที",
-      confirmReset: "รีเซ็ตผลรางวัล?",
-      confirmResetText: "การกระทำนี้จะลบผลการคำนวณทั้งหมด คุณแน่ใจหรือไม่?",
-      success: "สำเร็จ",
-      error: "เกิดข้อผิดพลาด",
-      rankCalculated: "คำนวณอันดับเรียบร้อย",
-      leaderboardFinalized: "ยืนยันผลรางวัลเรียบร้อย",
-      leaderboardReset: "รีเซ็ตผลรางวัลเรียบร้อย",
-      calculating: "กำลังคำนวณ...",
-      finalizing: "กำลังยืนยัน...",
-      resetting: "กำลังรีเซ็ต...",
-      step1: "ขั้นตอนที่ 1: คำนวณอันดับ",
-      step2: "ขั้นตอนที่ 2: ตรวจสอบผล",
-      step3: "ขั้นตอนที่ 3: ยืนยันผลรางวัล",
+        "à¹€à¸¡à¸·à¹ˆà¸­à¸¢à¸·à¸™à¸¢à¸±à¸™à¹à¸¥à¹‰à¸§à¸ˆà¸°à¹„à¸¡à¹ˆà¸ªà¸²à¸¡à¸²à¸£à¸–à¹à¸à¹‰à¹„à¸‚à¹„à¸”à¹‰ à¸£à¸²à¸‡à¸§à¸±à¸¥à¸ˆà¸°à¸–à¸¹à¸à¹à¸ˆà¸à¹ƒà¸«à¹‰à¸œà¸¹à¹‰à¹„à¸”à¹‰à¸£à¸±à¸šà¸•à¸²à¸¡à¸­à¸±à¸™à¸”à¸±à¸šà¸—à¸±à¸™à¸—à¸µ",
+      confirmReset: "à¸£à¸µà¹€à¸‹à¹‡à¸•à¸œà¸¥à¸£à¸²à¸‡à¸§à¸±à¸¥?",
+      confirmResetText: "à¸à¸²à¸£à¸à¸£à¸°à¸—à¸³à¸™à¸µà¹‰à¸ˆà¸°à¸¥à¸šà¸œà¸¥à¸à¸²à¸£à¸„à¸³à¸™à¸§à¸“à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸” à¸„à¸¸à¸“à¹à¸™à¹ˆà¹ƒà¸ˆà¸«à¸£à¸·à¸­à¹„à¸¡à¹ˆ?",
+      success: "à¸ªà¸³à¹€à¸£à¹‡à¸ˆ",
+      error: "à¹€à¸à¸´à¸”à¸‚à¹‰à¸­à¸œà¸´à¸”à¸žà¸¥à¸²à¸”",
+      rankCalculated: "à¸„à¸³à¸™à¸§à¸“à¸­à¸±à¸™à¸”à¸±à¸šà¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢",
+      leaderboardFinalized: "à¸¢à¸·à¸™à¸¢à¸±à¸™à¸œà¸¥à¸£à¸²à¸‡à¸§à¸±à¸¥à¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢",
+      leaderboardReset: "à¸£à¸µà¹€à¸‹à¹‡à¸•à¸œà¸¥à¸£à¸²à¸‡à¸§à¸±à¸¥à¹€à¸£à¸µà¸¢à¸šà¸£à¹‰à¸­à¸¢",
+      calculating: "à¸à¸³à¸¥à¸±à¸‡à¸„à¸³à¸™à¸§à¸“...",
+      finalizing: "à¸à¸³à¸¥à¸±à¸‡à¸¢à¸·à¸™à¸¢à¸±à¸™...",
+      resetting: "à¸à¸³à¸¥à¸±à¸‡à¸£à¸µà¹€à¸‹à¹‡à¸•...",
+      step1: "à¸‚à¸±à¹‰à¸™à¸•à¸­à¸™à¸—à¸µà¹ˆ 1: à¸„à¸³à¸™à¸§à¸“à¸­à¸±à¸™à¸”à¸±à¸š",
+      step2: "à¸‚à¸±à¹‰à¸™à¸•à¸­à¸™à¸—à¸µà¹ˆ 2: à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸œà¸¥",
+      step3: "à¸‚à¸±à¹‰à¸™à¸•à¸­à¸™à¸—à¸µà¹ˆ 3: à¸¢à¸·à¸™à¸¢à¸±à¸™à¸œà¸¥à¸£à¸²à¸‡à¸§à¸±à¸¥",
       step1Desc:
-        "คำนวณอันดับและสิทธิ์รับรางวัลตามจำนวนครั้งที่เข้าร่วม (Simulate)",
-      step2Desc: "ตรวจสอบความถูกต้องของผลการคำนวณในตารางด้านล่าง",
-      step3Desc: "ยืนยันผลและแจกรางวัลให้ผู้ได้รับ (ไม่สามารถแก้ไขได้)",
-      role: "บทบาท",
-      participant: "ผู้เข้าร่วม",
-      officer: "เจ้าหน้าที่",
-      tier: "ระดับ",
-      noConfigTitle: "ไม่พบการตั้งค่ารางวัล",
+        "à¸„à¸³à¸™à¸§à¸“à¸­à¸±à¸™à¸”à¸±à¸šà¹à¸¥à¸°à¸ªà¸´à¸—à¸˜à¸´à¹Œà¸£à¸±à¸šà¸£à¸²à¸‡à¸§à¸±à¸¥à¸•à¸²à¸¡à¸ˆà¸³à¸™à¸§à¸™à¸„à¸£à¸±à¹‰à¸‡à¸—à¸µà¹ˆà¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡ (Simulate)",
+      step2Desc: "à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸„à¸§à¸²à¸¡à¸–à¸¹à¸à¸•à¹‰à¸­à¸‡à¸‚à¸­à¸‡à¸œà¸¥à¸à¸²à¸£à¸„à¸³à¸™à¸§à¸“à¹ƒà¸™à¸•à¸²à¸£à¸²à¸‡à¸”à¹‰à¸²à¸™à¸¥à¹ˆà¸²à¸‡",
+      step3Desc: "à¸¢à¸·à¸™à¸¢à¸±à¸™à¸œà¸¥à¹à¸¥à¸°à¹à¸ˆà¸à¸£à¸²à¸‡à¸§à¸±à¸¥à¹ƒà¸«à¹‰à¸œà¸¹à¹‰à¹„à¸”à¹‰à¸£à¸±à¸š (à¹„à¸¡à¹ˆà¸ªà¸²à¸¡à¸²à¸£à¸–à¹à¸à¹‰à¹„à¸‚à¹„à¸”à¹‰)",
+      role: "à¸šà¸—à¸šà¸²à¸—",
+      participant: "à¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡",
+      officer: "à¹€à¸ˆà¹‰à¸²à¸«à¸™à¹‰à¸²à¸—à¸µà¹ˆ",
+      tier: "à¸£à¸°à¸”à¸±à¸š",
+      noConfigTitle: "à¹„à¸¡à¹ˆà¸žà¸šà¸à¸²à¸£à¸•à¸±à¹‰à¸‡à¸„à¹ˆà¸²à¸£à¸²à¸‡à¸§à¸±à¸¥",
       noConfigDesc:
-        "กิจกรรมนี้ยังไม่ได้ตั้งค่า Leaderboard กรุณาตั้งค่าในหน้าแก้ไขกิจกรรมก่อน",
-      requiredCompletions: "จำนวนครั้งที่ต้องการ",
+        "à¸à¸´à¸ˆà¸à¸£à¸£à¸¡à¸™à¸µà¹‰à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¹„à¸”à¹‰à¸•à¸±à¹‰à¸‡à¸„à¹ˆà¸² Leaderboard à¸à¸£à¸¸à¸“à¸²à¸•à¸±à¹‰à¸‡à¸„à¹ˆà¸²à¹ƒà¸™à¸«à¸™à¹‰à¸²à¹à¸à¹‰à¹„à¸‚à¸à¸´à¸ˆà¸à¸£à¸£à¸¡à¸à¹ˆà¸­à¸™",
+      requiredCompletions: "à¸ˆà¸³à¸™à¸§à¸™à¸„à¸£à¸±à¹‰à¸‡à¸—à¸µà¹ˆà¸•à¹‰à¸­à¸‡à¸à¸²à¸£",
     },
     en: {
       rewardManagement: "Reward Management",
@@ -469,10 +469,10 @@
   async function loadEvents() {
     loading = true;
     try {
-      // ใช้ endpoints.events.list
+      // à¹ƒà¸Šà¹‰ endpoints.events.list
       const res = await api.get(endpoints.events.list);
       const data = res.data;
-      // รองรับโครงสร้าง response แบบต่างๆ
+      // à¸£à¸­à¸‡à¸£à¸±à¸šà¹‚à¸„à¸£à¸‡à¸ªà¸£à¹‰à¸²à¸‡ response à¹à¸šà¸šà¸•à¹ˆà¸²à¸‡à¹†
       const rawEvents = Array.isArray(data) ? data : data.data || [];
 
       events = rawEvents.map((e: any) => ({
@@ -512,26 +512,26 @@
     rewardConfig = null;
 
     try {
-      // 1. ดึง Config ของ Event นี้
-      // ใช้ endpoints.rewards.config(eventId)
+      // 1. à¸”à¸¶à¸‡ Config à¸‚à¸­à¸‡ Event à¸™à¸µà¹‰
+      // à¹ƒà¸Šà¹‰ endpoints.rewards.config(eventId)
       try {
         const configRes = await api.get(endpoints.rewards.config(event.id));
         rewardConfig = configRes.data;
       } catch (configErr: any) {
-        // ถ้า 404 หมายถึงยังไม่มี config สำหรับ event นี้ - ไม่ใช่ error
+        // à¸–à¹‰à¸² 404 à¸«à¸¡à¸²à¸¢à¸–à¸¶à¸‡à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¸¡à¸µ config à¸ªà¸³à¸«à¸£à¸±à¸š event à¸™à¸µà¹‰ - à¹„à¸¡à¹ˆà¹ƒà¸Šà¹ˆ error
         if (configErr?.response?.status === 404) {
           console.info(
             `[rewards] No config found for event ${event.id} - this is normal for new events`,
           );
           rewardConfig = null;
         } else {
-          throw configErr; // re-throw ถ้าไม่ใช่ 404
+          throw configErr; // re-throw à¸–à¹‰à¸²à¹„à¸¡à¹ˆà¹ƒà¸Šà¹ˆ 404
         }
       }
 
       if (rewardConfig && rewardConfig.id) {
-        // 2. ถ้ามี Config ให้ดึง Entries (Leaderboard)
-        // ใช้ endpoints.rewards.entries(configId)
+        // 2. à¸–à¹‰à¸²à¸¡à¸µ Config à¹ƒà¸«à¹‰à¸”à¸¶à¸‡ Entries (Leaderboard)
+        // à¹ƒà¸Šà¹‰ endpoints.rewards.entries(configId)
         try {
           const entriesRes = await api.get(
             endpoints.rewards.entries(rewardConfig.id),
@@ -544,7 +544,7 @@
           rewards = rawEntries.map((r: any) => ({
             id: r.id,
             user_id: r.user_id,
-            // รองรับการ map field ที่อาจแตกต่างกันเล็กน้อย
+            // à¸£à¸­à¸‡à¸£à¸±à¸šà¸à¸²à¸£ map field à¸—à¸µà¹ˆà¸­à¸²à¸ˆà¹à¸•à¸à¸•à¹ˆà¸²à¸‡à¸à¸±à¸™à¹€à¸¥à¹‡à¸à¸™à¹‰à¸­à¸¢
             user_full_name: r.user_full_name || r.user_name || "Unknown",
             user_email: r.user_email || r.email || "",
             user_nisit_id: r.user_nisit_id || r.nisit_id,
@@ -552,7 +552,7 @@
             total_completions: r.total_completions || 0,
             rank: r.rank || 0,
             reward_id: r.reward_id,
-            reward_name: r.reward_name, // Backend อาจส่งชื่อมา หรือต้อง lookup จาก tier
+            reward_name: r.reward_name, // Backend à¸­à¸²à¸ˆà¸ªà¹ˆà¸‡à¸Šà¸·à¹ˆà¸­à¸¡à¸² à¸«à¸£à¸·à¸­à¸•à¹‰à¸­à¸‡ lookup à¸ˆà¸²à¸ tier
             reward_tier: r.reward_tier,
             qualified_at: r.qualified_at,
             rewarded_at: r.rewarded_at,
@@ -580,7 +580,7 @@
             console.warn("Prefetch users failed", e);
           }
         } catch (entriesErr: any) {
-          // ถ้า 404 สำหรับ entries หมายถึงยังไม่มีใครเข้าร่วม
+          // à¸–à¹‰à¸² 404 à¸ªà¸³à¸«à¸£à¸±à¸š entries à¸«à¸¡à¸²à¸¢à¸–à¸¶à¸‡à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¸¡à¸µà¹ƒà¸„à¸£à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡
           if (entriesErr?.response?.status === 404) {
             console.info("[rewards] No entries found - leaderboard is empty");
             rewards = [];
@@ -590,7 +590,7 @@
           }
         }
       } else {
-        // กรณีไม่มี Config อาจจะยังไม่เคยตั้งค่า
+        // à¸à¸£à¸“à¸µà¹„à¸¡à¹ˆà¸¡à¸µ Config à¸­à¸²à¸ˆà¸ˆà¸°à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¹€à¸„à¸¢à¸•à¸±à¹‰à¸‡à¸„à¹ˆà¸²
         console.info(
           "[rewards] No reward config found for this event - showing empty state.",
         );
@@ -608,7 +608,7 @@
       view = "leaderboard";
     } catch (err) {
       console.error("Error loading reward data", err);
-      // หาก error อื่นๆ ที่ไม่ใช่ 404 ให้แสดงหน้าว่างๆ
+      // à¸«à¸²à¸ error à¸­à¸·à¹ˆà¸™à¹† à¸—à¸µà¹ˆà¹„à¸¡à¹ˆà¹ƒà¸Šà¹ˆ 404 à¹ƒà¸«à¹‰à¹à¸ªà¸”à¸‡à¸«à¸™à¹‰à¸²à¸§à¹ˆà¸²à¸‡à¹†
       view = "leaderboard";
       rewards = [];
       rewardConfig = null;
@@ -696,14 +696,14 @@
     if (result.isConfirmed) {
       isCalculating = true;
       try {
-        // ใช้ endpoint calculate-ranks
+        // à¹ƒà¸Šà¹‰ endpoint calculate-ranks
         // POST /api/reward-leaderboards/configs/{config_id}/calculate-ranks
-        // หมายเหตุ: ใน endpoints.ts ไม่ได้ระบุ calculate-ranks ชัดเจน อาจจะต้องเพิ่ม หรือใช้ path manual
+        // à¸«à¸¡à¸²à¸¢à¹€à¸«à¸•à¸¸: à¹ƒà¸™ endpoints.ts à¹„à¸¡à¹ˆà¹„à¸”à¹‰à¸£à¸°à¸šà¸¸ calculate-ranks à¸Šà¸±à¸”à¹€à¸ˆà¸™ à¸­à¸²à¸ˆà¸ˆà¸°à¸•à¹‰à¸­à¸‡à¹€à¸žà¸´à¹ˆà¸¡ à¸«à¸£à¸·à¸­à¹ƒà¸Šà¹‰ path manual
         const url = endpoints.rewards.preview(rewardConfig.id);
         const res = await api.post(url);
 
-        // Response น่าจะคืนค่า stats หรือ entries ที่อัปเดตแล้ว
-        // เพื่อความชัวร์ ให้ reload data ใหม่
+        // Response à¸™à¹ˆà¸²à¸ˆà¸°à¸„à¸·à¸™à¸„à¹ˆà¸² stats à¸«à¸£à¸·à¸­ entries à¸—à¸µà¹ˆà¸­à¸±à¸›à¹€à¸”à¸•à¹à¸¥à¹‰à¸§
+        // à¹€à¸žà¸·à¹ˆà¸­à¸„à¸§à¸²à¸¡à¸Šà¸±à¸§à¸£à¹Œ à¹ƒà¸«à¹‰ reload data à¹ƒà¸«à¸¡à¹ˆ
         await selectEventForRewards(selectedEvent!);
 
         Swal.fire({
@@ -779,8 +779,8 @@
   }
 
   async function resetLeaderboard() {
-    // ฟังก์ชัน Reset อาจจะไม่มี Endpoint โดยตรงในบาง implementation
-    // แต่ถ้ามีให้ใช้ logic ทำนองเดียวกัน
+    // à¸Ÿà¸±à¸‡à¸à¹Œà¸Šà¸±à¸™ Reset à¸­à¸²à¸ˆà¸ˆà¸°à¹„à¸¡à¹ˆà¸¡à¸µ Endpoint à¹‚à¸”à¸¢à¸•à¸£à¸‡à¹ƒà¸™à¸šà¸²à¸‡ implementation
+    // à¹à¸•à¹ˆà¸–à¹‰à¸²à¸¡à¸µà¹ƒà¸«à¹‰à¹ƒà¸Šà¹‰ logic à¸—à¸³à¸™à¸­à¸‡à¹€à¸”à¸µà¸¢à¸§à¸à¸±à¸™
     Swal.fire({
       icon: "info",
       title: "Info",
@@ -1052,7 +1052,7 @@
       lazyLoadImages();
     } catch (err) {
       console.warn("Failed to load reward definitions", err);
-      // Keep UI usable in dev — provide small mock set
+      // Keep UI usable in dev â€” provide small mock set
       if (USE_MOCK_REWARDS) {
         rewardDefinitions = [
           {
@@ -1320,7 +1320,7 @@
             <div class="pagination-controls">
               <button
                 class="page-btn"
-                aria-label={currentLang === "th" ? "ก่อนหน้า" : "Previous"}
+                aria-label={currentLang === "th" ? "à¸à¹ˆà¸­à¸™à¸«à¸™à¹‰à¸²" : "Previous"}
                 on:click={() => {
                   if (eventsPage > 1) eventsPage--;
                 }}
@@ -1398,7 +1398,7 @@
               </div>
               <button
                 class="page-btn"
-                aria-label={currentLang === "th" ? "ถัดไป" : "Next"}
+                aria-label={currentLang === "th" ? "à¸–à¸±à¸”à¹„à¸›" : "Next"}
                 on:click={() => {
                   if (eventsPage < totalEventsPages) eventsPage++;
                 }}
@@ -1590,7 +1590,7 @@
               <h3>{lang.step2}</h3>
               <p>{lang.step2Desc}</p>
               <div class="step-status">
-                ✓ {lang.step2}
+                âœ“ {lang.step2}
               </div>
             </div>
           </div>
@@ -1809,7 +1809,7 @@
                     statusDropdownOpen = false;
                     applyFilters();
                   }}
-                  ><span style="color: #10b981;">●</span>
+                  ><span style="color: #10b981;">â—</span>
                   {lang.rewarded}</button
                 >
                 <button
@@ -1820,7 +1820,7 @@
                     statusDropdownOpen = false;
                     applyFilters();
                   }}
-                  ><span style="color: #f59e0b;">●</span>
+                  ><span style="color: #f59e0b;">â—</span>
                   {lang.qualified}</button
                 >
                 <button
@@ -1831,7 +1831,7 @@
                     statusDropdownOpen = false;
                     applyFilters();
                   }}
-                  ><span style="color: #64748b;">●</span>
+                  ><span style="color: #64748b;">â—</span>
                   {lang.notQualified}</button
                 >
               </div>
@@ -1977,7 +1977,7 @@
                   class="page-btn"
                   on:click={prevPage}
                   disabled={currentPage === 1}
-                  aria-label={currentLang === "th" ? "ก่อนหน้า" : "Previous"}
+                  aria-label={currentLang === "th" ? "à¸à¹ˆà¸­à¸™à¸«à¸™à¹‰à¸²" : "Previous"}
                 >
                   <svg
                     width="16"
@@ -2038,7 +2038,7 @@
                       class="click-outside"
                       role="button"
                       tabindex="0"
-                      aria-label={currentLang === "th" ? "ปิด" : "Close"}
+                      aria-label={currentLang === "th" ? "à¸›à¸´à¸”" : "Close"}
                       on:click|stopPropagation={() =>
                         (showPageDropdown = false)}
                       on:keydown|stopPropagation={(e) => {
@@ -2071,7 +2071,7 @@
                   class="page-btn"
                   on:click={nextPage}
                   disabled={currentPage === totalPages}
-                  aria-label={currentLang === "th" ? "ถัดไป" : "Next"}
+                  aria-label={currentLang === "th" ? "à¸–à¸±à¸”à¹„à¸›" : "Next"}
                 >
                   <svg
                     width="16"
@@ -2108,7 +2108,7 @@
 </div>
 
 <style>
-  /* ใช้ Style เดิมทั้งหมด (ไม่ได้เปลี่ยนแปลง CSS) */
+  /* à¹ƒà¸Šà¹‰ Style à¹€à¸”à¸´à¸¡à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸” (à¹„à¸¡à¹ˆà¹„à¸”à¹‰à¹€à¸›à¸¥à¸µà¹ˆà¸¢à¸™à¹à¸›à¸¥à¸‡ CSS) */
   .reward-management-container {
     width: 100%;
     min-height: 100vh;
@@ -3126,3 +3126,4 @@
     }
   }
 </style>
+

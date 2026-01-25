@@ -1,8 +1,8 @@
-<script lang="ts">
-  import { appState } from '../../_lib/stores/appState';
+﻿<script lang="ts">
+  import { appState } from '$lib/stores/appState';
   import { onMount } from 'svelte';
-  import api from '../../_lib/api/client';
-  import { endpoints } from '../../_lib/api/endpoints';
+  import api from '$lib/api/client';
+  import { endpoints } from '$lib/api/endpoints';
   
   export let actionFilter: string;
   export let eventFilter: string;
@@ -13,12 +13,12 @@
   let events: any[] = [];
   
   const actions = [
-    { value: 'all', label: { th: 'ทั้งหมด', en: 'All' } },
-    { value: 'check_in', label: { th: 'เช็คอิน', en: 'Check-in' } },
-    { value: 'check_out', label: { th: 'เช็คเอาท์', en: 'Check-out' } },
-    { value: 'register', label: { th: 'ลงทะเบียน', en: 'Register' } },
-    { value: 'approve', label: { th: 'อนุมัติ', en: 'Approve' } },
-    { value: 'reject', label: { th: 'ปฏิเสธ', en: 'Reject' } }
+    { value: 'all', label: { th: 'à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”', en: 'All' } },
+    { value: 'check_in', label: { th: 'à¹€à¸Šà¹‡à¸„à¸­à¸´à¸™', en: 'Check-in' } },
+    { value: 'check_out', label: { th: 'à¹€à¸Šà¹‡à¸„à¹€à¸­à¸²à¸—à¹Œ', en: 'Check-out' } },
+    { value: 'register', label: { th: 'à¸¥à¸‡à¸—à¸°à¹€à¸šà¸µà¸¢à¸™', en: 'Register' } },
+    { value: 'approve', label: { th: 'à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´', en: 'Approve' } },
+    { value: 'reject', label: { th: 'à¸›à¸à¸´à¹€à¸ªà¸˜', en: 'Reject' } }
   ];
   
   onMount(async () => {
@@ -39,21 +39,21 @@
   </select>
   
   <select class="filter-select" bind:value={eventFilter}>
-    <option value="all">{lang === 'th' ? 'กิจกรรมทั้งหมด' : 'All Events'}</option>
+    <option value="all">{lang === 'th' ? 'à¸à¸´à¸ˆà¸à¸£à¸£à¸¡à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”' : 'All Events'}</option>
     {#each events as event}
       <option value={event.id}>{event.title}</option>
     {/each}
   </select>
   
-  <input type="date" class="date-input" bind:value={dateRange.start} placeholder={lang === 'th' ? 'วันที่เริ่ม' : 'Start date'} />
-  <input type="date" class="date-input" bind:value={dateRange.end} placeholder={lang === 'th' ? 'วันที่สิ้นสุด' : 'End date'} />
+  <input type="date" class="date-input" bind:value={dateRange.start} placeholder={lang === 'th' ? 'à¸§à¸±à¸™à¸—à¸µà¹ˆà¹€à¸£à¸´à¹ˆà¸¡' : 'Start date'} />
+  <input type="date" class="date-input" bind:value={dateRange.end} placeholder={lang === 'th' ? 'à¸§à¸±à¸™à¸—à¸µà¹ˆà¸ªà¸´à¹‰à¸™à¸ªà¸¸à¸”' : 'End date'} />
   
   {#if actionFilter !== 'all' || eventFilter !== 'all' || dateRange.start || dateRange.end}
     <button class="btn-reset" on:click={() => { actionFilter = 'all'; eventFilter = 'all'; dateRange = { start: '', end: '' }; }}>
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
-      {lang === 'th' ? 'รีเซ็ต' : 'Reset'}
+      {lang === 'th' ? 'à¸£à¸µà¹€à¸‹à¹‡à¸•' : 'Reset'}
     </button>
   {/if}
 </div>
@@ -66,3 +66,5 @@
   .btn-reset:hover { background: var(--bg-hover); border-color: var(--primary); }
   .btn-reset svg { width: 16px; height: 16px; }
 </style>
+
+

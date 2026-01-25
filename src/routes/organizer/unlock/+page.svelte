@@ -1,9 +1,9 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount } from "svelte";
-  import { api, API_BASE_URL } from "../_lib/api/client";
+  import { api, API_BASE_URL } from "$lib/api/client";
 
-  // ✅ Import API Endpoints
-  import { endpoints } from "../_lib/api/endpoints";
+  // âœ… Import API Endpoints
+  import { endpoints } from "$lib/api/endpoints";
 
   // Language Setup
   type Language = "th" | "en";
@@ -16,17 +16,17 @@
 
   const translations = {
     th: {
-      title: "ปลดล็อคบัญชี",
-      subtitle: "ระบบช่วยกู้คืนสถานะบัญชี",
-      emailLabel: "อีเมลที่ต้องการปลดล็อค",
+      title: "à¸›à¸¥à¸”à¸¥à¹‡à¸­à¸„à¸šà¸±à¸à¸Šà¸µ",
+      subtitle: "à¸£à¸°à¸šà¸šà¸Šà¹ˆà¸§à¸¢à¸à¸¹à¹‰à¸„à¸·à¸™à¸ªà¸–à¸²à¸™à¸°à¸šà¸±à¸à¸Šà¸µ",
+      emailLabel: "à¸­à¸µà¹€à¸¡à¸¥à¸—à¸µà¹ˆà¸•à¹‰à¸­à¸‡à¸à¸²à¸£à¸›à¸¥à¸”à¸¥à¹‡à¸­à¸„",
       placeholder: "example@ku.th",
-      submitBtn: "ส่งคำขอปลดล็อค",
-      processing: "กำลังดำเนินการ...",
-      success: "ปลดล็อคสำเร็จ! กรุณาตรวจสอบอีเมล",
-      error_404: "ไม่พบข้อมูลผู้ใช้งานในระบบ",
-      error_generic: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง",
-      invalid_email: "รูปแบบอีเมลไม่ถูกต้อง",
-      empty_email: "กรุณากรอกอีเมล",
+      submitBtn: "à¸ªà¹ˆà¸‡à¸„à¸³à¸‚à¸­à¸›à¸¥à¸”à¸¥à¹‡à¸­à¸„",
+      processing: "à¸à¸³à¸¥à¸±à¸‡à¸”à¸³à¹€à¸™à¸´à¸™à¸à¸²à¸£...",
+      success: "à¸›à¸¥à¸”à¸¥à¹‡à¸­à¸„à¸ªà¸³à¹€à¸£à¹‡à¸ˆ! à¸à¸£à¸¸à¸“à¸²à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸­à¸µà¹€à¸¡à¸¥",
+      error_404: "à¹„à¸¡à¹ˆà¸žà¸šà¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸œà¸¹à¹‰à¹ƒà¸Šà¹‰à¸‡à¸²à¸™à¹ƒà¸™à¸£à¸°à¸šà¸š",
+      error_generic: "à¹€à¸à¸´à¸”à¸‚à¹‰à¸­à¸œà¸´à¸”à¸žà¸¥à¸²à¸” à¸à¸£à¸¸à¸“à¸²à¸¥à¸­à¸‡à¹ƒà¸«à¸¡à¹ˆà¸­à¸µà¸à¸„à¸£à¸±à¹‰à¸‡",
+      invalid_email: "à¸£à¸¹à¸›à¹à¸šà¸šà¸­à¸µà¹€à¸¡à¸¥à¹„à¸¡à¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡",
+      empty_email: "à¸à¸£à¸¸à¸“à¸²à¸à¸£à¸­à¸à¸­à¸µà¹€à¸¡à¸¥",
     },
     en: {
       title: "Unlock Account",
@@ -76,8 +76,8 @@
     isLoading = true;
 
     try {
-      // ✅ ใช้ API Endpoint ที่ถูกต้อง (endpoints.users.unlock)
-      // ปกติคือ /api/users/unlock
+      // âœ… à¹ƒà¸Šà¹‰ API Endpoint à¸—à¸µà¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡ (endpoints.users.unlock)
+      // à¸›à¸à¸•à¸´à¸„à¸·à¸­ /api/users/unlock
       await api.post(endpoints.users.unlock, { email: email.trim() });
 
       statusMessage = lang.success;
@@ -217,10 +217,10 @@
 
   /* --- Layout --- */
   .unlock-container {
-    /* ✅ ลบ background ออกเพื่อไม่ให้ซ้อนกับ Layout หลัก */
+    /* âœ… à¸¥à¸š background à¸­à¸­à¸à¹€à¸žà¸·à¹ˆà¸­à¹„à¸¡à¹ˆà¹ƒà¸«à¹‰à¸‹à¹‰à¸­à¸™à¸à¸±à¸š Layout à¸«à¸¥à¸±à¸ */
     /* background: linear-gradient(to bottom right, #0f172a, #1e293b); */
 
-    /* ✅ ปรับ min-height เป็น auto หรือ 100% ตามความเหมาะสมของ container */
+    /* âœ… à¸›à¸£à¸±à¸š min-height à¹€à¸›à¹‡à¸™ auto à¸«à¸£à¸·à¸­ 100% à¸•à¸²à¸¡à¸„à¸§à¸²à¸¡à¹€à¸«à¸¡à¸²à¸°à¸ªà¸¡à¸‚à¸­à¸‡ container */
     width: 100%;
     display: flex;
     justify-content: center;
@@ -485,3 +485,4 @@
     }
   }
 </style>
+

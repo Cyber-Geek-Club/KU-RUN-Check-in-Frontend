@@ -1,8 +1,8 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { goto } from '$app/navigation';
-  import { eventForm } from '../../_lib/stores/eventForm';
-  import { appState } from '../../_lib/stores/appState';
-  import { t } from '../../_lib/i18n';
+  import { eventForm } from '$lib/stores/eventForm';
+  import { appState } from '$lib/stores/appState';
+  import { t } from '$lib/i18n';
   import { onMount } from 'svelte';
   
   $: lang = $appState.currentLang;
@@ -22,13 +22,13 @@
   
   onMount(() => {
     const storeData = $eventForm as any;
-    // โหลดข้อมูลทั้งหมดจาก Store ทันที เพื่อให้ totalSlots ถูกดึงเข้ามาด้วย
+    // à¹‚à¸«à¸¥à¸”à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”à¸ˆà¸²à¸ Store à¸—à¸±à¸™à¸—à¸µ à¹€à¸žà¸·à¹ˆà¸­à¹ƒà¸«à¹‰ totalSlots à¸–à¸¹à¸à¸”à¸¶à¸‡à¹€à¸‚à¹‰à¸²à¸¡à¸²à¸”à¹‰à¸§à¸¢
     ce_formData = {
-        ...ce_formData, // ค่า default
-        ...storeData    // ทับด้วยค่าจาก store (รวมถึง totalSlots และ rewards ที่เคยกรอกไว้)
+        ...ce_formData, // à¸„à¹ˆà¸² default
+        ...storeData    // à¸—à¸±à¸šà¸”à¹‰à¸§à¸¢à¸„à¹ˆà¸²à¸ˆà¸²à¸ store (à¸£à¸§à¸¡à¸–à¸¶à¸‡ totalSlots à¹à¸¥à¸° rewards à¸—à¸µà¹ˆà¹€à¸„à¸¢à¸à¸£à¸­à¸à¹„à¸§à¹‰)
     };
     
-    // หาก rewards ใน store ว่างเปล่า ให้กำหนดค่าเริ่มต้นให้มี 1 ช่องเสมอ
+    // à¸«à¸²à¸ rewards à¹ƒà¸™ store à¸§à¹ˆà¸²à¸‡à¹€à¸›à¸¥à¹ˆà¸² à¹ƒà¸«à¹‰à¸à¸³à¸«à¸™à¸”à¸„à¹ˆà¸²à¹€à¸£à¸´à¹ˆà¸¡à¸•à¹‰à¸™à¹ƒà¸«à¹‰à¸¡à¸µ 1 à¸Šà¹ˆà¸­à¸‡à¹€à¸ªà¸¡à¸­
     if (!ce_formData.rewards || ce_formData.rewards.length === 0) {
         ce_formData.rewards = [{ name: '', requirement: null }];
     }
@@ -108,11 +108,11 @@
             <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
             </svg>
-            {lang === 'th' ? 'จำนวนของรางวัลทั้งหมด' : 'Total Reward Items'}
+            {lang === 'th' ? 'à¸ˆà¸³à¸™à¸§à¸™à¸‚à¸­à¸‡à¸£à¸²à¸‡à¸§à¸±à¸¥à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”' : 'Total Reward Items'}
           </label>
           <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
-            <input id="ce_totalRewards" type="number" min="1" bind:value={ce_formData.totalRewards} on:input={ce_noNegative} class="ce-input-compact" placeholder={lang === 'th' ? 'เช่น 100 ชิ้น' : 'e.g. 100 items'} style="max-width: 200px;" />
-            <span class="ce-unit-label">{lang === 'th' ? 'ชิ้น' : 'items'}</span>
+            <input id="ce_totalRewards" type="number" min="1" bind:value={ce_formData.totalRewards} on:input={ce_noNegative} class="ce-input-compact" placeholder={lang === 'th' ? 'à¹€à¸Šà¹ˆà¸™ 100 à¸Šà¸´à¹‰à¸™' : 'e.g. 100 items'} style="max-width: 200px;" />
+            <span class="ce-unit-label">{lang === 'th' ? 'à¸Šà¸´à¹‰à¸™' : 'items'}</span>
           </div>
         </div>
       </div>
@@ -126,8 +126,8 @@
             </svg>
           </div>
           <div style="flex: 1;">
-            <div class="ce-info-title">{lang === 'th' ? 'วิธีการแจกรางวัล' : 'How Rewards Work'}</div>
-            <div class="ce-info-desc">{lang === 'th' ? 'ผู้ที่วิ่งครบตามจำนวนรอบของแต่ละ Tier จะได้รับรางวัลนั้น (ใครครบก่อนได้ก่อน) จนกว่าของรางวัลจะหมด' : 'Participants who complete required rounds for each tier will receive that reward (first come first served) until items run out'}</div>
+            <div class="ce-info-title">{lang === 'th' ? 'à¸§à¸´à¸˜à¸µà¸à¸²à¸£à¹à¸ˆà¸à¸£à¸²à¸‡à¸§à¸±à¸¥' : 'How Rewards Work'}</div>
+            <div class="ce-info-desc">{lang === 'th' ? 'à¸œà¸¹à¹‰à¸—à¸µà¹ˆà¸§à¸´à¹ˆà¸‡à¸„à¸£à¸šà¸•à¸²à¸¡à¸ˆà¸³à¸™à¸§à¸™à¸£à¸­à¸šà¸‚à¸­à¸‡à¹à¸•à¹ˆà¸¥à¸° Tier à¸ˆà¸°à¹„à¸”à¹‰à¸£à¸±à¸šà¸£à¸²à¸‡à¸§à¸±à¸¥à¸™à¸±à¹‰à¸™ (à¹ƒà¸„à¸£à¸„à¸£à¸šà¸à¹ˆà¸­à¸™à¹„à¸”à¹‰à¸à¹ˆà¸­à¸™) à¸ˆà¸™à¸à¸§à¹ˆà¸²à¸‚à¸­à¸‡à¸£à¸²à¸‡à¸§à¸±à¸¥à¸ˆà¸°à¸«à¸¡à¸”' : 'Participants who complete required rounds for each tier will receive that reward (first come first served) until items run out'}</div>
           </div>
         </div>
       </div>
@@ -144,7 +144,7 @@
                 Tier {i + 1}
               </span>
               {#if ce_formData.rewards.length > 1}
-                <button type="button" class="ce-btn-remove" on:click={() => ce_removeTier(i)} title={t('removeTier')}>×</button>
+                <button type="button" class="ce-btn-remove" on:click={() => ce_removeTier(i)} title={t('removeTier')}>Ã—</button>
               {/if}
             </div>
             <div class="ce-tier-body">
@@ -153,18 +153,18 @@
                   <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="margin-right: 4px; vertical-align: middle;">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
                   </svg>
-                  {lang === 'th' ? 'ชื่อรางวัล' : 'Reward Name'}
+                  {lang === 'th' ? 'à¸Šà¸·à¹ˆà¸­à¸£à¸²à¸‡à¸§à¸±à¸¥' : 'Reward Name'}
                 </label>
-                <input id="ce_name_{i}" type="text" bind:value={reward.name} placeholder={lang === 'th' ? 'เช่น 🥇 Premium Shoes' : 'e.g. 🥇 Premium Shoes'} class="ce-input-compact" />
+                <input id="ce_name_{i}" type="text" bind:value={reward.name} placeholder={lang === 'th' ? 'à¹€à¸Šà¹ˆà¸™ ðŸ¥‡ Premium Shoes' : 'e.g. ðŸ¥‡ Premium Shoes'} class="ce-input-compact" />
               </div>
               <div class="ce-tier-field">
                 <label for="ce_req_{i}">
                   <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" style="margin-right: 4px; vertical-align: middle;">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                   </svg>
-                  {lang === 'th' ? 'วิ่งครบกี่รอบ?' : 'Rounds Required'}
+                  {lang === 'th' ? 'à¸§à¸´à¹ˆà¸‡à¸„à¸£à¸šà¸à¸µà¹ˆà¸£à¸­à¸š?' : 'Rounds Required'}
                 </label>
-                <input id="ce_req_{i}" type="number" min="1" bind:value={reward.requirement} on:input={ce_noNegative} placeholder={lang === 'th' ? 'เช่น 5' : 'e.g. 5'} class="ce-input-compact" />
+                <input id="ce_req_{i}" type="number" min="1" bind:value={reward.requirement} on:input={ce_noNegative} placeholder={lang === 'th' ? 'à¹€à¸Šà¹ˆà¸™ 5' : 'e.g. 5'} class="ce-input-compact" />
               </div>
             </div>
           </div>
@@ -172,7 +172,7 @@
       </div>
 
       <button type="button" class="ce-btn-dashed" on:click={ce_addTier}>
-        + {lang === 'th' ? 'เพิ่ม Tier ใหม่' : 'Add New Tier'}
+        + {lang === 'th' ? 'à¹€à¸žà¸´à¹ˆà¸¡ Tier à¹ƒà¸«à¸¡à¹ˆ' : 'Add New Tier'}
       </button>
 
       <!-- Summary Box -->
@@ -185,19 +185,19 @@
               </svg>
             </div>
             <div style="flex: 1;">
-              <div class="ce-summary-title">{lang === 'th' ? 'สรุป Reward Tiers' : 'Reward Tiers Summary'}</div>
+              <div class="ce-summary-title">{lang === 'th' ? 'à¸ªà¸£à¸¸à¸› Reward Tiers' : 'Reward Tiers Summary'}</div>
               <div class="ce-summary-content">
                 {#each ce_formData.rewards.filter(r => r.name && r.requirement) as reward}
                   <div class="ce-summary-item">
-                    <span class="ce-summary-rounds">{reward.requirement} {lang === 'th' ? 'รอบ' : 'rounds'}</span>
-                    <span>→</span>
+                    <span class="ce-summary-rounds">{reward.requirement} {lang === 'th' ? 'à¸£à¸­à¸š' : 'rounds'}</span>
+                    <span>â†’</span>
                     <span class="ce-summary-name">{reward.name}</span>
                   </div>
                 {/each}
                 <div class="ce-summary-total">
-                  {lang === 'th' ? 'ของรางวัลทั้งหมด:' : 'Total reward items:'}
+                  {lang === 'th' ? 'à¸‚à¸­à¸‡à¸£à¸²à¸‡à¸§à¸±à¸¥à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”:' : 'Total reward items:'}
                   <strong>{ce_formData.totalRewards || 0}</strong>
-                  {lang === 'th' ? 'ชิ้น (แชร์ทุก Tier)' : 'items (shared across all tiers)'}
+                  {lang === 'th' ? 'à¸Šà¸´à¹‰à¸™ (à¹à¸Šà¸£à¹Œà¸—à¸¸à¸ Tier)' : 'items (shared across all tiers)'}
                 </div>
               </div>
             </div>
@@ -467,3 +467,4 @@
     }
   }
 </style>
+

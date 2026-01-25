@@ -1,8 +1,8 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { goto } from '$app/navigation';
-  import { eventForm } from '../../_lib/stores/eventForm';
-  import { appState } from '../../_lib/stores/appState';
-  import { t } from '../../_lib/i18n';
+  import { eventForm } from '$lib/stores/eventForm';
+  import { appState } from '$lib/stores/appState';
+  import { t } from '$lib/i18n';
   import { onMount } from 'svelte';
   
   $: lang = $appState.currentLang;
@@ -37,7 +37,7 @@
     const file = input.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert(lang === 'th' ? 'ไฟล์ใหญ่เกิน 5MB' : 'File size exceeds 5MB');
+        alert(lang === 'th' ? 'à¹„à¸Ÿà¸¥à¹Œà¹ƒà¸«à¸à¹ˆà¹€à¸à¸´à¸™ 5MB' : 'File size exceeds 5MB');
         return;
       }
       ce_formData.imageFile = file;
@@ -83,7 +83,7 @@
   
   function handleSaveDraft() {
     eventForm.set({ ...ce_formData, status: 'draft' } as any);
-    alert(lang === 'th' ? 'บันทึกแบบร่างแล้ว' : 'Draft saved');
+    alert(lang === 'th' ? 'à¸šà¸±à¸™à¸—à¸¶à¸à¹à¸šà¸šà¸£à¹ˆà¸²à¸‡à¹à¸¥à¹‰à¸§' : 'Draft saved');
   }
 </script>
 
@@ -115,7 +115,7 @@
         on:error={ce_handleImgError}
       />
       <div class="ce-overlay">
-        <span>{lang === 'th' ? 'เปลี่ยนรูปภาพ' : 'Change Image'}</span>
+        <span>{lang === 'th' ? 'à¹€à¸›à¸¥à¸µà¹ˆà¸¢à¸™à¸£à¸¹à¸›à¸ à¸²à¸ž' : 'Change Image'}</span>
       </div>
     {:else}
       <img src="/image 7.png" alt="No Banner" class="ce-preview-img" style="opacity:0.5;object-fit:contain;" />
@@ -130,7 +130,7 @@
             ></path>
           </svg>
         </div>
-        <span>{lang === 'th' ? 'อัพโหลดแบนเนอร์กิจกรรม' : 'Upload Event Banner'}</span>
+        <span>{lang === 'th' ? 'à¸­à¸±à¸žà¹‚à¸«à¸¥à¸”à¹à¸šà¸™à¹€à¸™à¸­à¸£à¹Œà¸à¸´à¸ˆà¸à¸£à¸£à¸¡' : 'Upload Event Banner'}</span>
       </div>
     {/if}
   </div>
@@ -146,7 +146,7 @@
           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
         ></path>
       </svg>
-      <span>{lang === 'th' ? 'ข้อมูลพื้นฐาน' : 'Basic Information'}</span>
+      <span>{lang === 'th' ? 'à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸žà¸·à¹‰à¸™à¸à¸²à¸™' : 'Basic Information'}</span>
     </div>
 
     <div class="ce-input-group">
@@ -155,7 +155,7 @@
         id="event-title"
         type="text"
         bind:value={ce_formData.title}
-        placeholder={lang === 'th' ? 'ชื่อกิจกรรมอย่างเป็นทางการ' : 'Official Event Name'}
+        placeholder={lang === 'th' ? 'à¸Šà¸·à¹ˆà¸­à¸à¸´à¸ˆà¸à¸£à¸£à¸¡à¸­à¸¢à¹ˆà¸²à¸‡à¹€à¸›à¹‡à¸™à¸—à¸²à¸‡à¸à¸²à¸£' : 'Official Event Name'}
         class="ce-input"
         class:error={ce_validationErrors.has('title')}
       />
@@ -166,7 +166,7 @@
       <textarea
         id="event-desc"
         bind:value={ce_formData.description}
-        placeholder={lang === 'th' ? 'รายละเอียดกิจกรรม...' : 'Event details...'}
+        placeholder={lang === 'th' ? 'à¸£à¸²à¸¢à¸¥à¸°à¹€à¸­à¸µà¸¢à¸”à¸à¸´à¸ˆà¸à¸£à¸£à¸¡...' : 'Event details...'}
         class="ce-textarea"
         class:error={ce_validationErrors.has('description')}
       ></textarea>
@@ -178,7 +178,7 @@
         id="event-location"
         type="text"
         bind:value={ce_formData.location}
-        placeholder={lang === 'th' ? 'สถานที่จัดกิจกรรม' : 'Location'}
+        placeholder={lang === 'th' ? 'à¸ªà¸–à¸²à¸™à¸—à¸µà¹ˆà¸ˆà¸±à¸”à¸à¸´à¸ˆà¸à¸£à¸£à¸¡' : 'Location'}
         class="ce-input"
         class:error={ce_validationErrors.has('location')}
       />
@@ -320,7 +320,7 @@
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
       </svg>
-      {lang === 'th' ? 'บันทึกแบบร่าง' : 'Save Draft'}
+      {lang === 'th' ? 'à¸šà¸±à¸™à¸—à¸¶à¸à¹à¸šà¸šà¸£à¹ˆà¸²à¸‡' : 'Save Draft'}
     </button>
     <button type="button" class="ce-btn-save" on:click={handleNext}>
       {t('next')}
@@ -802,3 +802,4 @@
     }
   }
 </style>
+

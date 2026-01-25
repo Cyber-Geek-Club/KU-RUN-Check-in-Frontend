@@ -1,6 +1,6 @@
-=== rewards/./_components/FinalizeButton.svelte ===
+﻿=== rewards/./_components/FinalizeButton.svelte ===
 <script lang="ts">
-  import { appState } from '../../_lib/stores/appState';
+  import { appState } from '$lib/stores/appState';
   
   export let disabled: boolean;
   export let isFinalized: boolean;
@@ -32,23 +32,23 @@
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-      {lang === 'th' ? 'ยืนยันแล้ว' : 'Finalized'}
+      {lang === 'th' ? 'à¸¢à¸·à¸™à¸¢à¸±à¸™à¹à¸¥à¹‰à¸§' : 'Finalized'}
     {:else}
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
       </svg>
-      {lang === 'th' ? 'ยืนยันรางวัล' : 'Finalize Rewards'}
+      {lang === 'th' ? 'à¸¢à¸·à¸™à¸¢à¸±à¸™à¸£à¸²à¸‡à¸§à¸±à¸¥' : 'Finalize Rewards'}
     {/if}
   </button>
   
   {#if showConfirm}
     <div class="confirm-overlay" on:click={() => showConfirm = false} on:keypress role="button" tabindex="0">
       <div class="confirm-dialog" on:click|stopPropagation on:keypress role="button" tabindex="0">
-        <h3>{lang === 'th' ? 'ยืนยันการดำเนินการ' : 'Confirm Action'}</h3>
-        <p>{lang === 'th' ? 'คุณแน่ใจหรือไม่ที่จะยืนยันรางวัล? การดำเนินการนี้ไม่สามารถย้อนกลับได้' : 'Are you sure you want to finalize rewards? This action cannot be undone.'}</p>
+        <h3>{lang === 'th' ? 'à¸¢à¸·à¸™à¸¢à¸±à¸™à¸à¸²à¸£à¸”à¸³à¹€à¸™à¸´à¸™à¸à¸²à¸£' : 'Confirm Action'}</h3>
+        <p>{lang === 'th' ? 'à¸„à¸¸à¸“à¹à¸™à¹ˆà¹ƒà¸ˆà¸«à¸£à¸·à¸­à¹„à¸¡à¹ˆà¸—à¸µà¹ˆà¸ˆà¸°à¸¢à¸·à¸™à¸¢à¸±à¸™à¸£à¸²à¸‡à¸§à¸±à¸¥? à¸à¸²à¸£à¸”à¸³à¹€à¸™à¸´à¸™à¸à¸²à¸£à¸™à¸µà¹‰à¹„à¸¡à¹ˆà¸ªà¸²à¸¡à¸²à¸£à¸–à¸¢à¹‰à¸­à¸™à¸à¸¥à¸±à¸šà¹„à¸”à¹‰' : 'Are you sure you want to finalize rewards? This action cannot be undone.'}</p>
         <div class="confirm-actions">
-          <button class="btn-cancel" on:click={() => showConfirm = false}>{lang === 'th' ? 'ยกเลิก' : 'Cancel'}</button>
-          <button class="btn-confirm" on:click={handleConfirm}>{lang === 'th' ? 'ยืนยัน' : 'Confirm'}</button>
+          <button class="btn-cancel" on:click={() => showConfirm = false}>{lang === 'th' ? 'à¸¢à¸à¹€à¸¥à¸´à¸' : 'Cancel'}</button>
+          <button class="btn-confirm" on:click={handleConfirm}>{lang === 'th' ? 'à¸¢à¸·à¸™à¸¢à¸±à¸™' : 'Confirm'}</button>
         </div>
       </div>
     </div>
@@ -70,3 +70,4 @@
   .btn-cancel { background: transparent; border: 1px solid var(--border); }
   .btn-confirm { background: var(--success); color: white; border: none; }
 </style>
+

@@ -1,7 +1,7 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount, onDestroy, tick } from "svelte";
-  import { api } from "../_lib/api/client";
-  import { endpoints } from "../_lib/api/endpoints";
+  import { api } from "$lib/api/client";
+  import { endpoints } from "$lib/api/endpoints";
   import Swal from "sweetalert2";
 
   const rawEnv = import.meta.env.VITE_API_BASE_URL;
@@ -33,7 +33,7 @@
       return ensureHttps(path);
     }
 
-    // ลบ / ตัวหน้าออกถ้ามี
+    // à¸¥à¸š / à¸•à¸±à¸§à¸«à¸™à¹‰à¸²à¸­à¸­à¸à¸–à¹‰à¸²à¸¡à¸µ
     const cleanPath = path.startsWith("/") ? path.substring(1) : path;
 
     // If the path already contains api/ (e.g. api/uploads/...), don't add another /api/
@@ -59,40 +59,40 @@
   }
 
   const translations = {
-    // ... (คงเดิม ไม่ต้องแก้)
+    // ... (à¸„à¸‡à¹€à¸”à¸´à¸¡ à¹„à¸¡à¹ˆà¸•à¹‰à¸­à¸‡à¹à¸à¹‰)
     th: {
-      proofVerification: "ตรวจสอบหลักฐาน",
-      selectEvent: "เลือกกิจกรรม",
-      noEventsFound: "ไม่พบกิจกรรม",
-      verifySubmissions: "ตรวจสอบการส่ง",
-      backToEvents: "กลับไปหน้างาน",
-      pending: "รอการตรวจสอบ",
-      approved: "อนุมัติแล้ว",
-      rejected: "ปฏิเสธแล้ว",
-      all: "ทั้งหมด",
-      apply: "ใช้งาน",
-      reset: "รีเซ็ต",
-      approve: "อนุมัติ",
-      reject: "ปฏิเสธ",
-      noPendingSubmissions: "ไม่มีการส่งที่รอตรวจสอบ",
-      loadingSubmissions: "กำลังโหลดข้อมูล...",
-      searchPlaceholder: "ค้นหาด้วยชื่อ, อีเมล หรือ รหัสนิสิต...",
-      batch: "รุ่น",
-      stdId: "รหัสนิสิต",
-      from: "จาก",
-      to: "ถึง",
-      selectDate: "เลือกวันที่",
-      totalSubmissions: "ทั้งหมด",
-      pendingReview: "รอตรวจสอบ",
-      approvedToday: "อนุมัติวันนี้",
-      rejectedToday: "ปฏิเสธวันนี้",
-      loading: "กำลังโหลด...",
-      showingResults: "แสดง",
-      of: "จาก",
-      results: "รายการ",
-      status: "สถานะ",
-      submittedAt: "ส่งเมื่อ",
-      viewImage: "ดูรูปภาพ",
+      proofVerification: "à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸«à¸¥à¸±à¸à¸à¸²à¸™",
+      selectEvent: "à¹€à¸¥à¸·à¸­à¸à¸à¸´à¸ˆà¸à¸£à¸£à¸¡",
+      noEventsFound: "à¹„à¸¡à¹ˆà¸žà¸šà¸à¸´à¸ˆà¸à¸£à¸£à¸¡",
+      verifySubmissions: "à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸šà¸à¸²à¸£à¸ªà¹ˆà¸‡",
+      backToEvents: "à¸à¸¥à¸±à¸šà¹„à¸›à¸«à¸™à¹‰à¸²à¸‡à¸²à¸™",
+      pending: "à¸£à¸­à¸à¸²à¸£à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸š",
+      approved: "à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´à¹à¸¥à¹‰à¸§",
+      rejected: "à¸›à¸à¸´à¹€à¸ªà¸˜à¹à¸¥à¹‰à¸§",
+      all: "à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”",
+      apply: "à¹ƒà¸Šà¹‰à¸‡à¸²à¸™",
+      reset: "à¸£à¸µà¹€à¸‹à¹‡à¸•",
+      approve: "à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´",
+      reject: "à¸›à¸à¸´à¹€à¸ªà¸˜",
+      noPendingSubmissions: "à¹„à¸¡à¹ˆà¸¡à¸µà¸à¸²à¸£à¸ªà¹ˆà¸‡à¸—à¸µà¹ˆà¸£à¸­à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸š",
+      loadingSubmissions: "à¸à¸³à¸¥à¸±à¸‡à¹‚à¸«à¸¥à¸”à¸‚à¹‰à¸­à¸¡à¸¹à¸¥...",
+      searchPlaceholder: "à¸„à¹‰à¸™à¸«à¸²à¸”à¹‰à¸§à¸¢à¸Šà¸·à¹ˆà¸­, à¸­à¸µà¹€à¸¡à¸¥ à¸«à¸£à¸·à¸­ à¸£à¸«à¸±à¸ªà¸™à¸´à¸ªà¸´à¸•...",
+      batch: "à¸£à¸¸à¹ˆà¸™",
+      stdId: "à¸£à¸«à¸±à¸ªà¸™à¸´à¸ªà¸´à¸•",
+      from: "à¸ˆà¸²à¸",
+      to: "à¸–à¸¶à¸‡",
+      selectDate: "à¹€à¸¥à¸·à¸­à¸à¸§à¸±à¸™à¸—à¸µà¹ˆ",
+      totalSubmissions: "à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”",
+      pendingReview: "à¸£à¸­à¸•à¸£à¸§à¸ˆà¸ªà¸­à¸š",
+      approvedToday: "à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´à¸§à¸±à¸™à¸™à¸µà¹‰",
+      rejectedToday: "à¸›à¸à¸´à¹€à¸ªà¸˜à¸§à¸±à¸™à¸™à¸µà¹‰",
+      loading: "à¸à¸³à¸¥à¸±à¸‡à¹‚à¸«à¸¥à¸”...",
+      showingResults: "à¹à¸ªà¸”à¸‡",
+      of: "à¸ˆà¸²à¸",
+      results: "à¸£à¸²à¸¢à¸à¸²à¸£",
+      status: "à¸ªà¸–à¸²à¸™à¸°",
+      submittedAt: "à¸ªà¹ˆà¸‡à¹€à¸¡à¸·à¹ˆà¸­",
+      viewImage: "à¸”à¸¹à¸£à¸¹à¸›à¸ à¸²à¸ž",
     },
     en: {
       proofVerification: "Proof Verification",
@@ -321,10 +321,10 @@
     if (!timestamp) return "-";
     const date = new Date(timestamp);
 
-    // เช็คว่าวันที่ถูกต้องหรือไม่
+    // à¹€à¸Šà¹‡à¸„à¸§à¹ˆà¸²à¸§à¸±à¸™à¸—à¸µà¹ˆà¸–à¸¹à¸à¸•à¹‰à¸­à¸‡à¸«à¸£à¸·à¸­à¹„à¸¡à¹ˆ
     if (isNaN(date.getTime())) return "-";
 
-    // ✅ ใช้ format เดียวกับ Events (Day Month Year + Time)
+    // âœ… à¹ƒà¸Šà¹‰ format à¹€à¸”à¸µà¸¢à¸§à¸à¸±à¸š Events (Day Month Year + Time)
     return date.toLocaleDateString(currentLang === "th" ? "th-TH" : "en-GB", {
       day: "2-digit",
       month: "short",
@@ -367,9 +367,9 @@
 
   function translateStatus(status: string): string {
     const map: any = {
-      Active: currentLang === "th" ? "เปิดใช้งาน" : "Active",
-      Closed: currentLang === "th" ? "ปิดแล้ว" : "Closed",
-      Draft: currentLang === "th" ? "แบบร่าง" : "Draft",
+      Active: currentLang === "th" ? "à¹€à¸›à¸´à¸”à¹ƒà¸Šà¹‰à¸‡à¸²à¸™" : "Active",
+      Closed: currentLang === "th" ? "à¸›à¸´à¸”à¹à¸¥à¹‰à¸§" : "Closed",
+      Draft: currentLang === "th" ? "à¹à¸šà¸šà¸£à¹ˆà¸²à¸‡" : "Draft",
     };
     return map[status] || status;
   }
@@ -430,7 +430,7 @@
           description: e.description,
           location: e.location,
 
-          // ✅ แก้ไขตรงนี้: เพิ่ม e.event_date และ e.event_end_date ตาม JSON ที่ให้มา
+          // âœ… à¹à¸à¹‰à¹„à¸‚à¸•à¸£à¸‡à¸™à¸µà¹‰: à¹€à¸žà¸´à¹ˆà¸¡ e.event_date à¹à¸¥à¸° e.event_end_date à¸•à¸²à¸¡ JSON à¸—à¸µà¹ˆà¹ƒà¸«à¹‰à¸¡à¸²
           startDate:
             e.event_date ||
             e.start_date ||
@@ -445,9 +445,9 @@
           startTime: e.start_time || e.startTime || "",
           endTime: e.end_time || e.endTime || "",
 
-          status: e.is_active ? "Active" : "Closed", // ปรับ Status ตาม JSON (is_active)
+          status: e.is_active ? "Active" : "Closed", // à¸›à¸£à¸±à¸š Status à¸•à¸²à¸¡ JSON (is_active)
 
-          // JSON มี banner_image_url เราก็ดึงมาใช้
+          // JSON à¸¡à¸µ banner_image_url à¹€à¸£à¸²à¸à¹‡à¸”à¸¶à¸‡à¸¡à¸²à¹ƒà¸Šà¹‰
           image: getApiImageUrl(
             e.banner_image_url || e.cover_image_url || e.image || "",
           ),
@@ -464,7 +464,7 @@
         events = [];
       }
     } catch (error: any) {
-      console.warn("❌ loadEvents Error:", error);
+      console.warn("âŒ loadEvents Error:", error);
       events = [];
     } finally {
       loading = false;
@@ -493,13 +493,13 @@
   async function loadSubmissions(eventId: string) {
     loading = true;
     try {
-      // เรียก API
+      // à¹€à¸£à¸µà¸¢à¸ API
       const response = await api.get(
         endpoints.participations.listByEvent(eventId),
       );
       console.log("Submissions Data:", response.data);
 
-      // ✅ [แก้ไข 1] รองรับโครงสร้างข้อมูลแบบ { proofs: [...] }
+      // âœ… [à¹à¸à¹‰à¹„à¸‚ 1] à¸£à¸­à¸‡à¸£à¸±à¸šà¹‚à¸„à¸£à¸‡à¸ªà¸£à¹‰à¸²à¸‡à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¹à¸šà¸š { proofs: [...] }
       const rawData = response.data;
       const dataList = Array.isArray(rawData) ? rawData : rawData.proofs || [];
 
@@ -507,14 +507,14 @@
         submissions = dataList.map((item: any) => {
           const userObj = item.user || {};
 
-          // ✅ [แก้ไข 2] ดึงวันที่จาก proof_submitted_at (ตาม JSON)
+          // âœ… [à¹à¸à¹‰à¹„à¸‚ 2] à¸”à¸¶à¸‡à¸§à¸±à¸™à¸—à¸µà¹ˆà¸ˆà¸²à¸ proof_submitted_at (à¸•à¸²à¸¡ JSON)
           const rawDate =
             item.proof_submitted_at ||
             item.created_at ||
             item.createdAt ||
             new Date().toISOString();
 
-          // ✅ [แก้ไข 3] แปลง Status "proof_submitted" -> "Pending" เพื่อให้ Filter ทำงานได้
+          // âœ… [à¹à¸à¹‰à¹„à¸‚ 3] à¹à¸›à¸¥à¸‡ Status "proof_submitted" -> "Pending" à¹€à¸žà¸·à¹ˆà¸­à¹ƒà¸«à¹‰ Filter à¸—à¸³à¸‡à¸²à¸™à¹„à¸”à¹‰
           let mappedStatus = item.status;
           if (mappedStatus === "proof_submitted") {
             mappedStatus = "Pending";
@@ -523,7 +523,7 @@
           }
 
           return {
-            // ✅ [แก้ไข 4] Map ชื่อตัวแปรให้ตรงกับ JSON
+            // âœ… [à¹à¸à¹‰à¹„à¸‚ 4] Map à¸Šà¸·à¹ˆà¸­à¸•à¸±à¸§à¹à¸›à¸£à¹ƒà¸«à¹‰à¸•à¸£à¸‡à¸à¸±à¸š JSON
             id: item.participation_id || item.id,
             runnerName:
               userObj.full_name ||
@@ -542,7 +542,7 @@
               "-",
             email: userObj.email || item.email || "-",
 
-            // ✅ [แก้ไข 5] ใช้ proof_image_url
+            // âœ… [à¹à¸à¹‰à¹„à¸‚ 5] à¹ƒà¸Šà¹‰ proof_image_url
             proofImage: getApiImageUrl(
               item.proof_image_url || item.proof_url || item.image_url || "",
             ),
@@ -552,7 +552,7 @@
             submittedAt: rawDate,
             updatedAt: item.updated_at || rawDate,
 
-            // ✅ [แก้ไข 6] ใช้ strava_link และ actual_distance_km
+            // âœ… [à¹à¸à¹‰à¹„à¸‚ 6] à¹ƒà¸Šà¹‰ strava_link à¹à¸¥à¸° actual_distance_km
             stravaLink: item.strava_link || item.strava_url || null,
             actualDistance: parseFloat(
               item.actual_distance_km || item.distance || "0",
@@ -607,7 +607,7 @@
         submissions = [];
       }
 
-      // Filter วันที่ — prefer event date range when available
+      // Filter à¸§à¸±à¸™à¸—à¸µà¹ˆ â€” prefer event date range when available
       if (selectedEvent && selectedEvent.startDate) {
         const start = normalizeToLocalDate(selectedEvent.startDate)!;
         const end = normalizeToLocalDate(
@@ -674,10 +674,10 @@
     if (!approved) payload.rejection_reason = reason;
 
     try {
-      // ❌ ผิด:
+      // âŒ à¸œà¸´à¸”:
       // const res = await api.post("/api/participations/verify", payload);
 
-      // ✅ ถูกต้อง:
+      // âœ… à¸–à¸¹à¸à¸•à¹‰à¸­à¸‡:
       const res = await api.post(endpoints.participations.verify, payload);
       return res.data;
     } catch (err: any) {
@@ -727,7 +727,7 @@
       width: "540px",
       preConfirm: async () => {
         try {
-          // ✅ เชื่อมต่อ API
+          // âœ… à¹€à¸Šà¸·à¹ˆà¸­à¸¡à¸•à¹ˆà¸­ API
           const result = await verifyParticipationAPI(sub.id, true);
           return result;
         } catch (e: any) {
@@ -738,8 +738,8 @@
       },
     }).then((res) => {
       if (res.isConfirmed) {
-        // ✅ อัปเดต UI ทันที: ลบการ์ดออก และ เพิ่มสถิติอนุมัติ
-        // ใช้ filter เพื่อเอา ID ที่ตรงกันออก (Convert to string to be safe)
+        // âœ… à¸­à¸±à¸›à¹€à¸”à¸• UI à¸—à¸±à¸™à¸—à¸µ: à¸¥à¸šà¸à¸²à¸£à¹Œà¸”à¸­à¸­à¸ à¹à¸¥à¸° à¹€à¸žà¸´à¹ˆà¸¡à¸ªà¸–à¸´à¸•à¸´à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´
+        // à¹ƒà¸Šà¹‰ filter à¹€à¸žà¸·à¹ˆà¸­à¹€à¸­à¸² ID à¸—à¸µà¹ˆà¸•à¸£à¸‡à¸à¸±à¸™à¸­à¸­à¸ (Convert to string to be safe)
         submissions = submissions.filter(
           (s) => String(s.id) !== String(sub.id),
         );
@@ -882,7 +882,7 @@
           finalReason = textVal;
         }
 
-        // ✅ เชื่อมต่อ API
+        // âœ… à¹€à¸Šà¸·à¹ˆà¸­à¸¡à¸•à¹ˆà¸­ API
         return verifyParticipationAPI(sub.id, false, finalReason).catch(
           (error) => {
             Swal.showValidationMessage(`Error: ${error.message}`);
@@ -892,7 +892,7 @@
     });
 
     if (result.value) {
-      // ✅ อัปเดต UI ทันที
+      // âœ… à¸­à¸±à¸›à¹€à¸”à¸• UI à¸—à¸±à¸™à¸—à¸µ
       submissions = submissions.filter((s) => String(s.id) !== String(sub.id));
 
       // Update stats locally
@@ -982,11 +982,11 @@
       await Swal.fire({
         title:
           currentLang === "th"
-            ? "ไม่มีหลักฐานรออนุมัติ"
+            ? "à¹„à¸¡à¹ˆà¸¡à¸µà¸«à¸¥à¸±à¸à¸à¸²à¸™à¸£à¸­à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´"
             : "No Pending Submissions",
         text:
           currentLang === "th"
-            ? "ไม่มีหลักฐานที่รออนุมัติในขณะนี้"
+            ? "à¹„à¸¡à¹ˆà¸¡à¸µà¸«à¸¥à¸±à¸à¸à¸²à¸™à¸—à¸µà¹ˆà¸£à¸­à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´à¹ƒà¸™à¸‚à¸“à¸°à¸™à¸µà¹‰"
             : "There are no pending submissions at this time",
         icon: "info",
         customClass: { popup: "swal-dark" },
@@ -995,16 +995,16 @@
     }
 
     const result = await Swal.fire({
-      title: currentLang === "th" ? "อนุมัติทั้งหมด?" : "Approve All?",
+      title: currentLang === "th" ? "à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”?" : "Approve All?",
       html:
         currentLang === "th"
-          ? `คุณต้องการอนุมัติหลักฐาน <strong>${pendingSubmissions.length}</strong> รายการใช่หรือไม่?`
+          ? `à¸„à¸¸à¸“à¸•à¹‰à¸­à¸‡à¸à¸²à¸£à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´à¸«à¸¥à¸±à¸à¸à¸²à¸™ <strong>${pendingSubmissions.length}</strong> à¸£à¸²à¸¢à¸à¸²à¸£à¹ƒà¸Šà¹ˆà¸«à¸£à¸·à¸­à¹„à¸¡à¹ˆ?`
           : `Do you want to approve <strong>${pendingSubmissions.length}</strong> submission(s)?`,
       icon: "question",
       showCancelButton: true,
       confirmButtonText:
-        currentLang === "th" ? "อนุมัติทั้งหมด" : "Approve All",
-      cancelButtonText: currentLang === "th" ? "ยกเลิก" : "Cancel",
+        currentLang === "th" ? "à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”" : "Approve All",
+      cancelButtonText: currentLang === "th" ? "à¸¢à¸à¹€à¸¥à¸´à¸" : "Cancel",
       confirmButtonColor: "#10b981",
       customClass: { popup: "swal-dark" },
     });
@@ -1012,10 +1012,10 @@
     if (!result.isConfirmed) return;
 
     Swal.fire({
-      title: currentLang === "th" ? "กำลังอนุมัติ..." : "Approving...",
+      title: currentLang === "th" ? "à¸à¸³à¸¥à¸±à¸‡à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´..." : "Approving...",
       html:
         currentLang === "th"
-          ? `กำลังอนุมัติ 0 / ${pendingSubmissions.length}`
+          ? `à¸à¸³à¸¥à¸±à¸‡à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´ 0 / ${pendingSubmissions.length}`
           : `Approving 0 / ${pendingSubmissions.length}`,
       allowOutsideClick: false,
       showConfirmButton: false,
@@ -1037,7 +1037,7 @@
       Swal.update({
         html:
           currentLang === "th"
-            ? `กำลังอนุมัติ ${i + 1} / ${pendingSubmissions.length}`
+            ? `à¸à¸³à¸¥à¸±à¸‡à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´ ${i + 1} / ${pendingSubmissions.length}`
             : `Approving ${i + 1} / ${pendingSubmissions.length}`,
       });
     }
@@ -1045,11 +1045,11 @@
     await refreshSubmissions();
 
     Swal.fire({
-      title: currentLang === "th" ? "เสร็จสิ้น" : "Complete",
+      title: currentLang === "th" ? "à¹€à¸ªà¸£à¹‡à¸ˆà¸ªà¸´à¹‰à¸™" : "Complete",
       html:
         currentLang === "th"
-          ? `<div style="color: #10b981; font-weight: 600;">อนุมัติสำเร็จ: ${successCount}</div>
-             ${failCount > 0 ? `<div style="color: #ef4444; margin-top: 0.5rem;">ล้มเหลว: ${failCount}</div>` : ""}`
+          ? `<div style="color: #10b981; font-weight: 600;">à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´à¸ªà¸³à¹€à¸£à¹‡à¸ˆ: ${successCount}</div>
+             ${failCount > 0 ? `<div style="color: #ef4444; margin-top: 0.5rem;">à¸¥à¹‰à¸¡à¹€à¸«à¸¥à¸§: ${failCount}</div>` : ""}`
           : `<div style="color: #10b981; font-weight: 600;">Approved: ${successCount}</div>
              ${failCount > 0 ? `<div style="color: #ef4444; margin-top: 0.5rem;">Failed: ${failCount}</div>` : ""}`,
       icon: failCount > 0 ? "warning" : "success",
@@ -1066,11 +1066,11 @@
       await Swal.fire({
         title:
           currentLang === "th"
-            ? "ไม่มีหลักฐานรออนุมัติ"
+            ? "à¹„à¸¡à¹ˆà¸¡à¸µà¸«à¸¥à¸±à¸à¸à¸²à¸™à¸£à¸­à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´"
             : "No Pending Submissions",
         text:
           currentLang === "th"
-            ? "ไม่มีหลักฐานที่รออนุมัติในขณะนี้"
+            ? "à¹„à¸¡à¹ˆà¸¡à¸µà¸«à¸¥à¸±à¸à¸à¸²à¸™à¸—à¸µà¹ˆà¸£à¸­à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´à¹ƒà¸™à¸‚à¸“à¸°à¸™à¸µà¹‰"
             : "There are no pending submissions at this time",
         icon: "info",
         customClass: { popup: "swal-dark" },
@@ -1079,15 +1079,15 @@
     }
 
     const result = await Swal.fire({
-      title: currentLang === "th" ? "ปฏิเสธทั้งหมด?" : "Reject All?",
+      title: currentLang === "th" ? "à¸›à¸à¸´à¹€à¸ªà¸˜à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”?" : "Reject All?",
       html:
         currentLang === "th"
-          ? `คุณต้องการปฏิเสธหลักฐาน <strong>${pendingSubmissions.length}</strong> รายการใช่หรือไม่?<br/><br/><span style="color: #f87171; font-size: 0.9rem;">การดำเนินการนี้ไม่สามารถย้อนกลับได้</span>`
+          ? `à¸„à¸¸à¸“à¸•à¹‰à¸­à¸‡à¸à¸²à¸£à¸›à¸à¸´à¹€à¸ªà¸˜à¸«à¸¥à¸±à¸à¸à¸²à¸™ <strong>${pendingSubmissions.length}</strong> à¸£à¸²à¸¢à¸à¸²à¸£à¹ƒà¸Šà¹ˆà¸«à¸£à¸·à¸­à¹„à¸¡à¹ˆ?<br/><br/><span style="color: #f87171; font-size: 0.9rem;">à¸à¸²à¸£à¸”à¸³à¹€à¸™à¸´à¸™à¸à¸²à¸£à¸™à¸µà¹‰à¹„à¸¡à¹ˆà¸ªà¸²à¸¡à¸²à¸£à¸–à¸¢à¹‰à¸­à¸™à¸à¸¥à¸±à¸šà¹„à¸”à¹‰</span>`
           : `Do you want to reject <strong>${pendingSubmissions.length}</strong> submission(s)?<br/><br/><span style="color: #f87171; font-size: 0.9rem;">This action cannot be undone</span>`,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: currentLang === "th" ? "ปฏิเสธทั้งหมด" : "Reject All",
-      cancelButtonText: currentLang === "th" ? "ยกเลิก" : "Cancel",
+      confirmButtonText: currentLang === "th" ? "à¸›à¸à¸´à¹€à¸ªà¸˜à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”" : "Reject All",
+      cancelButtonText: currentLang === "th" ? "à¸¢à¸à¹€à¸¥à¸´à¸" : "Cancel",
       confirmButtonColor: "#ef4444",
       customClass: { popup: "swal-dark" },
     });
@@ -1095,10 +1095,10 @@
     if (!result.isConfirmed) return;
 
     Swal.fire({
-      title: currentLang === "th" ? "กำลังปฏิเสธ..." : "Rejecting...",
+      title: currentLang === "th" ? "à¸à¸³à¸¥à¸±à¸‡à¸›à¸à¸´à¹€à¸ªà¸˜..." : "Rejecting...",
       html:
         currentLang === "th"
-          ? `กำลังปฏิเสธ 0 / ${pendingSubmissions.length}`
+          ? `à¸à¸³à¸¥à¸±à¸‡à¸›à¸à¸´à¹€à¸ªà¸˜ 0 / ${pendingSubmissions.length}`
           : `Rejecting 0 / ${pendingSubmissions.length}`,
       allowOutsideClick: false,
       showConfirmButton: false,
@@ -1120,7 +1120,7 @@
       Swal.update({
         html:
           currentLang === "th"
-            ? `กำลังปฏิเสธ ${i + 1} / ${pendingSubmissions.length}`
+            ? `à¸à¸³à¸¥à¸±à¸‡à¸›à¸à¸´à¹€à¸ªà¸˜ ${i + 1} / ${pendingSubmissions.length}`
             : `Rejecting ${i + 1} / ${pendingSubmissions.length}`,
       });
     }
@@ -1128,11 +1128,11 @@
     await refreshSubmissions();
 
     Swal.fire({
-      title: currentLang === "th" ? "เสร็จสิ้น" : "Complete",
+      title: currentLang === "th" ? "à¹€à¸ªà¸£à¹‡à¸ˆà¸ªà¸´à¹‰à¸™" : "Complete",
       html:
         currentLang === "th"
-          ? `<div style="color: #ef4444; font-weight: 600;">ปฏิเสธสำเร็จ: ${successCount}</div>
-             ${failCount > 0 ? `<div style="color: #f59e0b; margin-top: 0.5rem;">ล้มเหลว: ${failCount}</div>` : ""}`
+          ? `<div style="color: #ef4444; font-weight: 600;">à¸›à¸à¸´à¹€à¸ªà¸˜à¸ªà¸³à¹€à¸£à¹‡à¸ˆ: ${successCount}</div>
+             ${failCount > 0 ? `<div style="color: #f59e0b; margin-top: 0.5rem;">à¸¥à¹‰à¸¡à¹€à¸«à¸¥à¸§: ${failCount}</div>` : ""}`
           : `<div style="color: #ef4444; font-weight: 600;">Rejected: ${successCount}</div>
              ${failCount > 0 ? `<div style="color: #f59e0b; margin-top: 0.5rem;">Failed: ${failCount}</div>` : ""}`,
       icon: failCount > 0 ? "warning" : "success",
@@ -2033,7 +2033,7 @@
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               ></path>
             </svg>
-            {currentLang === "th" ? "อนุมัติทั้งหมด" : "Approve All"}
+            {currentLang === "th" ? "à¸­à¸™à¸¸à¸¡à¸±à¸•à¸´à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”" : "Approve All"}
           </button>
 
           <button class="btn-bulk-reject" on:click={onRejectAll}>
@@ -2051,7 +2051,7 @@
                 d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
               ></path>
             </svg>
-            {currentLang === "th" ? "ปฏิเสธทั้งหมด" : "Reject All"}
+            {currentLang === "th" ? "à¸›à¸à¸´à¹€à¸ªà¸˜à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”" : "Reject All"}
           </button>
         </div>
       </div>
@@ -2089,7 +2089,7 @@
                     <h4 class="user-name">{sub.runnerName}</h4>
                     <div class="user-meta">
                       <span class="nisit-id">{sub.odySd}</span>
-                      <span class="separator">•</span>
+                      <span class="separator">â€¢</span>
                       <span class="user-email">{sub.email}</span>
                     </div>
                   </div>
@@ -2334,7 +2334,7 @@
       <button
         class="modal-close"
         aria-label="Close image preview"
-        on:click={closeImageModal}>×</button
+        on:click={closeImageModal}>Ã—</button
       >
       <img
         src={modalImageUrl}
@@ -3115,7 +3115,7 @@
 
   .user-info {
     flex: 1;
-    min-width: 0; /* ป้องกัน text overflow */
+    min-width: 0; /* à¸›à¹‰à¸­à¸‡à¸à¸±à¸™ text overflow */
   }
 
   .user-name {
@@ -3126,7 +3126,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-align: left; /* ✅ ชิดซ้าย */
+    text-align: left; /* âœ… à¸Šà¸´à¸”à¸‹à¹‰à¸²à¸¢ */
   }
 
   /* Meta Info: ID + Email */
@@ -3289,7 +3289,7 @@
     color: #64748b;
     font-size: 0.75rem;
     text-align: center;
-    margin-top: auto; /* ดันลงล่างสุดถ้า Flex container สูง */
+    margin-top: auto; /* à¸”à¸±à¸™à¸¥à¸‡à¸¥à¹ˆà¸²à¸‡à¸ªà¸¸à¸”à¸–à¹‰à¸² Flex container à¸ªà¸¹à¸‡ */
     padding-top: 0.5rem;
   }
 
@@ -3385,9 +3385,9 @@
   .page-dropdown-list {
     position: absolute;
     top: calc(100% + 8px);
-    left: 0; /* ตรงๆ ลงมาจากปุ่ม */
+    left: 0; /* à¸•à¸£à¸‡à¹† à¸¥à¸‡à¸¡à¸²à¸ˆà¸²à¸à¸›à¸¸à¹ˆà¸¡ */
     transform: none;
-    width: 100%; /* ขนาดเท่ากับกล่องตัวเลือก */
+    width: 100%; /* à¸‚à¸™à¸²à¸”à¹€à¸—à¹ˆà¸²à¸à¸±à¸šà¸à¸¥à¹ˆà¸­à¸‡à¸•à¸±à¸§à¹€à¸¥à¸·à¸­à¸ */
     background: #1e293b;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
@@ -3668,3 +3668,4 @@
     }
   }
 </style>
+

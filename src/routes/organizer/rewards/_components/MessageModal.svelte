@@ -1,6 +1,6 @@
-=== rewards/./_components/MessageModal.svelte ===
+﻿=== rewards/./_components/MessageModal.svelte ===
 <script lang="ts">
-  import { appState } from '../../_lib/stores/appState';
+  import { appState } from '$lib/stores/appState';
   
   export let show: boolean;
   export let recipientCount: number;
@@ -23,8 +23,8 @@
   <div class="modal-overlay" on:click={onClose} on:keypress role="button" tabindex="0">
     <div class="modal-content" on:click|stopPropagation on:keypress role="button" tabindex="0">
       <div class="modal-header">
-        <h3>{lang === 'th' ? 'ส่งข้อความ' : 'Send Message'}</h3>
-        <button class="btn-close" aria-label={lang === 'th' ? 'ปิด' : 'Close'} on:click={onClose}>
+        <h3>{lang === 'th' ? 'à¸ªà¹ˆà¸‡à¸‚à¹‰à¸­à¸„à¸§à¸²à¸¡' : 'Send Message'}</h3>
+        <button class="btn-close" aria-label={lang === 'th' ? 'à¸›à¸´à¸”' : 'Close'} on:click={onClose}>
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -33,23 +33,23 @@
       
       <div class="modal-body">
         <p class="recipient-info">
-          {lang === 'th' ? 'ส่งถึง' : 'Send to'}: <strong>{recipientCount}</strong> {lang === 'th' ? 'คน' : 'recipients'}
+          {lang === 'th' ? 'à¸ªà¹ˆà¸‡à¸–à¸¶à¸‡' : 'Send to'}: <strong>{recipientCount}</strong> {lang === 'th' ? 'à¸„à¸™' : 'recipients'}
         </p>
         
         <textarea 
           class="message-input"
           rows="6"
-          placeholder={lang === 'th' ? 'กรอกข้อความ...' : 'Enter message...'}
+          placeholder={lang === 'th' ? 'à¸à¸£à¸­à¸à¸‚à¹‰à¸­à¸„à¸§à¸²à¸¡...' : 'Enter message...'}
           bind:value={message}
         ></textarea>
         
         <div class="modal-actions">
-          <button class="btn-cancel" on:click={onClose}>{lang === 'th' ? 'ยกเลิก' : 'Cancel'}</button>
+          <button class="btn-cancel" on:click={onClose}>{lang === 'th' ? 'à¸¢à¸à¹€à¸¥à¸´à¸' : 'Cancel'}</button>
           <button class="btn-send" disabled={!message.trim()} on:click={handleSend}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
-            {lang === 'th' ? 'ส่ง' : 'Send'}
+            {lang === 'th' ? 'à¸ªà¹ˆà¸‡' : 'Send'}
           </button>
         </div>
       </div>
@@ -77,3 +77,4 @@
   .btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-send svg { width: 16px; height: 16px; }
 </style>
+

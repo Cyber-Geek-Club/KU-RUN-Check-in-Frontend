@@ -1,6 +1,6 @@
-=== rewards/./_components/UserStatsCard.svelte ===
+﻿=== rewards/./_components/UserStatsCard.svelte ===
 <script lang="ts">
-  import { appState } from '../../_lib/stores/appState';
+  import { appState } from '$lib/stores/appState';
   
   export let totalParticipants: number;
   export let qualifiedUsers: number;
@@ -18,7 +18,7 @@
       </svg>
     </div>
     <div class="stat-content">
-      <div class="stat-label">{lang === 'th' ? 'ผู้เข้าร่วมทั้งหมด' : 'Total Participants'}</div>
+      <div class="stat-label">{lang === 'th' ? 'à¸œà¸¹à¹‰à¹€à¸‚à¹‰à¸²à¸£à¹ˆà¸§à¸¡à¸—à¸±à¹‰à¸‡à¸«à¸¡à¸”' : 'Total Participants'}</div>
       <div class="stat-value">{totalParticipants}</div>
     </div>
   </div>
@@ -30,7 +30,7 @@
       </svg>
     </div>
     <div class="stat-content">
-      <div class="stat-label">{lang === 'th' ? 'มีสิทธิ์รับรางวัล' : 'Qualified Users'}</div>
+      <div class="stat-label">{lang === 'th' ? 'à¸¡à¸µà¸ªà¸´à¸—à¸˜à¸´à¹Œà¸£à¸±à¸šà¸£à¸²à¸‡à¸§à¸±à¸¥' : 'Qualified Users'}</div>
       <div class="stat-value">{qualifiedUsers}</div>
     </div>
   </div>
@@ -42,7 +42,7 @@
       </svg>
     </div>
     <div class="stat-content">
-      <div class="stat-label">{lang === 'th' ? 'อัตราผ่านเกณฑ์' : 'Qualification Rate'}</div>
+      <div class="stat-label">{lang === 'th' ? 'à¸­à¸±à¸•à¸£à¸²à¸œà¹ˆà¸²à¸™à¹€à¸à¸“à¸‘à¹Œ' : 'Qualification Rate'}</div>
       <div class="stat-value">{qualificationRate}%</div>
     </div>
   </div>
@@ -58,9 +58,9 @@
       </svg>
     </div>
     <div class="stat-content">
-      <div class="stat-label">{lang === 'th' ? 'สถานะ' : 'Status'}</div>
+      <div class="stat-label">{lang === 'th' ? 'à¸ªà¸–à¸²à¸™à¸°' : 'Status'}</div>
       <div class="stat-value stat-status" class:finalized={isFinalized}>
-        {isFinalized ? (lang === 'th' ? 'ยืนยันแล้ว' : 'Finalized') : (lang === 'th' ? 'รอยืนยัน' : 'Pending')}
+        {isFinalized ? (lang === 'th' ? 'à¸¢à¸·à¸™à¸¢à¸±à¸™à¹à¸¥à¹‰à¸§' : 'Finalized') : (lang === 'th' ? 'à¸£à¸­à¸¢à¸·à¸™à¸¢à¸±à¸™' : 'Pending')}
       </div>
     </div>
   </div>
@@ -78,3 +78,4 @@
   .stat-status.finalized { color: var(--success); }
   @media (max-width: 768px) { .stats-card { grid-template-columns: 1fr; } }
 </style>
+
