@@ -2309,7 +2309,6 @@
                 proof_image_url: finalImageUrl,
                 strava_link: sendingLink,
                 actual_distance_km: Number(distanceInput),
-                distance_km: Number(distanceInput), // [FIX] Add this field as backup
             };
 
             console.log("🛠️ Status Check Result:", statusData); // [DEBUG] Check what status we used
