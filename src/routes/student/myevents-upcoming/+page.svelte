@@ -2222,6 +2222,7 @@
                 proof_image_url: finalImageUrl,
                 strava_link: sendingLink,
                 actual_distance_km: Number(distanceInput),
+                distance_km: Number(distanceInput), // [FIX] Add this field as backup
             };
 
             // เริ่มต้นด้วยการเดาว่าเป็น POST (หรือ PUT ถ้า REJECTED)
@@ -2287,7 +2288,10 @@
                 await loadData();
             } else {
                 const errData = await res.json().catch(() => ({}));
-                console.error("❌ Submit Error Detail:", errData);
+                console.error(
+                    "❌ Submit Error Detail:",
+                    JSON.stringify(errData, null, 2),
+                );
                 throw new Error(
                     errData.message ||
                         errData.detail ||
