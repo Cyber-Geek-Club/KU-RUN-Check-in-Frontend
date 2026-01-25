@@ -565,7 +565,6 @@
             const results = await Promise.allSettled(
                 batch.map(async (eventId) => {
                     try {
-                        // Removed participants API call for officer role
                         return {
                             eventId,
                             uniqueCount:
@@ -2996,17 +2995,6 @@
                                                 >
                                                 {event.lockMessage ||
                                                     t[lang].btn_locked}
-                                            </button>
-                                        {:else if !event.join_code && event.status !== "COMPLETED"}
-                                            <!-- [NEW] ไม่ได้สมัครสำหรับวันนี้ -->
-                                            <button
-                                                class="status-btn"
-                                                style="background: #8b5cf6; cursor: not-allowed; opacity: 0.7;"
-                                                disabled
-                                            >
-                                                {lang === "th"
-                                                    ? "📝 สมัครจากหน้าค้นหา"
-                                                    : "📝 Register from Events"}
                                             </button>
                                         {:else if event.status === "COMPLETED"}
                                             <button
