@@ -2231,6 +2231,13 @@
                 : `${BASE_URL}/api/participations/${selectedEvent.participation_id}/submit-proof`;
             let method = isResubmit ? "PUT" : "POST";
 
+            console.log("🚀 Submitting Proof...", {
+                endpoint,
+                method,
+                payload,
+                participationId: selectedEvent.participation_id,
+            });
+
             let res = await fetch(endpoint, {
                 method: method,
                 headers: {
