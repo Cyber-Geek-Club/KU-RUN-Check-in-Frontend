@@ -1323,34 +1323,106 @@
             });
 
             // ดึงสถานะล่าสุด
-            const latestStatus = await fetchMyStatus(selectedEvent.id);
+            const statusRes = await fetchMyStatus(selectedEvent.id);
 
-            if (latestStatus && latestStatus.status) {
-                const newUiStatus = mapApiStatusToUi(latestStatus.status);
-                selectedEvent.status = newUiStatus;
+            if (statusRes) {
+                let bestStatus = null;
+                // Helper: Status Priority logic (Duplicate of logic in submitProofAction/processData to be safe)
+                const getStatusPriority = (s: string) => {
+                    if (!s) return 0;
+                    const status = s.toLowerCase();
+                    if (status === "checked_in") return 10;
+                    if (status === "rejected") return 10;
+                    if (
+                        status.includes("wait") ||
+                        status.includes("pending") ||
+                        status.includes("submit")
+                    )
+                        return 5;
+                    if (
+                        status === "completed" ||
+                        status === "finished" ||
+                        status === "checked_out"
+                    )
+                        return 1;
+                    if (status === "joined") return 1;
+                    return 0;
+                };
 
-                Swal.close();
-
-                if (newUiStatus === "CHECKED_IN") {
-                    Swal.fire({
-                        icon: "success",
-                        title: t[lang].alert_checkin_success,
-                        text: t[lang].alert_go_next,
-                        timer: 1500,
-                        showConfirmButton: false,
+                // Handle Array/List response
+                if (statusRes.codes && statusRes.codes.length > 0) {
+                    const list = statusRes.codes;
+                    list.sort((a: any, b: any) => {
+                        // 1. Date Desc
+                        const da = (
+                            a.created_at ||
+                            a.date ||
+                            a.start_date ||
+                            ""
+                        ).split("T")[0];
+                        const db = (
+                            b.created_at ||
+                            b.date ||
+                            b.start_date ||
+                            ""
+                        ).split("T")[0];
+                        if (da !== db) return da < db ? 1 : -1;
+                        // 2. Priority Desc
+                        const pa = getStatusPriority(a.status);
+                        const pb = getStatusPriority(b.status);
+                        if (pa !== pb) return pb - pa;
+                        // 3. ID Desc
+                        return b.id - a.id;
                     });
-                } else if (newUiStatus === "COMPLETED") {
-                    Swal.fire({
-                        icon: "success",
-                        title: "Mission Completed!",
-                        text: "กิจกรรมเสร็จสมบูรณ์",
-                    });
+                    bestStatus = list[0];
+                } else if (statusRes.join_code || statusRes.status) {
+                    // Handle Single Object response
+                    bestStatus = statusRes;
+                }
+
+                if (bestStatus && bestStatus.status) {
+                    // [FIX] CRITICAL: Update Participation ID!
+                    if (
+                        bestStatus.id &&
+                        bestStatus.id !== selectedEvent.participation_id
+                    ) {
+                        console.log(
+                            `✅ Updating Participation ID: ${selectedEvent.participation_id} -> ${bestStatus.id}`,
+                        );
+                        selectedEvent.participation_id = bestStatus.id;
+                        // Also update global/shared state if needed
+                        currentParticipationId = bestStatus.id;
+                    }
+
+                    const newUiStatus = mapApiStatusToUi(bestStatus.status);
+                    selectedEvent.status = newUiStatus;
+
+                    Swal.close();
+
+                    if (newUiStatus === "CHECKED_IN") {
+                        Swal.fire({
+                            icon: "success",
+                            title: t[lang].alert_checkin_success,
+                            text: t[lang].alert_go_next,
+                            timer: 1500,
+                            showConfirmButton: false,
+                        });
+                    } else if (newUiStatus === "COMPLETED") {
+                        Swal.fire({
+                            icon: "success",
+                            title: "Mission Completed!",
+                            text: "กิจกรรมเสร็จสมบูรณ์",
+                        });
+                    } else {
+                        // Case: Status didn't change to CHECKED_IN (maybe still JOINED or something else)
+                        Swal.fire({
+                            icon: "info",
+                            title: t[lang].alert_not_checked_in,
+                            text: `${t[lang].alert_contact_staff} (Status: ${newUiStatus})`,
+                        });
+                    }
                 } else {
-                    Swal.fire({
-                        icon: "info",
-                        title: t[lang].alert_not_checked_in,
-                        text: t[lang].alert_contact_staff,
-                    });
+                    Swal.close();
                 }
             } else {
                 Swal.close();
