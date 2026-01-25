@@ -2112,10 +2112,11 @@
 
         try {
             // Ensure we have the latest participation context (fresh participation_id) before submitting
+            let statusData: any = null; // [FIX] Move to higher scope
             try {
                 const statusRes = await fetchMyStatus(selectedEvent.id);
                 if (statusRes) {
-                    let statusData = null;
+                    // let statusData = null; // [FIX] Removed from here
                     if (statusRes.codes && statusRes.codes.length > 0) {
                         // [FIX] Use same Priority Logic as processData to pick the Best ID
                         const list = statusRes.codes;
