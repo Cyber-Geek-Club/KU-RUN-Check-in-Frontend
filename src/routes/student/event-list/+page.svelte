@@ -137,7 +137,8 @@
   // =========================================
   // 3. TRANSLATION & LANGUAGE LOGIC
   // =========================================
-  const t = {
+  // =========================================
+  const t: Record<"th" | "en", Record<string, string>> = {
     th: {
       search_placeholder: "ค้นหากิจกรรม...",
       status_active: "เปิดรับสมัคร",
@@ -147,7 +148,6 @@
       status_joined: "เข้าร่วมแล้ว",
       status_resubmit: "ส่งใหม่",
       status_pending: "รอตรวจสอบ",
-      status_completed: "สำเร็จ",
       status_completed: "สำเร็จ",
       status_ended: "จบแล้ว",
 
@@ -183,7 +183,6 @@
       status_joined: "JOINED",
       status_resubmit: "RESUBMIT",
       status_pending: "PENDING",
-      status_completed: "COMPLETED",
       status_completed: "COMPLETED",
       status_ended: "ENDED",
 
@@ -917,7 +916,7 @@
       icon: "question",
       showCancelButton: true,
       confirmButtonText: t[lang].btn_register,
-      cancelButtonText: t[lang].btn_cancel,
+      cancelButtonText: lang === "th" ? "ยกเลิก" : "Cancel",
       confirmButtonColor: "#10b981",
       cancelButtonColor: "#d33",
     });

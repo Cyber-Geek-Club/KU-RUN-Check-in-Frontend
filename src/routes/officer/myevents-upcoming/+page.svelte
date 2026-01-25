@@ -299,7 +299,14 @@
         distance_km: number;
         actual_distance_km?: number;
         banner_image_url: string;
-        status: "COMPLETED";
+        status:
+            | "JOINED"
+            | "CHECKED_IN"
+            | "REJECTED"
+            | "proof_submitted"
+            | "CHECKED_OUT"
+            | "COMPLETED"
+            | "CANCELED";
 
         participant_count: number;
         max_participants: number;
@@ -661,7 +668,7 @@
             const list = groupedMap[eid];
 
             // Sort: Date (Desc) -> Status Priority (Desc) -> ID (Desc)
-            list.sort((a, b) => {
+            list.sort((a: any, b: any) => {
                 // 1. Date
                 const da = a.created_at || a.date || a.start_date || "";
                 const db = b.created_at || b.date || b.start_date || "";
@@ -2138,7 +2145,7 @@
                             return 0;
                         };
 
-                        list.sort((a, b) => {
+                        list.sort((a: any, b: any) => {
                             // 1. Date Desc
                             const da =
                                 a.created_at || a.date || a.start_date || "";
@@ -3399,6 +3406,7 @@
                         proof_submitted: 3,
                         CHECKED_OUT: 4,
                         COMPLETED: 5,
+                        CANCELED: 0,
                     }}
                     {@const currentStep = stepMap[selectedEvent.status] || 0}
 
