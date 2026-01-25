@@ -45,6 +45,14 @@
     max_checkins_per_user: number | null;
     checkin_count: number; // จำนวนครั้งที่ check-in แล้ว
     hasHistory?: boolean;
+    // [NEW] Pre-Register Status from API
+    preRegStatus?: {
+      registered_count: number;
+      max_limit: number;
+      is_full: boolean;
+      remaining: number;
+    };
+    serverCanRegisterToday?: boolean; // ผลจาก API check-daily-limit
   }
 
   // Interface สำหรับการแจ้งเตือนรางวัล
@@ -86,25 +94,7 @@
   let sessionExpiredAlertShown = false;
 
   // Modal State
-  let showUploadModal = $state(false);
-  let showCancelModal = $state(false);
   let selectedEvent: EventItem | null = $state(null);
-  let eventToCancel: EventItem | null = $state(null);
-
-  // Upload State
-  let proofImage: string | null = $state(null);
-  let proofFile: File | null = null;
-
-  // Cancel Reason State
-  let selectedCancelReason = $state("");
-  let otherCancelReason = $state("");
-  const cancelReasons = [
-    "ติดธุระด่วน / Urgent matter",
-    "ปัญหาสุขภาพ / Health issue",
-    "สภาพอากาศ / Weather condition",
-    "การเดินทาง / Transportation",
-    "อื่นๆ / Other",
-  ];
 
   const menuItems = [
     {
@@ -158,29 +148,15 @@
       status_resubmit: "ส่งใหม่",
       status_pending: "รอตรวจสอบ",
       status_completed: "สำเร็จ",
-      status_cancelled: "ยกเลิกแล้ว",
+      status_completed: "สำเร็จ",
       status_ended: "จบแล้ว",
 
       btn_register: "ลงทะเบียน",
-      btn_cancel: "ยกเลิก",
       btn_joined: "เข้าร่วมแล้ว",
       btn_read_more: "ดูรายละเอียด",
       btn_read_less: "ย่อลง",
-      btn_send_proof: "ส่งหลักฐาน",
-      btn_resubmit: "ส่งหลักฐานใหม่",
-
-      upload_title: "อัปโหลดหลักฐาน",
-      upload_desc: "กรุณาอัปโหลดสลิปหรือผลการวิ่ง",
-      upload_btn: "ยืนยันการส่ง",
-      upload_rejected: "⚠️ หลักฐานถูกตีกลับ กรุณาส่งใหม่",
-
-      cancel_title: "ยกเลิกกิจกรรม",
-      cancel_desc: "โปรดระบุเหตุผลที่คุณต้องการยกเลิก",
-      cancel_confirm: "ยืนยันการยกเลิก",
-      reason_placeholder: "ระบุเหตุผลอื่นๆ...",
 
       alert_success: "สำเร็จ",
-      alert_cancel_success: "ยกเลิกเรียบร้อยแล้ว",
 
       // Inbox translations
       inbox_title: "รางวัลและการแจ้งเตือน",
@@ -208,29 +184,15 @@
       status_resubmit: "RESUBMIT",
       status_pending: "PENDING",
       status_completed: "COMPLETED",
-      status_cancelled: "CANCELLED",
+      status_completed: "COMPLETED",
       status_ended: "ENDED",
 
       btn_register: "REGISTRATION",
-      btn_cancel: "CANCEL",
       btn_joined: "JOINED",
       btn_read_more: "Read more",
       btn_read_less: "Read less",
-      btn_send_proof: "SEND PROOF",
-      btn_resubmit: "RESUBMIT PROOF",
-
-      upload_title: "Upload Proof",
-      upload_desc: "Please upload your slip or result.",
-      upload_btn: "SUBMIT PROOF",
-      upload_rejected: "⚠️ Proof rejected. Please resubmit.",
-
-      cancel_title: "Cancel Participation",
-      cancel_desc: "Please specify your reason for cancellation.",
-      cancel_confirm: "CONFIRM CANCEL",
-      reason_placeholder: "Specify other reason...",
 
       alert_success: "Success",
-      alert_cancel_success: "Cancelled successfully",
 
       // Inbox translations
       inbox_title: "Rewards & Notifications",
@@ -419,8 +381,10 @@
         });
 
       events = newEvents;
+      events = newEvents;
       await updateUserStatus(); // Ensure user status is updated after fetching events
       fetchUniqueParticipantCounts(); // ดึงจำนวนผู้เข้าร่วมที่ไม่ซ้ำ
+      fetchPreRegDetails(); // [NEW] ดึง Pre-Register Status สำหรับ Multi-day events
     } catch (error: any) {
       console.error("Error loading events:", error);
     } finally {
@@ -440,6 +404,7 @@
 
     for (let i = 0; i < eventsCopy.length; i += BATCH_SIZE) {
       const batch = eventsCopy.slice(i, i + BATCH_SIZE);
+      // For officer, use participant_count from event directly
       batch.forEach((event) => {
         const eventIndex = events.findIndex((e) => e.id === event.id);
         if (eventIndex !== -1) {
@@ -448,6 +413,102 @@
       });
     }
     // Force reactivity update
+    events = [...events];
+  }
+
+  // [NEW] Fetch Pre-Register Status & Daily Limit for Multi-day Events
+  async function fetchPreRegDetails() {
+    const token = getToken();
+    if (!token) return;
+
+    const multiDayEvents = events.filter(
+      (e) => e.event_type === "multi_day" && e.is_active,
+    );
+
+    // Fetch in parallel
+    await Promise.all(
+      multiDayEvents.map(async (event) => {
+        try {
+          const headers = {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          };
+
+          // 1. Fetch Total Status
+          let statusData = null;
+          try {
+            const statusRes = await fetch(
+              `${BASE_URL}/api/participations/pre-register-status/${event.id}`,
+              { headers },
+            );
+            if (statusRes.ok) {
+              statusData = await statusRes.json();
+            }
+          } catch (err) {
+            console.warn(`Failed to fetch status for event ${event.id}`, err);
+          }
+
+          // 2. Fetch Daily Limit Check
+          let dailyData = null;
+          try {
+            // [FIX] Add error handling for daily limit check which causes 500
+            const dailyRes = await fetch(
+              `${BASE_URL}/api/participations/check-daily-limit/${event.id}`,
+              { headers },
+            );
+            if (dailyRes.ok) {
+              dailyData = await dailyRes.json();
+            } else {
+              console.warn(
+                `Daily limit check failed for ${event.id}: ${dailyRes.status}`,
+              );
+            }
+          } catch (err) {
+            console.warn(
+              `Daily limit check network error for ${event.id}`,
+              err,
+            );
+          }
+
+          // Update Event Object
+          const index = events.findIndex((e) => e.id === event.id);
+          if (index !== -1) {
+            if (statusData) {
+              events[index].preRegStatus = {
+                registered_count: statusData.registered_count,
+                max_limit: statusData.max_limit,
+                is_full: statusData.is_full,
+                remaining: Math.max(
+                  0,
+                  statusData.max_limit - statusData.registered_count,
+                ),
+              };
+              // Override max_checkins_per_user with real data from server if available
+              if (statusData.max_limit) {
+                events[index].max_checkins_per_user = statusData.max_limit;
+              }
+              // Override checkin_count with real registered_count
+              if (statusData.registered_count !== undefined) {
+                events[index].checkin_count = statusData.registered_count;
+              }
+            }
+
+            if (dailyData) {
+              events[index].serverCanRegisterToday = dailyData.can_register;
+              // Update isJoinedToday logic based on server check
+              events[index].isJoinedToday = !dailyData.can_register;
+            }
+          }
+        } catch (e) {
+          console.error(
+            `Error processing pre-reg details for event ${event.id}:`,
+            e,
+          );
+        }
+      }),
+    );
+
+    // Force update
     events = [...events];
   }
 
@@ -651,14 +712,16 @@
 
     // แยก logic ตาม event_type
     if (event.event_type === "multi_day") {
+      // [NEW] Prefer Server-Side Check
+      if (event.serverCanRegisterToday !== undefined) {
+        return event.serverCanRegisterToday;
+      }
+
       // Multi-day: เช็คจากจำนวน checkins แทนการเช็ควันที่
       if (event.max_checkins_per_user && event.max_checkins_per_user > 0) {
         // ถ้ามี max กำหนด เช็คจากจำนวนครั้งที่เช็คอินไปแล้ว
-        const canJoinMore =
-          (event.checkin_count || 0) < event.max_checkins_per_user;
-        console.log(
-          `[Event ${event.id}] Multi-day check: ${event.checkin_count}/${event.max_checkins_per_user} -> canJoin: ${canJoinMore}`,
-        );
+        const checkinCount = event.checkin_count || 0;
+        const canJoinMore = checkinCount < event.max_checkins_per_user;
         return canJoinMore && !event.isJoinedToday; // และต้องไม่ได้ join วันนี้ไปแล้ว
       }
       // Fallback: เช็ควันที่
@@ -718,7 +781,26 @@
       // Multi-day: ตรวจสอบตาม max_checkins_per_user
 
       // 1. เช็ควันนี้ลงทะเบียนแล้วหรือยัง
-      if (eventItem.isJoinedToday) {
+      // [NEW] Check server status first
+      if (eventItem.serverCanRegisterToday === false) {
+        Swal.fire({
+          icon: "info",
+          title:
+            lang === "th" ? "ลงทะเบียนวันนี้แล้ว" : "Already Registered Today",
+          text:
+            lang === "th"
+              ? "คุณได้ลงทะเบียนวันนี้ไปแล้ว กรุณารอถึงวันถัดไป"
+              : "You have already registered today. Please wait until tomorrow.",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#3b82f6",
+        });
+        return;
+      }
+
+      if (
+        eventItem.isJoinedToday &&
+        eventItem.serverCanRegisterToday === undefined
+      ) {
         Swal.fire({
           icon: "info",
           title:
@@ -1019,215 +1101,9 @@
     total_checkins: number;
   }
 
-  // [NEW] Cancel participation when completionCount = 0
-  async function handleDirectCancel(event: EventItem) {
-    // ไม่อนุญาตยกเลิกหากมีการเช็คอิน/ทำสำเร็จแล้วของผู้ใช้เอง
-    if (event.checkin_count > 0) {
-      Swal.fire({
-        icon: "info",
-        title: lang === "th" ? "ไม่สามารถยกเลิก" : "Cannot Cancel",
-        text:
-          lang === "th"
-            ? "ยกเลิกได้เฉพาะกิจกรรมที่ยังไม่มีการเช็คอิน/ทำสำเร็จ"
-            : "Can cancel only when you have 0 check-ins/completions",
-        confirmButtonColor: "#3b82f6",
-      });
-      return;
-    }
-
-    const result = await Swal.fire({
-      title: lang === "th" ? "ยกเลิกกิจกรรม?" : "Cancel Event?",
-      text:
-        lang === "th"
-          ? `ต้องการยกเลิก "${event.title}" ใช่หรือไม่`
-          : `Cancel "${event.title}"?`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: t[lang].btn_cancel,
-      cancelButtonText: "No",
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#6b7280",
-    });
-
-    if (result.isConfirmed) {
-      try {
-        const token = getToken();
-        if (!token) {
-          handleSessionExpired();
-          return;
-        }
-        if (!event.participationId) return;
-
-        const res = await fetch(
-          `${BASE_URL}/api/participations/${event.participationId}/cancel`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              cancellation_reason: "User cancelled (no completions)",
-            }),
-          },
-        );
-
-        if (res.ok) {
-          event.isJoined = false;
-          event.isJoinedToday = false;
-          event.participationId = null;
-          event.participationStatus = null;
-          event.participant_count = Math.max(0, event.participant_count - 1);
-          events = [...events];
-
-          Swal.fire({
-            icon: "success",
-            title: t[lang].alert_cancel_success,
-            timer: 1500,
-            showConfirmButton: false,
-          });
-          await updateUserStatus();
-        } else {
-          const err = await res.json();
-          Swal.fire("Failed", err.detail || "Error", "error");
-        }
-      } catch (err) {
-        Swal.fire("Error", "Connection Error", "error");
-      }
-    }
-  }
-
   // --- Cancel Action ---
-  function openCancelModal(event: EventItem) {
-    eventToCancel = event;
-    selectedCancelReason = "";
-    otherCancelReason = "";
-    showCancelModal = true;
-  }
-
-  function closeCancelModal() {
-    showCancelModal = false;
-    eventToCancel = null;
-  }
-
-  async function confirmCancellation() {
-    if (!eventToCancel) return;
-
-    let finalReason = selectedCancelReason;
-
-    // เช็คกรณีเลือก "อื่นๆ" แต่ไม่พิมพ์อะไรมา
-    if (
-      selectedCancelReason.includes("Other") ||
-      selectedCancelReason.includes("อื่นๆ")
-    ) {
-      if (!otherCancelReason.trim()) {
-        Swal.fire({
-          icon: "warning",
-          // แก้ข้อความให้เหมือนกัน
-          title:
-            lang === "th"
-              ? "ยังไม่ได้ระบุสาเหตุการยกเลิกกิจกรรม"
-              : "Reason not specified",
-          text:
-            lang === "th"
-              ? "กรุณาระบุรายละเอียดเพิ่มเติม"
-              : "Please provide more details",
-          confirmButtonColor: "#f59e0b",
-        });
-        return;
-      }
-      finalReason = otherCancelReason;
-    }
-
-    try {
-      const token = getToken();
-      if (!token) {
-        handleSessionExpired();
-        return;
-      }
-      if (!eventToCancel.participationId) {
-        await updateUserStatus();
-        if (!eventToCancel.participationId) return;
-      }
-
-      const res = await fetch(
-        `${BASE_URL}/api/participations/${eventToCancel.participationId}/cancel`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ cancellation_reason: finalReason }),
-        },
-      );
-      if (res.ok) {
-        eventToCancel.isJoined = false;
-        eventToCancel.participationId = null;
-        eventToCancel.participationStatus = null;
-        eventToCancel.participant_count = Math.max(
-          0,
-          eventToCancel.participant_count - 1,
-        );
-        events = [...events];
-        Swal.fire({
-          icon: "success",
-          title: t[lang].alert_cancel_success,
-          timer: 1500,
-          showConfirmButton: false,
-        });
-        closeCancelModal();
-      } else {
-        const err = await res.json();
-        Swal.fire("Failed", err.detail || "Error", "error");
-      }
-    } catch (err) {
-      Swal.fire("Error", "Connection Error", "error");
-    }
-  }
 
   // --- Upload Action ---
-  function openUploadModal(event: EventItem) {
-    selectedEvent = event;
-    proofImage = null;
-    proofFile = null;
-    showUploadModal = true;
-  }
-
-  function closeUploadModal() {
-    showUploadModal = false;
-    selectedEvent = null;
-  }
-
-  function handleImageSelect(e: Event) {
-    const target = e.target as HTMLInputElement;
-    if (target.files && target.files[0]) {
-      proofFile = target.files[0];
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        proofImage = evt.target?.result as string;
-      };
-      reader.readAsDataURL(target.files[0]);
-    }
-  }
-
-  async function submitProof() {
-    if (!selectedEvent || !proofFile) return;
-    try {
-      // API Upload implementation placeholder
-      Swal.fire({
-        icon: "success",
-        title: t[lang].alert_success,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      selectedEvent.participationStatus = "proof_submitted";
-      events = [...events];
-      closeUploadModal();
-    } catch (error) {
-      Swal.fire("Error", "Failed", "error");
-    }
-  }
 
   // =========================================
   // 7. HELPER FUNCTIONS & FORMATTERS
@@ -1467,7 +1343,6 @@
       // หมายเหตุ: กันเหนียวเผื่อ hasHistory ยังไม่มา (fallback)
       if (
         event.isJoined ||
-        event.hasCancelledRecord ||
         (event.participationId !== null && event.participationId !== undefined)
       ) {
         return false;
@@ -1982,15 +1857,6 @@
                         {/if}
                       </button>
                     {/if}
-
-                    {#if event.isJoined && event.checkin_count === 0}
-                      <button
-                        class="cancel-direct-btn"
-                        onclick={() => openCancelModal(event)}
-                      >
-                        {lang === "th" ? "❌ ยกเลิก" : "❌ Cancel"}
-                      </button>
-                    {/if}
                   </div>
                 </div>
               </div>
@@ -2004,6 +1870,7 @@
                 class="nav-btn"
                 onclick={() => changePage(currentPage - 1)}
                 disabled={currentPage === 1}
+                aria-label="Previous page"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -2029,6 +1896,7 @@
                 class="nav-btn"
                 onclick={() => changePage(currentPage + 1)}
                 disabled={currentPage === totalPages}
+                aria-label="Next page"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -2066,101 +1934,6 @@
       </footer>
     </div>
   </div>
-  {#if showUploadModal}
-    <div class="modal-overlay" transition:fade={{ duration: 200 }}>
-      <div class="modal-box" transition:scale={{ duration: 250, start: 0.9 }}>
-        <button class="modal-close" onclick={closeUploadModal}>&times;</button>
-        <div class="modal-body">
-          <h3 class="modal-title">{t[lang].upload_title}</h3>
-          {#if selectedEvent?.participationStatus === "REJECTED"}
-            <p class="error-text">{t[lang].upload_rejected}</p>
-          {:else}
-            <p class="modal-subtitle">{t[lang].upload_desc}</p>
-          {/if}
-          <div class="upload-area">
-            {#if !proofImage}
-              <label class="upload-label">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onchange={handleImageSelect}
-                  hidden
-                />
-                <div class="upload-placeholder">
-                  <span>Click to Upload Image</span>
-                </div>
-              </label>
-            {:else}
-              <div class="image-preview">
-                <img src={proofImage} alt="Proof" />
-                <button
-                  class="remove-img-btn"
-                  onclick={() => {
-                    proofImage = null;
-                    proofFile = null;
-                  }}>&times;</button
-                >
-              </div>
-            {/if}
-          </div>
-          <button
-            class="action-submit-btn purple-theme"
-            disabled={!proofImage}
-            onclick={submitProof}
-          >
-            {t[lang].upload_btn}
-          </button>
-        </div>
-      </div>
-    </div>
-  {/if}
-
-  {#if showCancelModal}
-    <div class="modal-overlay" transition:fade={{ duration: 200 }}>
-      <div class="modal-box" transition:scale={{ duration: 250, start: 0.9 }}>
-        <button class="modal-close" onclick={closeCancelModal}>&times;</button>
-        <div class="modal-body">
-          <h3 class="modal-title" style="color: #ef4444;">
-            {t[lang].cancel_title}
-          </h3>
-          <p class="modal-subtitle">{t[lang].cancel_desc}</p>
-          <div class="cancel-options">
-            {#each cancelReasons as reason}
-              <label class="radio-item">
-                <input
-                  type="radio"
-                  bind:group={selectedCancelReason}
-                  value={reason}
-                />
-                <span class="radio-label">{reason}</span>
-              </label>
-            {/each}
-          </div>
-          {#if selectedCancelReason.includes("อื่นๆ") || selectedCancelReason.includes("Other")}
-            <div class="reason-input" transition:slide>
-              <textarea
-                placeholder={t[lang].reason_placeholder}
-                bind:value={otherCancelReason}
-                rows="3"
-              ></textarea>
-            </div>
-          {/if}
-          <div class="action-row">
-            <button
-              class="action-submit-btn cancel-confirm-btn"
-              onclick={confirmCancellation}
-              disabled={!selectedCancelReason ||
-                ((selectedCancelReason.includes("Other") ||
-                  selectedCancelReason.includes("อื่นๆ")) &&
-                  !otherCancelReason.trim())}
-            >
-              {t[lang].cancel_confirm}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  {/if}
 </div>
 
 <style>

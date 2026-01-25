@@ -94,25 +94,7 @@
   let sessionExpiredAlertShown = false;
 
   // Modal State
-  let showUploadModal = $state(false);
-  let showCancelModal = $state(false);
   let selectedEvent: EventItem | null = $state(null);
-  let eventToCancel: EventItem | null = $state(null);
-
-  // Upload State
-  let proofImage: string | null = $state(null);
-  let proofFile: File | null = null;
-
-  // Cancel Reason State
-  let selectedCancelReason = $state("");
-  let otherCancelReason = $state("");
-  const cancelReasons = [
-    "ติดธุระด่วน / Urgent matter",
-    "ปัญหาสุขภาพ / Health issue",
-    "สภาพอากาศ / Weather condition",
-    "การเดินทาง / Transportation",
-    "อื่นๆ / Other",
-  ];
 
   const menuItems = [
     {
@@ -166,29 +148,15 @@
       status_resubmit: "ส่งใหม่",
       status_pending: "รอตรวจสอบ",
       status_completed: "สำเร็จ",
-      status_cancelled: "ยกเลิกแล้ว",
+      status_completed: "สำเร็จ",
       status_ended: "จบแล้ว",
 
       btn_register: "ลงทะเบียน",
-      btn_cancel: "ยกเลิก",
       btn_joined: "เข้าร่วมแล้ว",
       btn_read_more: "ดูรายละเอียด",
       btn_read_less: "ย่อลง",
-      btn_send_proof: "ส่งหลักฐาน",
-      btn_resubmit: "ส่งหลักฐานใหม่",
-
-      upload_title: "อัปโหลดหลักฐาน",
-      upload_desc: "กรุณาอัปโหลดสลิปหรือผลการวิ่ง",
-      upload_btn: "ยืนยันการส่ง",
-      upload_rejected: "⚠️ หลักฐานถูกตีกลับ กรุณาส่งใหม่",
-
-      cancel_title: "ยกเลิกกิจกรรม",
-      cancel_desc: "โปรดระบุเหตุผลที่คุณต้องการยกเลิก",
-      cancel_confirm: "ยืนยันการยกเลิก",
-      reason_placeholder: "ระบุเหตุผลอื่นๆ...",
 
       alert_success: "สำเร็จ",
-      alert_cancel_success: "ยกเลิกเรียบร้อยแล้ว",
 
       // Inbox translations
       inbox_title: "รางวัลและการแจ้งเตือน",
@@ -216,29 +184,15 @@
       status_resubmit: "RESUBMIT",
       status_pending: "PENDING",
       status_completed: "COMPLETED",
-      status_cancelled: "CANCELLED",
+      status_completed: "COMPLETED",
       status_ended: "ENDED",
 
       btn_register: "REGISTRATION",
-      btn_cancel: "CANCEL",
       btn_joined: "JOINED",
       btn_read_more: "Read more",
       btn_read_less: "Read less",
-      btn_send_proof: "SEND PROOF",
-      btn_resubmit: "RESUBMIT PROOF",
-
-      upload_title: "Upload Proof",
-      upload_desc: "Please upload your slip or result.",
-      upload_btn: "SUBMIT PROOF",
-      upload_rejected: "⚠️ Proof rejected. Please resubmit.",
-
-      cancel_title: "Cancel Participation",
-      cancel_desc: "Please specify your reason for cancellation.",
-      cancel_confirm: "CONFIRM CANCEL",
-      reason_placeholder: "Specify other reason...",
 
       alert_success: "Success",
-      alert_cancel_success: "Cancelled successfully",
 
       // Inbox translations
       inbox_title: "Rewards & Notifications",
@@ -1147,215 +1101,9 @@
     total_checkins: number;
   }
 
-  // [NEW] Cancel participation when completionCount = 0
-  async function handleDirectCancel(event: EventItem) {
-    // ไม่อนุญาตยกเลิกหากมีการเช็คอิน/ทำสำเร็จแล้วของผู้ใช้เอง
-    if (event.checkin_count > 0) {
-      Swal.fire({
-        icon: "info",
-        title: lang === "th" ? "ไม่สามารถยกเลิก" : "Cannot Cancel",
-        text:
-          lang === "th"
-            ? "ยกเลิกได้เฉพาะกิจกรรมที่ยังไม่มีการเช็คอิน/ทำสำเร็จ"
-            : "Can cancel only when you have 0 check-ins/completions",
-        confirmButtonColor: "#3b82f6",
-      });
-      return;
-    }
-
-    const result = await Swal.fire({
-      title: lang === "th" ? "ยกเลิกกิจกรรม?" : "Cancel Event?",
-      text:
-        lang === "th"
-          ? `ต้องการยกเลิก "${event.title}" ใช่หรือไม่`
-          : `Cancel "${event.title}"?`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: t[lang].btn_cancel,
-      cancelButtonText: "No",
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#6b7280",
-    });
-
-    if (result.isConfirmed) {
-      try {
-        const token = getToken();
-        if (!token) {
-          handleSessionExpired();
-          return;
-        }
-        if (!event.participationId) return;
-
-        const res = await fetch(
-          `${BASE_URL}/api/participations/${event.participationId}/cancel`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              cancellation_reason: "User cancelled (no completions)",
-            }),
-          },
-        );
-
-        if (res.ok) {
-          event.isJoined = false;
-          event.isJoinedToday = false;
-          event.participationId = null;
-          event.participationStatus = null;
-          event.participant_count = Math.max(0, event.participant_count - 1);
-          events = [...events];
-
-          Swal.fire({
-            icon: "success",
-            title: t[lang].alert_cancel_success,
-            timer: 1500,
-            showConfirmButton: false,
-          });
-          await updateUserStatus();
-        } else {
-          const err = await res.json();
-          Swal.fire("Failed", err.detail || "Error", "error");
-        }
-      } catch (err) {
-        Swal.fire("Error", "Connection Error", "error");
-      }
-    }
-  }
-
   // --- Cancel Action ---
-  function openCancelModal(event: EventItem) {
-    eventToCancel = event;
-    selectedCancelReason = "";
-    otherCancelReason = "";
-    showCancelModal = true;
-  }
-
-  function closeCancelModal() {
-    showCancelModal = false;
-    eventToCancel = null;
-  }
-
-  async function confirmCancellation() {
-    if (!eventToCancel) return;
-
-    let finalReason = selectedCancelReason;
-
-    // เช็คกรณีเลือก "อื่นๆ" แต่ไม่พิมพ์อะไรมา
-    if (
-      selectedCancelReason.includes("Other") ||
-      selectedCancelReason.includes("อื่นๆ")
-    ) {
-      if (!otherCancelReason.trim()) {
-        Swal.fire({
-          icon: "warning",
-          // แก้ข้อความให้เหมือนกัน
-          title:
-            lang === "th"
-              ? "ยังไม่ได้ระบุสาเหตุการยกเลิกกิจกรรม"
-              : "Reason not specified",
-          text:
-            lang === "th"
-              ? "กรุณาระบุรายละเอียดเพิ่มเติม"
-              : "Please provide more details",
-          confirmButtonColor: "#f59e0b",
-        });
-        return;
-      }
-      finalReason = otherCancelReason;
-    }
-
-    try {
-      const token = getToken();
-      if (!token) {
-        handleSessionExpired();
-        return;
-      }
-      if (!eventToCancel.participationId) {
-        await updateUserStatus();
-        if (!eventToCancel.participationId) return;
-      }
-
-      const res = await fetch(
-        `${BASE_URL}/api/participations/${eventToCancel.participationId}/cancel`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ cancellation_reason: finalReason }),
-        },
-      );
-      if (res.ok) {
-        eventToCancel.isJoined = false;
-        eventToCancel.participationId = null;
-        eventToCancel.participationStatus = null;
-        eventToCancel.participant_count = Math.max(
-          0,
-          eventToCancel.participant_count - 1,
-        );
-        events = [...events];
-        Swal.fire({
-          icon: "success",
-          title: t[lang].alert_cancel_success,
-          timer: 1500,
-          showConfirmButton: false,
-        });
-        closeCancelModal();
-      } else {
-        const err = await res.json();
-        Swal.fire("Failed", err.detail || "Error", "error");
-      }
-    } catch (err) {
-      Swal.fire("Error", "Connection Error", "error");
-    }
-  }
 
   // --- Upload Action ---
-  function openUploadModal(event: EventItem) {
-    selectedEvent = event;
-    proofImage = null;
-    proofFile = null;
-    showUploadModal = true;
-  }
-
-  function closeUploadModal() {
-    showUploadModal = false;
-    selectedEvent = null;
-  }
-
-  function handleImageSelect(e: Event) {
-    const target = e.target as HTMLInputElement;
-    if (target.files && target.files[0]) {
-      proofFile = target.files[0];
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        proofImage = evt.target?.result as string;
-      };
-      reader.readAsDataURL(target.files[0]);
-    }
-  }
-
-  async function submitProof() {
-    if (!selectedEvent || !proofFile) return;
-    try {
-      // API Upload implementation placeholder
-      Swal.fire({
-        icon: "success",
-        title: t[lang].alert_success,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      selectedEvent.participationStatus = "proof_submitted";
-      events = [...events];
-      closeUploadModal();
-    } catch (error) {
-      Swal.fire("Error", "Failed", "error");
-    }
-  }
 
   // =========================================
   // 7. HELPER FUNCTIONS & FORMATTERS
@@ -1595,7 +1343,6 @@
       // หมายเหตุ: กันเหนียวเผื่อ hasHistory ยังไม่มา (fallback)
       if (
         event.isJoined ||
-        event.hasCancelledRecord ||
         (event.participationId !== null && event.participationId !== undefined)
       ) {
         return false;
@@ -2110,15 +1857,6 @@
                         {/if}
                       </button>
                     {/if}
-
-                    {#if event.isJoined && event.checkin_count === 0}
-                      <button
-                        class="cancel-direct-btn"
-                        onclick={() => openCancelModal(event)}
-                      >
-                        {lang === "th" ? "❌ ยกเลิก" : "❌ Cancel"}
-                      </button>
-                    {/if}
                   </div>
                 </div>
               </div>
@@ -2196,101 +1934,6 @@
       </footer>
     </div>
   </div>
-  {#if showUploadModal}
-    <div class="modal-overlay" transition:fade={{ duration: 200 }}>
-      <div class="modal-box" transition:scale={{ duration: 250, start: 0.9 }}>
-        <button class="modal-close" onclick={closeUploadModal}>&times;</button>
-        <div class="modal-body">
-          <h3 class="modal-title">{t[lang].upload_title}</h3>
-          {#if selectedEvent?.participationStatus === "REJECTED"}
-            <p class="error-text">{t[lang].upload_rejected}</p>
-          {:else}
-            <p class="modal-subtitle">{t[lang].upload_desc}</p>
-          {/if}
-          <div class="upload-area">
-            {#if !proofImage}
-              <label class="upload-label">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onchange={handleImageSelect}
-                  hidden
-                />
-                <div class="upload-placeholder">
-                  <span>Click to Upload Image</span>
-                </div>
-              </label>
-            {:else}
-              <div class="image-preview">
-                <img src={proofImage} alt="Proof" />
-                <button
-                  class="remove-img-btn"
-                  onclick={() => {
-                    proofImage = null;
-                    proofFile = null;
-                  }}>&times;</button
-                >
-              </div>
-            {/if}
-          </div>
-          <button
-            class="action-submit-btn purple-theme"
-            disabled={!proofImage}
-            onclick={submitProof}
-          >
-            {t[lang].upload_btn}
-          </button>
-        </div>
-      </div>
-    </div>
-  {/if}
-
-  {#if showCancelModal}
-    <div class="modal-overlay" transition:fade={{ duration: 200 }}>
-      <div class="modal-box" transition:scale={{ duration: 250, start: 0.9 }}>
-        <button class="modal-close" onclick={closeCancelModal}>&times;</button>
-        <div class="modal-body">
-          <h3 class="modal-title" style="color: #ef4444;">
-            {t[lang].cancel_title}
-          </h3>
-          <p class="modal-subtitle">{t[lang].cancel_desc}</p>
-          <div class="cancel-options">
-            {#each cancelReasons as reason}
-              <label class="radio-item">
-                <input
-                  type="radio"
-                  bind:group={selectedCancelReason}
-                  value={reason}
-                />
-                <span class="radio-label">{reason}</span>
-              </label>
-            {/each}
-          </div>
-          {#if selectedCancelReason.includes("อื่นๆ") || selectedCancelReason.includes("Other")}
-            <div class="reason-input" transition:slide>
-              <textarea
-                placeholder={t[lang].reason_placeholder}
-                bind:value={otherCancelReason}
-                rows="3"
-              ></textarea>
-            </div>
-          {/if}
-          <div class="action-row">
-            <button
-              class="action-submit-btn cancel-confirm-btn"
-              onclick={confirmCancellation}
-              disabled={!selectedCancelReason ||
-                ((selectedCancelReason.includes("Other") ||
-                  selectedCancelReason.includes("อื่นๆ")) &&
-                  !otherCancelReason.trim())}
-            >
-              {t[lang].cancel_confirm}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  {/if}
 </div>
 
 <style>

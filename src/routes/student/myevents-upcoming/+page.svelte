@@ -299,15 +299,7 @@
         distance_km: number;
         actual_distance_km?: number;
         banner_image_url: string;
-        status:
-            | "JOINED"
-            | "CHECKED_IN"
-            | "REJECTED"
-            | "proof_submitted"
-            | "CHECKED_OUT"
-            | "COMPLETED"
-            | "CANCELED"
-            | "EXPIRED_RESET"; // [NEW]
+        status: "COMPLETED";
 
         participant_count: number;
         max_participants: number;
@@ -631,13 +623,63 @@
         });
 
         // 2. หารายการล่าสุด
+        // 2. หารายการล่าสุด (Improved Selection Logic)
         const latestParticipations: Record<number, any> = {};
+
+        // Group by event_id first
+        const groupedMap: Record<number, any[]> = {};
         rawParticipations.forEach((p) => {
+            if (!groupedMap[p.event_id]) groupedMap[p.event_id] = [];
+            groupedMap[p.event_id].push(p);
+        });
+
+        // Helper: Status Priority
+        const getStatusPriority = (s: string) => {
+            if (!s) return 0;
+            const status = s.toLowerCase();
+            if (status === "completed" || status === "finished") return 5;
             if (
-                !latestParticipations[p.event_id] ||
-                p.id > latestParticipations[p.event_id].id
-            ) {
-                latestParticipations[p.event_id] = p;
+                status === "checked_out" ||
+                status === "pass" ||
+                status === "verified"
+            )
+                return 4;
+            if (
+                status.includes("submit") ||
+                status.includes("pending") ||
+                status.includes("wait")
+            )
+                return 3;
+            if (status === "checked_in") return 2;
+            if (status === "rejected") return 2; // Treat rejected same as Checked In layer
+            if (status === "joined") return 1;
+            return 0;
+        };
+
+        Object.keys(groupedMap).forEach((eidStr) => {
+            const eid = Number(eidStr);
+            const list = groupedMap[eid];
+
+            // Sort: Date (Desc) -> Status Priority (Desc) -> ID (Desc)
+            list.sort((a, b) => {
+                // 1. Date
+                const da = a.created_at || a.date || a.start_date || "";
+                const db = b.created_at || b.date || b.start_date || "";
+                // Simple string comparison for ISO dates works well
+                if (da !== db) return da < db ? 1 : -1;
+
+                // 2. Priority (ถ้าวันที่เท่ากัน ให้เลือก Status ที่ไปไกลกว่า)
+                const pa = getStatusPriority(a.status);
+                const pb = getStatusPriority(b.status);
+                if (pa !== pb) return pb - pa;
+
+                // 3. ID (ถ้าทุกอย่างเท่ากัน เอา ID ล่าสุด)
+                return b.id - a.id;
+            });
+
+            // Pick top 1
+            if (list.length > 0) {
+                latestParticipations[eid] = list[0];
             }
         });
 
@@ -752,7 +794,7 @@
 
                             // Force state reset for UI rendering
                             // [FIX] Use special status to allow user to Cancel old session
-                            uiStatus = "EXPIRED_RESET";
+                            uiStatus = "JOINED";
                             joinCode = ""; // Clear old PIN
                             proofImg = undefined;
 
@@ -817,8 +859,8 @@
             if (isProjectEnded) {
                 isLocked = true;
                 lockMessage = lang === "th" ? "จบกิจกรรม" : "Activity Ended";
-            } else if (isProjectNotStarted && uiStatus !== "JOINED") {
-                // [FIX] ถ้ากิจกรรมยังไม่เริ่ม แต่ user สมัครไว้แล้ว (JOINED) ก็ไม่ต้องล็อค
+            } else if (isProjectNotStarted) {
+                // [UPDATED] ถ้ากิจกรรมยังไม่เริ่ม ให้ Lock เสมอ (แม้จะสมัครแล้ว)
                 isLocked = true;
                 const openDate = getDisplayDate(startIso, undefined, lang);
                 lockMessage =
@@ -869,9 +911,7 @@
 
             // --- History Logic (แก้ไข 2) ---
             const shouldGoToHistory =
-                isProjectEnded ||
-                uiStatus === "CANCELED" ||
-                (isNextDayAfterEnd && isTimeOver);
+                isProjectEnded || (isNextDayAfterEnd && isTimeOver);
             // (isNextDayAfterEnd && isTimeOver)) &&
             // uiStatus !== 'CHECKOUT';
 
@@ -879,7 +919,7 @@
                 if (count === 0) {
                     uiStatus = "CANCELED";
                 } else if (count >= 1) {
-                    if (uiStatus !== "CANCELED") {
+                    if (uiStatus !== "JOINED") {
                         uiStatus = "COMPLETED";
                     }
                 }
@@ -996,9 +1036,6 @@
         // 6. COMPLETED : สถานะจบกิจกรรม (ทุกคนต้องอยู่ในกระบวนการนี้)
         if (s === "completed" || s === "finished") return "COMPLETED";
 
-        // 7. CANCELED : กิจกรรมที่ user ยกเลิก
-        if (s === "canceled" || s === "cancelled") return "CANCELED";
-
         // Fallback
         return "JOINED";
     }
@@ -1038,7 +1075,7 @@
     $: filteredHistory = historyEvents.filter(
         (event) =>
             event.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            event.status !== "CANCELED",
+            event.title.toLowerCase().includes(searchQuery.toLowerCase()),
     );
     $: historyTotalPages = Math.ceil(
         filteredHistory.length / historyItemsPerPage,
@@ -2073,9 +2110,53 @@
                 const statusRes = await fetchMyStatus(selectedEvent.id);
                 if (statusRes) {
                     let statusData = null;
-                    if (statusRes.codes && statusRes.codes.length > 0)
-                        statusData = statusRes.codes[0];
-                    else if (normalizeCode(statusRes).join_code)
+                    if (statusRes.codes && statusRes.codes.length > 0) {
+                        // [FIX] Use same Priority Logic as processData to pick the Best ID
+                        const list = statusRes.codes;
+
+                        // Helper: Status Priority
+                        const getStatusPriority = (s: string) => {
+                            if (!s) return 0;
+                            const status = s.toLowerCase();
+                            if (status === "completed" || status === "finished")
+                                return 5;
+                            if (
+                                status === "checked_out" ||
+                                status === "pass" ||
+                                status === "verified"
+                            )
+                                return 4;
+                            if (
+                                status.includes("submit") ||
+                                status.includes("pending") ||
+                                status.includes("wait")
+                            )
+                                return 3;
+                            if (status === "checked_in") return 2;
+                            if (status === "rejected") return 2;
+                            if (status === "joined") return 1;
+                            return 0;
+                        };
+
+                        list.sort((a, b) => {
+                            // 1. Date Desc
+                            const da =
+                                a.created_at || a.date || a.start_date || "";
+                            const db =
+                                b.created_at || b.date || b.start_date || "";
+                            if (da !== db) return da < db ? 1 : -1;
+
+                            // 2. Priority Desc
+                            const pa = getStatusPriority(a.status);
+                            const pb = getStatusPriority(b.status);
+                            if (pa !== pb) return pb - pa;
+
+                            // 3. ID Desc
+                            return b.id - a.id;
+                        });
+
+                        statusData = list[0]; // Pick the best one
+                    } else if (normalizeCode(statusRes).join_code)
                         statusData = statusRes;
                     if (
                         statusData &&
@@ -2200,50 +2281,6 @@
                 updateEventInLists(selectedEvent.id, { status: "CHECKED_IN" });
             }
             saveDraft(2);
-        }
-    }
-
-    async function cancelParticipation(participationId: number) {
-        if (!participationId) return;
-
-        const result = await Swal.fire({
-            title: t[lang].alert_warning,
-            text:
-                lang === "th"
-                    ? "ต้องการเริ่มวันใหม่หรือไม่? (ข้อมูลเก่าจะถูกล้าง)"
-                    : "Start a new day? (Old data will be cleared)",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#ef4444",
-            confirmButtonText: lang === "th" ? "ยืนยัน" : "Confirm",
-            cancelButtonText: t[lang].modal_close,
-        });
-
-        if (!result.isConfirmed) return;
-
-        try {
-            const token = getToken();
-            Swal.showLoading();
-            const res = await fetch(
-                `${BASE_URL}/api/participations/${participationId}/cancel`,
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                },
-            );
-
-            if (res.ok) {
-                await loadData(); // Reload
-                Swal.close();
-            } else {
-                throw new Error("Cancel failed");
-            }
-        } catch (e) {
-            console.error(e);
-            Swal.fire("Error", "Failed to cancel old session", "error");
         }
     }
 
@@ -2953,7 +2990,7 @@
                                                 {event.lockMessage ||
                                                     t[lang].btn_locked}
                                             </button>
-                                        {:else if !event.join_code && event.status !== "COMPLETED" && event.status !== "CANCELED"}
+                                        {:else if !event.join_code && event.status !== "COMPLETED"}
                                             <!-- [NEW] ไม่ได้สมัครสำหรับวันนี้ -->
                                             <button
                                                 class="status-btn"
@@ -2990,18 +3027,6 @@
                                                 style="cursor: default;"
                                             >
                                                 {t[lang].btn_waiting}
-                                            </button>
-                                        {:else if event.status === "EXPIRED_RESET"}
-                                            <button
-                                                class="status-btn canceled-btn"
-                                                on:click={() =>
-                                                    cancelParticipation(
-                                                        event.participation_id,
-                                                    )}
-                                            >
-                                                {lang === "th"
-                                                    ? "เริ่มวันใหม่"
-                                                    : "New Day"}
                                             </button>
                                         {:else if event.status === "CHECKED_IN"}
                                             <button
@@ -3195,11 +3220,6 @@
                                                 {t[lang].dash_unit_days}
                                             </span>
                                         </div>
-                                    {:else}
-                                        <span
-                                            class="status-badge ended-canceled"
-                                            >CANCELED</span
-                                        >
                                     {/if}
                                 </div>
                             </div>
@@ -3334,12 +3354,6 @@
                                         style="cursor: default; box-shadow: none;"
                                         >COMPLETED</button
                                     >
-                                {:else}
-                                    <button
-                                        class="status-btn canceled-btn"
-                                        style="cursor: default; box-shadow: none;"
-                                        >CANCELED</button
-                                    >
                                 {/if}
                             </div>
                         </div>
@@ -3385,8 +3399,6 @@
                         proof_submitted: 3,
                         CHECKED_OUT: 4,
                         COMPLETED: 5,
-                        CANCELED: 0,
-                        EXPIRED_RESET: 0,
                     }}
                     {@const currentStep = stepMap[selectedEvent.status] || 0}
 
@@ -3683,22 +3695,6 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        {:else if selectedEvent.status === "CANCELED"}
-                            <div
-                                class="cancelled-view"
-                                style="text-align: center; padding: 40px 0; color: #94a3b8;"
-                            >
-                                <div
-                                    style="font-size: 4rem; margin-bottom: 10px;"
-                                >
-                                    🚫
-                                </div>
-                                <h3 style="margin-bottom: 20px;">
-                                    {lang === "th"
-                                        ? "กิจกรรมถูกยกเลิก"
-                                        : "Event Cancelled"}
-                                </h3>
                             </div>
                         {/if}
                     </div>
