@@ -252,12 +252,13 @@
     let sendingLink = "";
     let currentParticipationId: number | null = null;
     let distanceInput = 0;
-    let stravaVerified = false;
-    let lastVerifiedLink = "";
+    let stravaVerified = false; // Track if user clicked verify button
+    let lastVerifiedLink = ""; // Track last verified Strava link
 
     // ✅ Reset verification when link changes (only if link actually changed)
     $: {
         const trimmed = sendingLink?.trim() || "";
+        // Only reset if link has meaningfully changed from verified version
         if (
             stravaVerified &&
             lastVerifiedLink &&
@@ -298,14 +299,7 @@
         distance_km: number;
         actual_distance_km?: number;
         banner_image_url: string;
-        status:
-            | "JOINED"
-            | "CHECKED_IN"
-            | "REJECTED"
-            | "proof_submitted"
-            | "CHECKED_OUT"
-            | "COMPLETED"
-            | "CANCELED";
+        status: "COMPLETED";
 
         participant_count: number;
         max_participants: number;
@@ -481,13 +475,26 @@
                                 );
                                 if (res.ok) {
                                     const data = await res.json();
-                                    holidaysCalendar[ev.id] = Array.isArray(
-                                        data,
-                                    )
+                                    const holidaysList = Array.isArray(data)
                                         ? data
                                         : [];
+                                    holidaysCalendar[ev.id] = holidaysList;
+
+                                    // [FIX] Populate holidaysMap for checkIsHoliday skip logic
+                                    holidaysMap[ev.id] = {
+                                        // Allow checkin only if allow_daily_checkin is true,
+                                        // else it might imply some days are excluded (custom logic fallback)
+                                        excludeWeekends:
+                                            ev.exclude_weekends || false,
+                                        holidays: holidaysList,
+                                    };
                                 } else {
                                     holidaysCalendar[ev.id] = [];
+                                    holidaysMap[ev.id] = {
+                                        excludeWeekends:
+                                            ev.exclude_weekends || false,
+                                        holidays: [],
+                                    };
                                 }
                             } catch (e) {
                                 holidaysCalendar[ev.id] = [];
@@ -551,7 +558,7 @@
             const results = await Promise.allSettled(
                 batch.map(async (eventId) => {
                     try {
-                        // Removed participants API call for student role
+                        // Removed participants API call for officer role
                         return {
                             eventId,
                             uniqueCount:
@@ -616,13 +623,63 @@
         });
 
         // 2. หารายการล่าสุด
+        // 2. หารายการล่าสุด (Improved Selection Logic)
         const latestParticipations: Record<number, any> = {};
+
+        // Group by event_id first
+        const groupedMap: Record<number, any[]> = {};
         rawParticipations.forEach((p) => {
+            if (!groupedMap[p.event_id]) groupedMap[p.event_id] = [];
+            groupedMap[p.event_id].push(p);
+        });
+
+        // Helper: Status Priority
+        const getStatusPriority = (s: string) => {
+            if (!s) return 0;
+            const status = s.toLowerCase();
+            if (status === "completed" || status === "finished") return 5;
             if (
-                !latestParticipations[p.event_id] ||
-                p.id > latestParticipations[p.event_id].id
-            ) {
-                latestParticipations[p.event_id] = p;
+                status === "checked_out" ||
+                status === "pass" ||
+                status === "verified"
+            )
+                return 4;
+            if (
+                status.includes("submit") ||
+                status.includes("pending") ||
+                status.includes("wait")
+            )
+                return 3;
+            if (status === "checked_in") return 2;
+            if (status === "rejected") return 2; // Treat rejected same as Checked In layer
+            if (status === "joined") return 1;
+            return 0;
+        };
+
+        Object.keys(groupedMap).forEach((eidStr) => {
+            const eid = Number(eidStr);
+            const list = groupedMap[eid];
+
+            // Sort: Date (Desc) -> Status Priority (Desc) -> ID (Desc)
+            list.sort((a, b) => {
+                // 1. Date
+                const da = a.created_at || a.date || a.start_date || "";
+                const db = b.created_at || b.date || b.start_date || "";
+                // Simple string comparison for ISO dates works well
+                if (da !== db) return da < db ? 1 : -1;
+
+                // 2. Priority (ถ้าวันที่เท่ากัน ให้เลือก Status ที่ไปไกลกว่า)
+                const pa = getStatusPriority(a.status);
+                const pb = getStatusPriority(b.status);
+                if (pa !== pb) return pb - pa;
+
+                // 3. ID (ถ้าทุกอย่างเท่ากัน เอา ID ล่าสุด)
+                return b.id - a.id;
+            });
+
+            // Pick top 1
+            if (list.length > 0) {
+                latestParticipations[eid] = list[0];
             }
         });
 
@@ -641,45 +698,7 @@
             let actualDist = p.actual_distance_km;
             let compRank = p.completion_rank;
 
-            // [NEW LOGIC] ตรวจสอบวัน: หากกิจกรรมที่สมัครมาไม่ใช่วันปัจจุบัน และ status ไม่ใช่ COMPLETED
-            // ให้ AUTO CANCEL ทันที (ระบบวันต่อวัน)
-            const recordDateStr = p.created_at || p.date || p.start_date;
-            if (recordDateStr) {
-                const recordDate = new Date(recordDateStr);
-                const today = getDebugDate();
-                recordDate.setHours(0, 0, 0, 0);
-                today.setHours(0, 0, 0, 0);
-
-                // ถ้าวันที่ของ Record ไม่ใช่วันนี้ และ status ไม่ใช่ COMPLETED
-                if (
-                    recordDate.getTime() !== today.getTime() &&
-                    uiStatus !== "COMPLETED"
-                ) {
-                    console.log(
-                        `[AUTO CANCEL] Event ${ev.id}: Registered on different day (${recordDateStr}). Auto-canceling.`,
-                    );
-                    uiStatus = "CANCELED";
-                }
-            }
-            // Logic Draft Key
-            if (
-                uiStatus === "CHECKED_IN" &&
-                typeof localStorage !== "undefined"
-            ) {
-                const draftKey = `proof_draft_${p.id}`;
-                const draftJson = localStorage.getItem(draftKey);
-                if (draftJson) {
-                    try {
-                        const draft = JSON.parse(draftJson);
-                        if (draft.step && draft.step >= 2)
-                            uiStatus = "proof_submitted";
-                    } catch (e) {}
-                }
-            }
-
-            const count = completionCounts[ev.id] || 0;
-
-            // --- จัดการเรื่องวันและเวลา ---
+            // --- จัดการเรื่องวันและเวลา (MOVE UP) ---
             const startIso =
                 ev.event_date || ev.startDate || ev.event_start_date;
             const endIso = ev.event_end_date || ev.endDate;
@@ -733,6 +752,80 @@
             const isProjectNotStarted =
                 projectStartDate && now < projectStartDate;
 
+            // [NEW LOGIC: Daily Reset]
+            // หากกิจกรรมนี้เป็นแบบทำได้หลายครั้ง (หรือยังไม่จบโครงการ)
+            // แต่ข้อมูลล่าสุด (p) เป็นของ "เมื่อวาน" (หรือวันก่อนหน้า)
+            // ให้ถือว่า "วันนี้ยังไม่ได้เริ่ม" -> Reset Status เป็น NULL / JOINED เพื่อให้ปุ่ม Check-in ขึ้นใหม่
+            // Prioritize updated_at to catch Status changes (Completed, Verified) today
+            const recordDateStr =
+                p.updated_at || p.created_at || p.date || p.start_date;
+            if (recordDateStr) {
+                const recordDate = new Date(recordDateStr);
+                const today = getDebugDate();
+
+                // [FIX] Normalise to YYYY-MM-DD string for safe comparison
+                // prevent timezone shifting issues
+                const toDateStr = (d: Date) => {
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                };
+
+                const rStr = toDateStr(recordDate);
+                const tStr = toDateStr(today);
+
+                // ถ้าวันของ record น้อยกว่าวันนี้ (เป็นอดีต)
+                if (rStr < tStr) {
+                    // แต่ถ้าสถานะเป็น JOINED อยู่แล้ว (สมัครไว้นานแล้วแต่วันนี้ยังไม่เช็คอิน) -> ก็ปล่อยไว้
+                    // แต่ถ้าสถานะเป็น CHECKED_IN, SUBMITTED, COMPLETED ของเมื่อวาน -> ต้อง Reset
+                    // เพื่อให้วันนี้เริ่มใหม่
+                    const isPastCompleted =
+                        uiStatus === "COMPLETED" ||
+                        uiStatus === "proof_submitted" ||
+                        uiStatus === "CHECKED_IN" ||
+                        uiStatus === "REJECTED";
+
+                    if (isPastCompleted) {
+                        // เช็คว่ากิจกรรมจบไปแล้วจริงๆ หรือยัง?
+                        if (!isProjectEnded && !isNextDayAfterEnd) {
+                            // ยังไม่จบโครงการ -> Reset เป็น "ยังไม่เริ่มของวันนี้"
+                            // โดยการจำลองว่า p (latest participation) นี้ "จบไปแล้ว"
+                            // เราต้องการให้ UI แสดงสถานะ "JOINED" (รอเช็คอิน) หรือ "Register" (ถ้าต้องสมัครใหม่ทุกวัน)
+                            // ตาม Guide: "Auto-Rejoin" system normally handles logic via /join API
+                            // แต่ใน UI เราต้องเคลียร์ State เพื่อให้ปุ่ม Check-in โผล่
+
+                            // Force state reset for UI rendering
+                            // [FIX] Use special status to allow user to Cancel old session
+                            uiStatus = "JOINED";
+                            joinCode = ""; // Clear old PIN
+                            proofImg = undefined;
+
+                            // Log for debugging
+                            console.log(
+                                `🔄 Daily Reset for Event ${ev.id}: Last record ${recordDateStr} -> EXPIRING`,
+                            );
+                        }
+                    }
+                }
+            }
+            // Logic Draft Key
+            if (
+                uiStatus === "CHECKED_IN" &&
+                typeof localStorage !== "undefined"
+            ) {
+                const draftKey = `proof_draft_${p.id}`;
+                const draftJson = localStorage.getItem(draftKey);
+                if (draftJson) {
+                    try {
+                        const draft = JSON.parse(draftJson);
+                        if (draft.step && draft.step >= 2)
+                            uiStatus = "proof_submitted";
+                    } catch (e) {}
+                }
+            }
+
+            const count = completionCounts[ev.id] || 0;
+
+            // (MOVED UP) --- จัดการเรื่องวันและเวลา ---
+
             let isTimeOver = false;
             let isBeforeTime = false;
             let isTodayTimeRemaining = false;
@@ -766,8 +859,8 @@
             if (isProjectEnded) {
                 isLocked = true;
                 lockMessage = lang === "th" ? "จบกิจกรรม" : "Activity Ended";
-            } else if (isProjectNotStarted && uiStatus !== "JOINED") {
-                // [FIX] ถ้ากิจกรรมยังไม่เริ่ม แต่ user สมัครไว้แล้ว (JOINED) ก็ไม่ต้องล็อค
+            } else if (isProjectNotStarted) {
+                // [UPDATED] ถ้ากิจกรรมยังไม่เริ่ม ให้ Lock เสมอ (แม้จะสมัครแล้ว)
                 isLocked = true;
                 const openDate = getDisplayDate(startIso, undefined, lang);
                 lockMessage =
@@ -787,26 +880,18 @@
                                 : "Checkout Completed";
                     }
                 } else {
-                    // ถ้ายังไม่ใช่วันสุดท้าย
-                    if (isTodayTimeRemaining) {
-                        lockMessage =
-                            lang === "th"
-                                ? "เช็คเอาท์เรียบร้อย"
-                                : "Checkout Completed";
-                    } else {
-                        const nextDateStr = nextWorkingDate.toLocaleDateString(
-                            "th-TH",
-                            {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                            },
-                        );
-                        lockMessage =
-                            lang === "th"
-                                ? `เปิด ${nextDateStr}`
-                                : `Open ${nextDateStr}`;
-                    }
+                    // ถ้ายังไม่ใช่วันสุดท้าย -> แสดงวันถัดไปทันที (ไม่สนว่าเหลือเวลาวันนี้ไหม เพราะจบแล้ว)
+                    const nextDateStr = nextWorkingDate.toLocaleDateString(
+                        "th-TH",
+                        {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                        },
+                    );
+                    // [IMPROVED] Show "See you tomorrow" message
+                    const meetTmr = t[lang].status_daily_completed; // "เจอกันพรุ่งนี้"
+                    lockMessage = `${meetTmr} (${nextDateStr})`;
                 }
             } else if (uiStatus === "CHECKED_OUT") {
                 if (isTimeOver) {
@@ -826,9 +911,7 @@
 
             // --- History Logic (แก้ไข 2) ---
             const shouldGoToHistory =
-                isProjectEnded ||
-                uiStatus === "CANCELED" ||
-                (isNextDayAfterEnd && isTimeOver);
+                isProjectEnded || (isNextDayAfterEnd && isTimeOver);
             // (isNextDayAfterEnd && isTimeOver)) &&
             // uiStatus !== 'CHECKOUT';
 
@@ -836,7 +919,7 @@
                 if (count === 0) {
                     uiStatus = "CANCELED";
                 } else if (count >= 1) {
-                    if (uiStatus !== "CANCELED") {
+                    if (uiStatus !== "JOINED") {
                         uiStatus = "COMPLETED";
                     }
                 }
@@ -953,9 +1036,6 @@
         // 6. COMPLETED : สถานะจบกิจกรรม (ทุกคนต้องอยู่ในกระบวนการนี้)
         if (s === "completed" || s === "finished") return "COMPLETED";
 
-        // 7. CANCELED : กิจกรรมที่ user ยกเลิก
-        if (s === "canceled" || s === "cancelled") return "CANCELED";
-
         // Fallback
         return "JOINED";
     }
@@ -995,7 +1075,7 @@
     $: filteredHistory = historyEvents.filter(
         (event) =>
             event.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            event.status !== "CANCELED",
+            event.title.toLowerCase().includes(searchQuery.toLowerCase()),
     );
     $: historyTotalPages = Math.ceil(
         filteredHistory.length / historyItemsPerPage,
@@ -1509,7 +1589,13 @@
         const m = String(date.getMonth() + 1).padStart(2, "0");
         const d = String(date.getDate()).padStart(2, "0");
         const dateStr = `${y}-${m}-${d}`;
-        if (config.holidays && config.holidays.includes(dateStr)) {
+        // console.log(`[DEBUG] Checking Holiday: ${dateStr} for Event ${eventId}`, config.holidays); // [DEBUG LOG optional]
+        if (
+            config.holidays &&
+            config.holidays.some(
+                (h: any) => h.holiday_date === dateStr || h === dateStr,
+            )
+        ) {
             return true;
         }
 
@@ -2024,9 +2110,53 @@
                 const statusRes = await fetchMyStatus(selectedEvent.id);
                 if (statusRes) {
                     let statusData = null;
-                    if (statusRes.codes && statusRes.codes.length > 0)
-                        statusData = statusRes.codes[0];
-                    else if (normalizeCode(statusRes).join_code)
+                    if (statusRes.codes && statusRes.codes.length > 0) {
+                        // [FIX] Use same Priority Logic as processData to pick the Best ID
+                        const list = statusRes.codes;
+
+                        // Helper: Status Priority
+                        const getStatusPriority = (s: string) => {
+                            if (!s) return 0;
+                            const status = s.toLowerCase();
+                            if (status === "completed" || status === "finished")
+                                return 5;
+                            if (
+                                status === "checked_out" ||
+                                status === "pass" ||
+                                status === "verified"
+                            )
+                                return 4;
+                            if (
+                                status.includes("submit") ||
+                                status.includes("pending") ||
+                                status.includes("wait")
+                            )
+                                return 3;
+                            if (status === "checked_in") return 2;
+                            if (status === "rejected") return 2;
+                            if (status === "joined") return 1;
+                            return 0;
+                        };
+
+                        list.sort((a, b) => {
+                            // 1. Date Desc
+                            const da =
+                                a.created_at || a.date || a.start_date || "";
+                            const db =
+                                b.created_at || b.date || b.start_date || "";
+                            if (da !== db) return da < db ? 1 : -1;
+
+                            // 2. Priority Desc
+                            const pa = getStatusPriority(a.status);
+                            const pb = getStatusPriority(b.status);
+                            if (pa !== pb) return pb - pa;
+
+                            // 3. ID Desc
+                            return b.id - a.id;
+                        });
+
+                        statusData = list[0]; // Pick the best one
+                    } else if (normalizeCode(statusRes).join_code)
                         statusData = statusRes;
                     if (
                         statusData &&
@@ -2860,7 +2990,7 @@
                                                 {event.lockMessage ||
                                                     t[lang].btn_locked}
                                             </button>
-                                        {:else if !event.join_code && event.status !== "COMPLETED" && event.status !== "CANCELED"}
+                                        {:else if !event.join_code && event.status !== "COMPLETED"}
                                             <!-- [NEW] ไม่ได้สมัครสำหรับวันนี้ -->
                                             <button
                                                 class="status-btn"
@@ -3090,11 +3220,6 @@
                                                 {t[lang].dash_unit_days}
                                             </span>
                                         </div>
-                                    {:else}
-                                        <span
-                                            class="status-badge ended-canceled"
-                                            >CANCELED</span
-                                        >
                                     {/if}
                                 </div>
                             </div>
@@ -3229,12 +3354,6 @@
                                         style="cursor: default; box-shadow: none;"
                                         >COMPLETED</button
                                     >
-                                {:else}
-                                    <button
-                                        class="status-btn canceled-btn"
-                                        style="cursor: default; box-shadow: none;"
-                                        >CANCELED</button
-                                    >
                                 {/if}
                             </div>
                         </div>
@@ -3280,7 +3399,6 @@
                         proof_submitted: 3,
                         CHECKED_OUT: 4,
                         COMPLETED: 5,
-                        CANCELED: 0,
                     }}
                     {@const currentStep = stepMap[selectedEvent.status] || 0}
 
@@ -3577,22 +3695,6 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        {:else if selectedEvent.status === "CANCELED"}
-                            <div
-                                class="cancelled-view"
-                                style="text-align: center; padding: 40px 0; color: #94a3b8;"
-                            >
-                                <div
-                                    style="font-size: 4rem; margin-bottom: 10px;"
-                                >
-                                    🚫
-                                </div>
-                                <h3 style="margin-bottom: 20px;">
-                                    {lang === "th"
-                                        ? "กิจกรรมถูกยกเลิก"
-                                        : "Event Cancelled"}
-                                </h3>
                             </div>
                         {/if}
                     </div>
@@ -4505,8 +4607,7 @@
             flex: 1 1 0;
             min-width: 0;
         }
-        .status-btn,
-        .cancel-btn {
+        .status-btn {
             width: 100%;
         }
     }
@@ -4997,22 +5098,6 @@
     }
 
     /* CANCEL BUTTON & MODAL */
-    .cancel-btn {
-        background: transparent;
-        border: 1px solid #ef4444;
-        color: #ef4444;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        margin-top: 8px;
-    }
-    .cancel-btn:hover {
-        background: rgba(239, 68, 68, 0.1);
-        transform: translateY(-1px);
-    }
 
     /* Strava verify button */
     .verify-strava-btn {
@@ -5033,82 +5118,6 @@
     }
     .verify-strava-btn:active {
         transform: translateY(0);
-    }
-
-    .cancel-modal {
-        max-width: 450px;
-    }
-    .cancel-options {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin: 20px 0;
-    }
-    .radio-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 16px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .radio-item:hover {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.2);
-    }
-    .radio-item input[type="radio"] {
-        width: 18px;
-        height: 18px;
-        accent-color: #ef4444;
-    }
-    .radio-label {
-        color: var(--text-main);
-        font-size: 0.95rem;
-    }
-    .reason-input {
-        margin-top: 12px;
-    }
-    .reason-input textarea {
-        width: 100%;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        padding: 12px;
-        color: var(--text-main);
-        font-size: 0.95rem;
-        resize: none;
-        box-sizing: border-box;
-    }
-    .reason-input textarea:focus {
-        outline: none;
-        border-color: #ef4444;
-    }
-    .action-row {
-        margin-top: 20px;
-        display: flex;
-        justify-content: center;
-    }
-    .cancel-confirm-btn {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: white;
-        border: none;
-        padding: 12px 32px;
-        border-radius: 10px;
-        font-size: 1rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .cancel-confirm-btn:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
-    }
-    .cancel-confirm-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
     }
 
     .pagination-bar {
