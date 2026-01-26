@@ -3,7 +3,7 @@
   import { api, API_BASE_URL } from "../_lib/api/client";
 
   // ✅ Import API Endpoints
-  import { endpoints } from "../_lib/api/endpoints";
+  import { endpoints } from "$lib/api/endpoints";
 
   // Language Setup
   type Language = "th" | "en";

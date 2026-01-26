@@ -3,7 +3,7 @@
 
   // Import real API client and endpoints
   import { api, API_BASE_URL } from "../_lib/api/client";
-  import { endpoints } from "../_lib/api/endpoints";
+  import { endpoints } from "$lib/api/endpoints";
   import Swal from "sweetalert2";
 
   import {

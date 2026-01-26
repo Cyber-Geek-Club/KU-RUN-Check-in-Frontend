@@ -31,6 +31,10 @@ export const endpoints = {
     checkout: (participationId: number | string) => `/api/participations/${participationId}/checkout-code`,
     // 6. [POST] Checkout by code/QR (Organizer scans code)
     checkoutByCode: '/api/participations/check-out',
+
+    // 7. [POST/PUT] Proof Submission (Organizer/System)
+    submitProof: (id: number | string) => `/api/participations/${id}/submit-proof`,
+    resubmitProof: (id: number | string) => `/api/participations/${id}/resubmit-proof`,
   },
 
   // Proof Submissions

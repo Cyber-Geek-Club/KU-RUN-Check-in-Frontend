@@ -2,7 +2,7 @@
   import { onMount, afterUpdate, onDestroy, tick } from "svelte";
   import { api, API_BASE_URL } from "../_lib/api/client";
   import Swal from "sweetalert2";
-  import { endpoints } from "../_lib/api/endpoints"; //
+  import { endpoints } from "$lib/api/endpoints"; //
   import { resolveImageUrl } from "$lib/utils/imageUtils";
 
   const IMAGE_PLACEHOLDER =

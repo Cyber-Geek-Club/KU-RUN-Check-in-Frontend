@@ -3,7 +3,7 @@
   import jsQR from "jsqr";
 
   // ✅ Import API Endpoints
-  import { endpoints } from "../_lib/api/endpoints";
+  import { endpoints } from "$lib/api/endpoints";
   import { api, API_BASE_URL } from "../_lib/api/client";
 
   // Language
