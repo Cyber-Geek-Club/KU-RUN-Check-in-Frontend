@@ -2343,6 +2343,15 @@
                     .clone()
                     .json()
                     .catch(() => ({})); // [DEBUG] Capture body
+
+                // [IMPROVED LOGGING] Show exact error from Backend
+                console.error(
+                    "❌ POST Failed with 400 Bad Request. Details:",
+                    JSON.stringify(postErr, null, 2),
+                );
+
+                // OPTIONAL: Check if we should really retry?
+                // Only retry if error hints at needing resubmission or duplicate
                 console.warn(
                     "⚠️ POST failed (400). Error:",
                     JSON.stringify(postErr),
