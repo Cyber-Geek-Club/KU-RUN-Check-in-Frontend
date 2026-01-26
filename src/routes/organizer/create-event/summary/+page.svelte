@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-  import { eventForm } from '../../_lib/stores/eventForm';
-  import { appState } from '../../_lib/stores/appState';
-  import { t } from '../../_lib/i18n';
-  import { onMount } from 'svelte';
-  import { resolveImageUrl as resolveApiImageUrl } from '$lib/utils/imageUtils';
+  import { goto } from "$app/navigation";
+  import { eventForm } from "../../_lib/stores/eventForm";
+  import { appState } from "../../_lib/stores/appState";
+  import { t } from "../../_lib/i18n";
+  import { onMount } from "svelte";
+  import { resolveImageUrl as resolveApiImageUrl } from "$lib/utils/imageUtils";
   // ✅ Import endpoints เพื่อใช้ URL ที่ถูกต้อง
-  import { endpoints } from '../../_lib/api/endpoints';
+  import { endpoints } from "$lib/api/endpoints";
 
   $: lang = $appState.currentLang;
   $: storeData = $eventForm as any;
@@ -14,19 +14,19 @@
 
   let formData = {
     imagePreview: null as string | null,
-    title: '',
-    description: '',
-    location: '',
-    eventType: 'single_day',
+    title: "",
+    description: "",
+    location: "",
+    eventType: "single_day",
     maxCheckinsPerUser: 1,
-    sDay: '',
-    sMonth: '',
-    sYear: '',
-    eDay: '',
-    eMonth: '',
-    eYear: '',
-    startTime: '',
-    endTime: '',
+    sDay: "",
+    sMonth: "",
+    sYear: "",
+    eDay: "",
+    eMonth: "",
+    eYear: "",
+    startTime: "",
+    endTime: "",
     totalSlots: null as number | null,
     distanceKm: null as number | null,
     holidays: [] as string[],
@@ -34,11 +34,11 @@
     totalRewards: null as number | null,
     rewards: [] as any[],
     isPublic: true,
-    isActive: true
+    isActive: true,
   };
 
   let isSubmitting = false;
-  let error = '';
+  let error = "";
 
   onMount(() => {
     formData = { ...$eventForm } as any;
@@ -46,32 +46,62 @@
 
   function handleSummaryImgError(e: Event) {
     const img = e.currentTarget as HTMLImageElement;
-    img.src = 'https://placehold.co/600x400/1e293b/64748b?text=Image+Not+Found';
+    img.src = "https://placehold.co/600x400/1e293b/64748b?text=Image+Not+Found";
   }
 
   function formatDate(day: string, month: string, year: string) {
-    if (!day || !month || !year) return '';
-    const monthNames = lang === 'th'
-      ? ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
-      : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (!day || !month || !year) return "";
+    const monthNames =
+      lang === "th"
+        ? [
+            "ม.ค.",
+            "ก.พ.",
+            "มี.ค.",
+            "เม.ย.",
+            "พ.ค.",
+            "มิ.ย.",
+            "ก.ค.",
+            "ส.ค.",
+            "ก.ย.",
+            "ต.ค.",
+            "พ.ย.",
+            "ธ.ค.",
+          ]
+        : [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
     const monthIndex = parseInt(month) - 1;
     return `${day} ${monthNames[monthIndex]} ${year}`;
   }
 
   function getEventTypeLabel(type: string) {
     const types: Record<string, { th: string; en: string }> = {
-      single_day: { th: 'กิจกรรมวันเดียว', en: 'Single Day Event' },
-      multi_day: { th: 'กิจกรรมหลายวัน', en: 'Multi-Day Event' }
+      single_day: { th: "กิจกรรมวันเดียว", en: "Single Day Event" },
+      multi_day: { th: "กิจกรรมหลายวัน", en: "Multi-Day Event" },
     };
     return types[type]?.[lang] || type;
   }
 
   function getHolidayModeLabel(mode: string | null) {
-    if (!mode) return lang === 'th' ? 'ไม่มี' : 'None';
+    if (!mode) return lang === "th" ? "ไม่มี" : "None";
     const modes: Record<string, { th: string; en: string }> = {
-      weekends: { th: 'ไม่นับวันหยุดสุดสัปดาห์', en: 'Exclude Weekends' },
-      none: { th: 'ไม่มีวันหยุด', en: 'No Holidays' },
-      specific: { th: `${formData.holidays.length} วันที่เลือก`, en: `${formData.holidays.length} specific dates` }
+      weekends: { th: "ไม่นับวันหยุดสุดสัปดาห์", en: "Exclude Weekends" },
+      none: { th: "ไม่มีวันหยุด", en: "No Holidays" },
+      specific: {
+        th: `${formData.holidays.length} วันที่เลือก`,
+        en: `${formData.holidays.length} specific dates`,
+      },
     };
     return modes[mode]?.[lang] || mode;
   }
@@ -79,171 +109,184 @@
   // ✅ แก้ไข handleSubmit ให้ทำงาน 3 Steps: Event -> Reward(s) -> Config
   async function handleSubmit() {
     isSubmitting = true;
-    error = '';
-    console.log("🚀 [START] handleSubmit initiated..."); 
+    error = "";
+    console.log("🚀 [START] handleSubmit initiated...");
 
     try {
       // =========================================================
       // STEP 1: Create/Update Event
       // =========================================================
-      console.log("📦 [STEP 1] Preparing Event Data..."); 
+      console.log("📦 [STEP 1] Preparing Event Data...");
       const formDataToSend = new FormData();
 
       Object.entries(formData).forEach(([key, value]) => {
         // แยก rewards ไว้ทำทีหลัง ไม่ส่งไป endpoint events
-        if (key === 'rewards' || key === 'totalRewards') return;
-        
+        if (key === "rewards" || key === "totalRewards") return;
+
         if (value !== null && value !== undefined) {
           if (Array.isArray(value)) {
             formDataToSend.append(key, JSON.stringify(value));
-          } else if (typeof value === 'object' && key !== 'imageFile') {
+          } else if (typeof value === "object" && key !== "imageFile") {
             formDataToSend.append(key, JSON.stringify(value));
-          } else if (key !== 'imagePreview') {
+          } else if (key !== "imagePreview") {
             formDataToSend.append(key, String(value));
           }
         }
       });
 
-      const eventUrl = editingEventId 
+      const eventUrl = editingEventId
         ? endpoints.events.update(editingEventId)
         : endpoints.events.create;
-      
+
       console.log(`🔗 Sending Event to: ${eventUrl}`);
 
       const eventResponse = await fetch(eventUrl, {
-        method: editingEventId ? 'PUT' : 'POST',
+        method: editingEventId ? "PUT" : "POST",
         body: formDataToSend,
         headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-        }
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
       });
 
       if (!eventResponse.ok) {
         const errData = await eventResponse.json().catch(() => ({}));
         console.error("❌ Event Creation Failed:", errData);
-        throw new Error(errData.detail || errData.message || 'Failed to submit event');
+        throw new Error(
+          errData.detail || errData.message || "Failed to submit event",
+        );
       }
 
       const eventResult = await eventResponse.json();
       // รับ ID ให้ชัวร์ รองรับทั้ง structure { id: 1 } และ { data: { id: 1 } }
       const eventId = eventResult.id || eventResult.data?.id || editingEventId;
-      
+
       console.log("✅ [STEP 1 SUCCESS] Event ID:", eventId);
 
       // =========================================================
       // STEP 2: Create Rewards Individually (เพื่อเอา reward_id)
       // =========================================================
       if (eventId && formData.rewards && formData.rewards.length > 0) {
-          console.log(`🏆 [STEP 2] Processing ${formData.rewards.length} rewards...`);
-          
-          // เก็บ Tier ที่สร้างสำเร็จและมี ID แล้ว เตรียมส่งไป Config
-          const validTiers = [];
+        console.log(
+          `🏆 [STEP 2] Processing ${formData.rewards.length} rewards...`,
+        );
 
-          // วนลูปสร้าง Reward ทีละอัน
-          for (const [index, r] of formData.rewards.entries()) {
-              console.log(`   🔸 Creating Reward #${index + 1}: ${r.name}`);
+        // เก็บ Tier ที่สร้างสำเร็จและมี ID แล้ว เตรียมส่งไป Config
+        const validTiers = [];
 
-              const rewardPayload = {
-                  name: r.name,
-                  description: `Reward Tier ${index + 1} for Event ${eventId}`,
-                  required_completions: Number(r.requirement),
-                  time_period_days: 60, // หรือคำนวณจากระยะเวลากิจกรรม
-                  meta: { event_id: eventId }
-              };
+        // วนลูปสร้าง Reward ทีละอัน
+        for (const [index, r] of formData.rewards.entries()) {
+          console.log(`   🔸 Creating Reward #${index + 1}: ${r.name}`);
 
-              // ยิง API สร้าง Reward (endpoints.rewards.createReward ต้องมีค่าเป็น '/api/rewards')
-              const rewardRes = await fetch(endpoints.rewards.createReward, {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-                  },
-                  body: JSON.stringify(rewardPayload)
-              });
+          const rewardPayload = {
+            name: r.name,
+            description: `Reward Tier ${index + 1} for Event ${eventId}`,
+            required_completions: Number(r.requirement),
+            time_period_days: 60, // หรือคำนวณจากระยะเวลากิจกรรม
+            meta: { event_id: eventId },
+          };
 
-              if (!rewardRes.ok) {
-                  console.error(`      ❌ Failed to create reward #${index+1}`);
-                  continue; // ข้ามตัวที่พังไป แต่ทำตัวถัดไปต่อ
-              }
+          // ยิง API สร้าง Reward (endpoints.rewards.createReward ต้องมีค่าเป็น '/api/rewards')
+          const rewardRes = await fetch(endpoints.rewards.createReward, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+            },
+            body: JSON.stringify(rewardPayload),
+          });
 
-              const rewardData = await rewardRes.json();
-              const newRewardId = rewardData.id || rewardData.data?.id;
-              
-              console.log(`      ✅ Created! Reward ID: ${newRewardId}`);
-
-              if (newRewardId) {
-                  validTiers.push({
-                      tier: index + 1,
-                      reward_id: newRewardId, // ✅ ต้องส่ง ID นี้ไปผูกกับ Config
-                      reward_name: r.name,
-                      required_completions: Number(r.requirement),
-                      quantity: 0, // unlimited
-                      min_rank: 0,
-                      max_rank: 0
-                  });
-              }
+          if (!rewardRes.ok) {
+            console.error(`      ❌ Failed to create reward #${index + 1}`);
+            continue; // ข้ามตัวที่พังไป แต่ทำตัวถัดไปต่อ
           }
 
-          // =========================================================
-          // STEP 3: Create Leaderboard Config (ใช้ข้อมูลจาก Step 2)
-          // =========================================================
-          if (validTiers.length > 0) {
-              console.log("⚙️ [STEP 3] Creating Leaderboard Config...");
-              
-              let endsAtStr = new Date().toISOString();
-              if (formData.eYear && formData.eMonth && formData.eDay && formData.endTime) {
-                  const y = formData.eYear;
-                  const m = formData.eMonth.toString().padStart(2, '0');
-                  const d = formData.eDay.toString().padStart(2, '0');
-                  const time = formData.endTime;
-                  endsAtStr = `${y}-${m}-${d}T${time}:00`;
-              }
+          const rewardData = await rewardRes.json();
+          const newRewardId = rewardData.id || rewardData.data?.id;
 
-              const configPayload = {
-                  event_id: eventId,
-                  name: "Main Leaderboard",
-                  description: "Auto-generated config",
-                  max_reward_recipients: Number(formData.totalRewards) || 100,
-                  required_completions: 1, 
-                  starts_at: new Date().toISOString(),
-                  ends_at: new Date(endsAtStr).toISOString(),
-                  reward_tiers: validTiers // ✅ ส่ง array ที่มี reward_id แล้ว
-              };
+          console.log(`      ✅ Created! Reward ID: ${newRewardId}`);
 
-              const configRes = await fetch(endpoints.rewards.createConfig, {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`
-                  },
-                  body: JSON.stringify(configPayload)
-              });
+          if (newRewardId) {
+            validTiers.push({
+              tier: index + 1,
+              reward_id: newRewardId, // ✅ ต้องส่ง ID นี้ไปผูกกับ Config
+              reward_name: r.name,
+              required_completions: Number(r.requirement),
+              quantity: 0, // unlimited
+              min_rank: 0,
+              max_rank: 0,
+            });
+          }
+        }
 
-              if (configRes.ok) {
-                  console.log("✅ [STEP 3 SUCCESS] Config Created");
-              } else {
-                  console.warn("⚠️ [STEP 3 FAILED] Could not create config:", await configRes.text());
-              }
+        // =========================================================
+        // STEP 3: Create Leaderboard Config (ใช้ข้อมูลจาก Step 2)
+        // =========================================================
+        if (validTiers.length > 0) {
+          console.log("⚙️ [STEP 3] Creating Leaderboard Config...");
+
+          let endsAtStr = new Date().toISOString();
+          if (
+            formData.eYear &&
+            formData.eMonth &&
+            formData.eDay &&
+            formData.endTime
+          ) {
+            const y = formData.eYear;
+            const m = formData.eMonth.toString().padStart(2, "0");
+            const d = formData.eDay.toString().padStart(2, "0");
+            const time = formData.endTime;
+            endsAtStr = `${y}-${m}-${d}T${time}:00`;
+          }
+
+          const configPayload = {
+            event_id: eventId,
+            name: "Main Leaderboard",
+            description: "Auto-generated config",
+            max_reward_recipients: Number(formData.totalRewards) || 100,
+            required_completions: 1,
+            starts_at: new Date().toISOString(),
+            ends_at: new Date(endsAtStr).toISOString(),
+            reward_tiers: validTiers, // ✅ ส่ง array ที่มี reward_id แล้ว
+          };
+
+          const configRes = await fetch(endpoints.rewards.createConfig, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+            },
+            body: JSON.stringify(configPayload),
+          });
+
+          if (configRes.ok) {
+            console.log("✅ [STEP 3 SUCCESS] Config Created");
           } else {
-              console.warn("⚠️ No rewards were created successfully, skipping config creation.");
+            console.warn(
+              "⚠️ [STEP 3 FAILED] Could not create config:",
+              await configRes.text(),
+            );
           }
+        } else {
+          console.warn(
+            "⚠️ No rewards were created successfully, skipping config creation.",
+          );
+        }
       } else {
-          console.log("ℹ️ No rewards selected, skipping Step 2 & 3.");
+        console.log("ℹ️ No rewards selected, skipping Step 2 & 3.");
       }
-      
+
       console.log("🏁 [FINISH] Redirecting to event list...");
       eventForm.reset();
-      goto('/organizer/events');
-      
+      goto("/organizer/events");
     } catch (err: any) {
       console.error("💥 Critical Error in handleSubmit:", err);
-      error = err.message || 'An error occurred';
+      error = err.message || "An error occurred";
       isSubmitting = false;
     }
   }
-  
+
   function handleBack() {
-    goto('/organizer/create-event/rewards');
+    goto("/organizer/create-event/rewards");
   }
 
   function handleEdit(section: string) {
@@ -255,64 +298,102 @@
   <div class="ce-summary-header">
     <div class="ce-summary-icon">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
       </svg>
     </div>
     <div>
-      <h3 class="ce-summary-title">{lang === 'th' ?
-        'ตรวจสอบข้อมูลก่อนเผยแพร่' : 'Review Before Publishing'}</h3>
-      <p class="ce-summary-desc">{lang === 'th' ?
-        'กรุณาตรวจสอบข้อมูลให้ถูกต้องก่อนเผยแพร่กิจกรรม' : 'Please verify all information before publishing your event'}</p>
+      <h3 class="ce-summary-title">
+        {lang === "th"
+          ? "ตรวจสอบข้อมูลก่อนเผยแพร่"
+          : "Review Before Publishing"}
+      </h3>
+      <p class="ce-summary-desc">
+        {lang === "th"
+          ? "กรุณาตรวจสอบข้อมูลให้ถูกต้องก่อนเผยแพร่กิจกรรม"
+          : "Please verify all information before publishing your event"}
+      </p>
     </div>
   </div>
 
   <div class="ce-card ce-summary-card">
     <div class="ce-card-head">
       <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-        <svg class="ce-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        <svg
+          class="ce-icon-svg"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          ></path>
         </svg>
-        <span>{lang === 'th' ? 'ข้อมูลทั่วไป' : 'General Information'}</span>
+        <span>{lang === "th" ? "ข้อมูลทั่วไป" : "General Information"}</span>
       </div>
-      <button type="button" class="ce-btn-edit" on:click={() => handleEdit('general')}>
+      <button
+        type="button"
+        class="ce-btn-edit"
+        on:click={() => handleEdit("general")}
+      >
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+          />
         </svg>
-        {t('edit')}
+        {t("edit")}
       </button>
     </div>
 
     {#if formData.imagePreview}
-        <div class="ce-summary-image">
-          <img src={resolveApiImageUrl(formData.imagePreview)} alt="Event banner" on:error={handleSummaryImgError} />
-        </div>
+      <div class="ce-summary-image">
+        <img
+          src={resolveApiImageUrl(formData.imagePreview)}
+          alt="Event banner"
+          on:error={handleSummaryImgError}
+        />
+      </div>
     {/if}
 
     <div class="ce-summary-grid">
       <div class="ce-summary-item">
-        <span class="ce-summary-label">{t('eventName')}</span>
-        <span class="ce-summary-value">{formData.title || '-'}</span>
+        <span class="ce-summary-label">{t("eventName")}</span>
+        <span class="ce-summary-value">{formData.title || "-"}</span>
       </div>
 
       <div class="ce-summary-item">
-        <span class="ce-summary-label">{t('eventType')}</span>
-        <span class="ce-summary-badge">{getEventTypeLabel(formData.eventType)}</span>
+        <span class="ce-summary-label">{t("eventType")}</span>
+        <span class="ce-summary-badge"
+          >{getEventTypeLabel(formData.eventType)}</span
+        >
       </div>
 
       <div class="ce-summary-item full-width">
-        <span class="ce-summary-label">{t('description')}</span>
-        <span class="ce-summary-value">{formData.description || '-'}</span>
+        <span class="ce-summary-label">{t("description")}</span>
+        <span class="ce-summary-value">{formData.description || "-"}</span>
       </div>
 
       <div class="ce-summary-item full-width">
-        <span class="ce-summary-label">{t('location')}</span>
-        <span class="ce-summary-value">{formData.location || '-'}</span>
+        <span class="ce-summary-label">{t("location")}</span>
+        <span class="ce-summary-value">{formData.location || "-"}</span>
       </div>
 
-      {#if formData.eventType === 'multi_day'}
+      {#if formData.eventType === "multi_day"}
         <div class="ce-summary-item">
-          <span class="ce-summary-label">{t('maxCheckinsPerUser')}</span>
-          <span class="ce-summary-value">{formData.maxCheckinsPerUser} {t('checkinTimes')}</span>
+          <span class="ce-summary-label">{t("maxCheckinsPerUser")}</span>
+          <span class="ce-summary-value"
+            >{formData.maxCheckinsPerUser} {t("checkinTimes")}</span
+          >
         </div>
       {/if}
     </div>
@@ -321,53 +402,83 @@
   <div class="ce-card ce-summary-card">
     <div class="ce-card-head">
       <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-        <svg class="ce-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        <svg
+          class="ce-icon-svg"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          ></path>
         </svg>
-        <span>{lang === 'th' ? 'วันเวลาและจำนวน' : 'Date, Time & Capacity'}</span>
+        <span
+          >{lang === "th" ? "วันเวลาและจำนวน" : "Date, Time & Capacity"}</span
+        >
       </div>
-      <button type="button" class="ce-btn-edit" on:click={() => handleEdit('capacity')}>
+      <button
+        type="button"
+        class="ce-btn-edit"
+        on:click={() => handleEdit("capacity")}
+      >
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+          />
         </svg>
-        {t('edit')}
+        {t("edit")}
       </button>
     </div>
 
     <div class="ce-summary-grid">
       <div class="ce-summary-item">
-        <span class="ce-summary-label">{t('startDateLabel')}</span>
-        <span class="ce-summary-value">{formatDate(formData.sDay, formData.sMonth, formData.sYear)}</span>
+        <span class="ce-summary-label">{t("startDateLabel")}</span>
+        <span class="ce-summary-value"
+          >{formatDate(formData.sDay, formData.sMonth, formData.sYear)}</span
+        >
       </div>
 
       <div class="ce-summary-item">
-        <span class="ce-summary-label">{t('endDateLabel')}</span>
-        <span class="ce-summary-value">{formatDate(formData.eDay, formData.eMonth, formData.eYear)}</span>
+        <span class="ce-summary-label">{t("endDateLabel")}</span>
+        <span class="ce-summary-value"
+          >{formatDate(formData.eDay, formData.eMonth, formData.eYear)}</span
+        >
       </div>
 
       <div class="ce-summary-item">
-        <span class="ce-summary-label">{t('startTimeLabel')}</span>
-        <span class="ce-summary-value">{formData.startTime || '-'}</span>
+        <span class="ce-summary-label">{t("startTimeLabel")}</span>
+        <span class="ce-summary-value">{formData.startTime || "-"}</span>
       </div>
 
       <div class="ce-summary-item">
-        <span class="ce-summary-label">{t('endTimeLabel')}</span>
-        <span class="ce-summary-value">{formData.endTime || '-'}</span>
+        <span class="ce-summary-label">{t("endTimeLabel")}</span>
+        <span class="ce-summary-value">{formData.endTime || "-"}</span>
       </div>
 
       <div class="ce-summary-item">
-        <span class="ce-summary-label">{t('capacityLabel')}</span>
-        <span class="ce-summary-value-highlight">{formData.totalSlots || '-'} {lang === 'th' ? 'ที่นั่ง' : 'slots'}</span>
+        <span class="ce-summary-label">{t("capacityLabel")}</span>
+        <span class="ce-summary-value-highlight"
+          >{formData.totalSlots || "-"}
+          {lang === "th" ? "ที่นั่ง" : "slots"}</span
+        >
       </div>
 
       <div class="ce-summary-item">
-        <span class="ce-summary-label">{t('distanceLabel')}</span>
+        <span class="ce-summary-label">{t("distanceLabel")}</span>
         <span class="ce-summary-value">{formData.distanceKm || 0} km</span>
       </div>
 
       <div class="ce-summary-item full-width">
-        <span class="ce-summary-label">{t('holidaysAndExclusions')}</span>
-        <span class="ce-summary-value">{getHolidayModeLabel(formData.holidayMode)}</span>
+        <span class="ce-summary-label">{t("holidaysAndExclusions")}</span>
+        <span class="ce-summary-value"
+          >{getHolidayModeLabel(formData.holidayMode)}</span
+        >
       </div>
     </div>
   </div>
@@ -375,39 +486,71 @@
   <div class="ce-card ce-summary-card">
     <div class="ce-card-head">
       <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-        <svg class="ce-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+        <svg
+          class="ce-icon-svg"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
+          ></path>
         </svg>
-        <span>{lang === 'th' ? 'รางวัล' : 'Rewards'}</span>
+        <span>{lang === "th" ? "รางวัล" : "Rewards"}</span>
       </div>
-      <button type="button" class="ce-btn-edit" on:click={() => handleEdit('rewards')}>
+      <button
+        type="button"
+        class="ce-btn-edit"
+        on:click={() => handleEdit("rewards")}
+      >
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+          />
         </svg>
-        {t('edit')}
+        {t("edit")}
       </button>
     </div>
 
     <div class="ce-summary-item" style="margin-bottom: 16px;">
-      <span class="ce-summary-label">{lang === 'th' ? 'จำนวนของรางวัลทั้งหมด' : 'Total Reward Items'}</span>
-      <span class="ce-summary-value-highlight">{formData.totalRewards || 0} {lang === 'th' ? 'ชิ้น' : 'items'}</span>
+      <span class="ce-summary-label"
+        >{lang === "th" ? "จำนวนของรางวัลทั้งหมด" : "Total Reward Items"}</span
+      >
+      <span class="ce-summary-value-highlight"
+        >{formData.totalRewards || 0} {lang === "th" ? "ชิ้น" : "items"}</span
+      >
     </div>
 
     {#if formData.rewards.length > 0}
       <div class="ce-rewards-grid">
         {#each formData.rewards.sort((a: any, b: any) => (a.requirement || 0) - (b.requirement || 0)) as reward}
           <div class="ce-reward-summary-card">
-            <div class="ce-reward-rounds">{reward.requirement || 0} {lang === 'th' ? 'รอบ' : 'rounds'}</div>
-            <div class="ce-reward-name">{reward.name || '-'}</div>
+            <div class="ce-reward-rounds">
+              {reward.requirement || 0}
+              {lang === "th" ? "รอบ" : "rounds"}
+            </div>
+            <div class="ce-reward-name">{reward.name || "-"}</div>
           </div>
         {/each}
       </div>
     {:else}
       <div class="ce-empty-state">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+          />
         </svg>
-        <span>{lang === 'th' ? 'ยังไม่มีรางวัล' : 'No rewards configured'}</span>
+        <span>{lang === "th" ? "ยังไม่มีรางวัล" : "No rewards configured"}</span
+        >
       </div>
     {/if}
   </div>
@@ -419,22 +562,47 @@
   {/if}
 
   <div class="ce-nav-buttons">
-    <button type="button" class="ce-btn-cancel" on:click={handleBack} disabled={isSubmitting}>
+    <button
+      type="button"
+      class="ce-btn-cancel"
+      on:click={handleBack}
+      disabled={isSubmitting}
+    >
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M15 19l-7-7 7-7"
+        />
       </svg>
-      {t('back')}
+      {t("back")}
     </button>
-    <button type="button" class="ce-btn-save ce-btn-publish" on:click={handleSubmit} disabled={isSubmitting}>
+    <button
+      type="button"
+      class="ce-btn-save ce-btn-publish"
+      on:click={handleSubmit}
+      disabled={isSubmitting}
+    >
       {#if isSubmitting}
         <div class="btn-loader"></div>
       {:else}
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M5 13l4 4L19 7"
+          />
         </svg>
       {/if}
-      {editingEventId ?
-        (lang === 'th' ? 'บันทึกการแก้ไข' : 'Save Changes') : (lang === 'th' ? 'เผยแพร่กิจกรรม' : 'Publish Event')}
+      {editingEventId
+        ? lang === "th"
+          ? "บันทึกการแก้ไข"
+          : "Save Changes"
+        : lang === "th"
+          ? "เผยแพร่กิจกรรม"
+          : "Publish Event"}
     </button>
   </div>
 </div>
@@ -445,7 +613,11 @@
     align-items: center;
     gap: 16px;
     padding: 24px;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 95, 70, 0.05));
+    background: linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.1),
+      rgba(6, 95, 70, 0.05)
+    );
     border: 1px solid rgba(16, 185, 129, 0.3);
     border-radius: 20px;
     margin-bottom: 24px;
@@ -580,7 +752,11 @@
   }
 
   .ce-reward-summary-card {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(234, 88, 12, 0.05));
+    background: linear-gradient(
+      135deg,
+      rgba(245, 158, 11, 0.1),
+      rgba(234, 88, 12, 0.05)
+    );
     border: 1px solid rgba(245, 158, 11, 0.3);
     border-radius: 12px;
     padding: 16px;
@@ -644,7 +820,9 @@
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   @media (max-width: 768px) {

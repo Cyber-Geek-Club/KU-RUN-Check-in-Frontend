@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from "svelte";
   import { api } from "../_lib/api/client";
-  import { endpoints } from "../_lib/api/endpoints";
+  import { endpoints } from "$lib/api/endpoints";
   import Swal from "sweetalert2";
 
   const rawEnv = import.meta.env.VITE_API_BASE_URL;
