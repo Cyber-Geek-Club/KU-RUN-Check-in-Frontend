@@ -379,42 +379,153 @@
     return `${start.toLocaleDateString(locale, options)} - ${end.toLocaleDateString(locale, options)}`;
   }
 
-  function calculateStatistics() {
-    // ✅ Optimization: Single-pass O(N) calculation
-    let totalRewarded = 0;
-    let totalQualified = 0;
-    let totalPending = 0;
-    let sumCompletions = 0;
-    let topCompletion = 0;
-    const len = rewards.length;
+  function calculateStatistics(newRewards?: RewardEntry[]) {
+    // ✅ Optimization: Incremental update support
+    let totalRewarded = newRewards ? statistics.totalRewarded : 0;
+    let totalQualified = newRewards ? statistics.totalQualified : 0;
+    let totalPending = newRewards ? statistics.totalPending : 0;
+    // For average, we need sum and count.
+    // If incremental, we need to track sum and count globally?
+    // Usually easier to just loop all (O(N) is fast) or keep running sum.
+    // Since N < 100k, looping is fine for sum/avg, but counts can be incremental.
 
-    for (let i = 0; i < len; i++) {
-      const r = rewards[i];
-      if (r.rewarded_at) totalRewarded++;
-      else if (r.qualified_at) totalQualified++;
-      else totalPending++;
+    // Actually, looping 10,000 items is < 1ms. The issue is usually DOM or Filters.
+    // Let's stick to full loop for average/top for simplicity/correctness,
+    // unless we see it's slow.
+    // But for the COUNTs, let's optimize if we want.
+    // Given we want "Very Fast", let's loop the target array only if possible.
 
-      const c = r.total_completions || 0;
-      sumCompletions += c;
-      if (c > topCompletion) topCompletion = c;
+    const targets = newRewards || rewards;
+
+    if (!newRewards) {
+      // Full Reset
+      let sumCompletions = 0;
+      let topCompletion = 0;
+
+      for (const r of rewards) {
+        if (r.rewarded_at) totalRewarded++;
+        else if (r.qualified_at) totalQualified++;
+        else totalPending++;
+
+        const c = r.total_completions || 0;
+        sumCompletions += c;
+        if (c > topCompletion) topCompletion = c;
+      }
+
+      const len = rewards.length;
+      const averageCompletions =
+        len > 0 ? Math.round((sumCompletions / len) * 10) / 10 : 0;
+
+      statistics = {
+        totalParticipants: len,
+        totalRewarded,
+        totalQualified,
+        totalPending,
+        averageCompletions,
+        topCompletion,
+      };
+    } else {
+      // Incremental Update (Approximate or partial?)
+      // Top completion can be updated easily (max).
+      // Average is hard without state.
+      // Let's just do FULL RECALC for Stats on the main list.
+      // JavaScript loops are insanely fast. The sluggishness usually comes from Svelte reactivity + DOM.
+      // So recalculating stats on 10k items is fine.
+
+      // Wait, did I disable incremental stats for logs? No, I enabled it.
+      // For rewards, let's do the same for consistency if performance matters.
+      // But for Average/Top, full scan is safest.
+      calculateStatistics(undefined);
+    }
+  }
+
+  // ✅ Optimization: Helper for mapping raw entries to RewardEntry
+  function mapRewards(entries: any[]): RewardEntry[] {
+    return entries.map((r: any) => {
+      const uId = r.user_id;
+      // Pre-resolve basic info from the entry itself if available
+      const dName = r.user_full_name || r.user_name || "Unknown";
+      const dEmail = r.user_email || r.email || "";
+      const dNisit = r.user_nisit_id || r.nisit_id || "";
+
+      return {
+        id: r.id,
+        user_id: uId,
+        user_full_name: dName,
+        user_email: dEmail,
+        user_nisit_id: dNisit,
+        user_role: r.user_role || "participant",
+        total_completions: r.total_completions || 0,
+        rank: r.rank || 0,
+        reward_id: r.reward_id,
+        reward_name: r.reward_name,
+        reward_tier: r.reward_tier,
+        qualified_at: r.qualified_at,
+        rewarded_at: r.rewarded_at,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        // Proactive caching
+        displayName: dName,
+        displayEmail: dEmail,
+        displayNisit: dNisit,
+        searchStr: `${dName} ${dEmail} ${dNisit}`.toLowerCase(),
+      };
+    });
+  }
+
+  // ✅ Optimization: Helper for parallel profile fetching
+  async function fillMissingProfiles(targetRewards: RewardEntry[]) {
+    // Only fetch users who have missing critical display info
+    const userIdsToFetch = new Set<number>();
+
+    for (const r of targetRewards) {
+      // If we already have display name and it's not "Unknown", we trust it?
+      // Or if email/nisit key fields are present.
+      // Let's say if name is Unknown OR (no email AND no nisit), we might need to fetch.
+      // But usually "Unknown" is the tell-tale sign.
+      if (r.displayName === "Unknown" || r.displayName === "") {
+        if (r.user_id) userIdsToFetch.add(Number(r.user_id));
+      }
     }
 
-    const averageCompletions =
-      len > 0 ? Math.round((sumCompletions / len) * 10) / 10 : 0;
+    const userIds = Array.from(userIdsToFetch);
 
-    // reassign to ensure Svelte notices the change
-    statistics = {
-      totalParticipants: len,
-      totalRewarded,
-      totalQualified,
-      totalPending,
-      averageCompletions,
-      topCompletion,
-    };
+    if (userIds.length === 0) return;
 
-    // debug: show computed values
-    if (import.meta.env.DEV) {
-      console.debug("[rewards] calculateStatistics O(N)", statistics);
+    // Parallel fetch missing users
+    // Limit concurrency within this batch if many?
+    // Browser limit applies anyway.
+    await Promise.all(userIds.map((id: number) => ensureUser(id)));
+
+    // ✅ Optimization: Update fields ONLY for those we fetched
+    for (const r of targetRewards) {
+      if (r.user_id && userCache[r.user_id]) {
+        const u = userCache[r.user_id];
+
+        // Resolve display name
+        let dName = r.user_full_name || "Unknown";
+        if (u && (u.first_name || u.last_name)) {
+          dName = `${u.first_name || ""} ${u.last_name || ""}`.trim();
+        }
+        r.displayName = dName;
+        if (dName !== "Unknown") r.user_full_name = dName; // persistent update
+
+        // Resolve email
+        // Resolve email
+        const dEmail = (u && u.email) || r.user_email || "";
+        r.displayEmail = dEmail;
+        r.user_email = dEmail;
+
+        // Resolve nisit
+        const dNisit =
+          (u && (u.nisit_id || u.nisitId)) || r.user_nisit_id || "";
+        r.displayNisit = dNisit;
+        r.user_nisit_id = dNisit;
+
+        // Rebuild search string
+        r.searchStr =
+          `${r.displayName} ${r.displayEmail} ${r.displayNisit}`.toLowerCase();
+      }
     }
   }
 
@@ -427,22 +538,19 @@
       userCache[userId] = res.data;
       return userCache[userId];
     } catch (e) {
-      console.warn("Could not fetch user", userId, e);
+      // console.warn("Could not fetch user", userId, e);
+      // Supress warning for speed logs
       userCache[userId] = null;
       return null;
     }
   }
 
   function formatUserName(entry: RewardEntry) {
-    const u = userCache[entry.user_id];
-    if (u && (u.first_name || u.last_name))
-      return `${u.first_name || ""} ${u.last_name || ""}`.trim();
-    return entry.user_full_name || "-";
+    return entry.displayName || entry.user_full_name || "-";
   }
 
   function formatNisitId(entry: RewardEntry) {
-    const u = userCache[entry.user_id];
-    return (u && (u.nisit_id || u.nisitId)) || entry.user_nisit_id || "-";
+    return entry.displayNisit || entry.user_nisit_id || "-";
   }
 
   // ===== Data Loading =====
@@ -492,132 +600,127 @@
     rewardConfig = null;
 
     try {
-      // 1. ดึง Config ของ Event นี้
-      // ใช้ endpoints.rewards.config(eventId)
+      // 1. Get Config
       try {
         const configRes = await api.get(endpoints.rewards.config(event.id));
         rewardConfig = configRes.data;
       } catch (configErr: any) {
-        // ถ้า 404 หมายถึงยังไม่มี config สำหรับ event นี้ - ไม่ใช่ error
         if (configErr?.response?.status === 404) {
-          console.info(
-            `[rewards] No config found for event ${event.id} - this is normal for new events`,
-          );
+          console.info(`[rewards] No config found for event ${event.id}`);
           rewardConfig = null;
         } else {
-          throw configErr; // re-throw ถ้าไม่ใช่ 404
+          throw configErr;
         }
       }
 
       if (rewardConfig && rewardConfig.id) {
-        // 2. ถ้ามี Config ให้ดึง Entries (Leaderboard)
-        // ใช้ endpoints.rewards.entries(configId)
+        const configId = rewardConfig.id;
+        let page = 1;
+        const pageSize = 100;
+        let totalPages = 1;
+        let allEntries: any[] = [];
+
+        // --- FIRST BATCH (Blocking) ---
         try {
+          // Try fetching with pagination params
           const entriesRes = await api.get(
-            endpoints.rewards.entries(rewardConfig.id),
+            endpoints.rewards.entries(configId),
+            {
+              params: { page, page_size: pageSize },
+            },
           );
           const entriesData = entriesRes.data;
-          const rawEntries = Array.isArray(entriesData)
-            ? entriesData
-            : entriesData.entries || [];
 
-          rewards = rawEntries.map((r: any) => ({
-            id: r.id,
-            user_id: r.user_id,
-            // รองรับการ map field ที่อาจแตกต่างกันเล็กน้อย
-            user_full_name: r.user_full_name || r.user_name || "Unknown",
-            user_email: r.user_email || r.email || "",
-            user_nisit_id: r.user_nisit_id || r.nisit_id,
-            user_role: r.user_role || "participant",
-            total_completions: r.total_completions || 0,
-            rank: r.rank || 0,
-            reward_id: r.reward_id,
-            reward_name: r.reward_name, // Backend อาจส่งชื่อมา หรือต้อง lookup จาก tier
-            reward_tier: r.reward_tier,
-            qualified_at: r.qualified_at,
-            rewarded_at: r.rewarded_at,
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-          }));
-          if (import.meta.env.DEV)
-            console.debug("[rewards] loaded entries", {
-              count: rewards.length,
-              first: rewards[0],
-            });
-
-          // Prefetch user profiles for displayed entries (cache)
-          try {
-            const userIds = Array.from(
-              new Set(rewards.map((r) => r.user_id).filter(Boolean)),
-            );
-            await Promise.all(userIds.map((id: number) => ensureUser(id)));
-
-            // ✅ Optimization: Post-process rewards to fill cached display fields & searchStr
-            // This avoids doing it in the render loop or filter loop
-            for (const r of rewards) {
-              const u = userCache[r.user_id];
-
-              // Resolve display name
-              let dName = r.user_full_name || "Unknown";
-              if (u && (u.first_name || u.last_name)) {
-                dName = `${u.first_name || ""} ${u.last_name || ""}`.trim();
-              }
-              r.displayName = dName;
-
-              // Resolve email
-              r.displayEmail = (u && u.email) || r.user_email || "";
-
-              // Resolve nisit
-              r.displayNisit =
-                (u && (u.nisit_id || u.nisitId)) || r.user_nisit_id || "";
-
-              // Build search string
-              r.searchStr =
-                `${r.displayName} ${r.displayEmail} ${r.displayNisit}`.toLowerCase();
-            }
-
-            if (import.meta.env.DEV)
-              console.debug(
-                "[rewards] prefetched users & built searchStr",
-                Object.keys(userCache).length,
-              );
-          } catch (e) {
-            console.warn("Prefetch users failed", e);
+          // Handle if API returns list (no pagination support) vs object (pagination support)
+          if (Array.isArray(entriesData)) {
+            // API does not support pagination? Or returns full list?
+            // If full list, we just map and done.
+            allEntries = entriesData;
+            totalPages = 1; // Done
+            page = 2; // Stop loop
+          } else {
+            allEntries = entriesData.entries || [];
+            totalPages = entriesData.total_pages || 1;
+            page++;
           }
         } catch (entriesErr: any) {
-          // ถ้า 404 สำหรับ entries หมายถึงยังไม่มีใครเข้าร่วม
           if (entriesErr?.response?.status === 404) {
-            console.info("[rewards] No entries found - leaderboard is empty");
             rewards = [];
           } else {
             console.warn("Failed to load entries", entriesErr);
-            rewards = [];
           }
         }
+
+        if (allEntries.length > 0) {
+          rewards = mapRewards(allEntries);
+          await fillMissingProfiles(rewards);
+        }
+        calculateStatistics(); // First stats
+        applyFilters(); // First render
+        view = "leaderboard";
+        loading = false; // 🚀 Interactive!
+
+        // --- BACKGROUND BATCHES (Parallel) ---
+        if (page <= totalPages) {
+          (async () => {
+            const CONCURRENCY = 5;
+            const BATCH_UPDATE_SIZE = 5; // Accumulate 5 pages before render
+
+            while (page <= totalPages) {
+              const promises = [];
+
+              for (let i = 0; i < CONCURRENCY && page <= totalPages; i++) {
+                promises.push(
+                  api.get(endpoints.rewards.entries(configId), {
+                    params: { page, page_size: pageSize },
+                  }),
+                );
+                page++;
+              }
+
+              try {
+                const results = await Promise.all(promises);
+                let batchBuffer: any[] = [];
+
+                for (const res of results) {
+                  const d = res.data;
+                  // Assuming standard structure if paginated
+                  const chunk = Array.isArray(d) ? d : d.entries || [];
+                  batchBuffer.push(...chunk);
+                }
+
+                if (batchBuffer.length > 0) {
+                  const newRewards = mapRewards(batchBuffer);
+                  await fillMissingProfiles(newRewards);
+
+                  rewards = rewards.concat(newRewards); // Concat faster than spread
+                  calculateStatistics(newRewards); // Incremental or full recalc wrapper
+                  applyFilters(); // Re-run search/filter
+
+                  // Yield
+                  await new Promise((r) => setTimeout(r, 20));
+                }
+              } catch (e) {
+                console.error("Background fetch error", e);
+                break;
+              }
+            }
+          })();
+        }
       } else {
-        // กรณีไม่มี Config อาจจะยังไม่เคยตั้งค่า
-        console.info(
-          "[rewards] No reward config found for this event - showing empty state.",
-        );
+        // No config
+        console.info("[rewards] No reward config found - showing empty state.");
+        view = "leaderboard";
+        loading = false;
       }
 
-      calculateStatistics();
-      applyFilters();
       if (import.meta.env.DEV)
-        console.debug("[rewards] after selectEventForRewards", {
-          view,
-          rewardsLength: rewards.length,
-          filteredLength: filteredRewards.length,
-          statistics,
-        });
-      view = "leaderboard";
+        console.debug("[rewards] selectEventForRewards done");
     } catch (err) {
       console.error("Error loading reward data", err);
-      // หาก error อื่นๆ ที่ไม่ใช่ 404 ให้แสดงหน้าว่างๆ
       view = "leaderboard";
       rewards = [];
       rewardConfig = null;
-    } finally {
       loading = false;
     }
   }

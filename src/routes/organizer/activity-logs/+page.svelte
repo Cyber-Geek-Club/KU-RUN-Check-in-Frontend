@@ -434,21 +434,62 @@
     });
   }
 
-  function calculateStatistics() {
-    // ✅ Optimization: Single-pass O(N) calculation reduces complexity from O(6N) to O(N)
-    let totalRegistrations = 0;
-    let totalCheckIns = 0;
-    let totalCompleted = 0;
-    let totalCancelled = 0;
-    const uniqueUserIds = new Set<string>();
+  function calculateStatistics(newItems?: LogEntry[]) {
+    // ✅ Optimization: Incremental update support
+    // If newItems provided, add to existing stats. Otherwise, recalculate from scratch.
 
-    for (const l of logs) {
-      if (l.userId) uniqueUserIds.add(l.userId);
+    let totalRegistrations = newItems ? statistics.totalRegistrations : 0;
+    let totalCheckIns = newItems ? statistics.totalCheckIns : 0;
+    let totalCompleted = newItems ? statistics.totalCompleted : 0;
+    let totalCancelled = newItems ? statistics.totalCancelled : 0;
+
+    // We can't easily incrementalize uniqueUsers without keeping the Set in state.
+    // Let's recalculate uniqueUsers from logs if needed, or keep a separate set.
+    // For now, let's just loop full logs for unique count if batch update,
+    // BUT usually unique users count is less critical for instant feedback than the table.
+    // Let's optimize: maintain a global Set for unique Ids
+
+    // Actually, iterating full logs just for unique ID set is fast enough if we don't do other string checking.
+    // The main cost before was 4 separate filters.
+
+    const targets = newItems || logs;
+
+    for (const l of targets) {
       const act = l.action;
       if (act === "registration") totalRegistrations++;
       else if (act === "check_in") totalCheckIns++;
       else if (act === "reward_unlocked") totalCompleted++;
       else if (act === "registration_cancelled") totalCancelled++;
+    }
+
+    // Recalculate unique users efficiently
+    // If newItems, we might be double counting if we don't query the full list or a persistent Set.
+    // Let's rebuild the Set only from full logs periodically or just pay the O(N) cost for the Set (it's fast).
+    // For simplicity and correctness with "Delete" or "Filter" features, let's keep uniqueUsers calculation simple.
+    // If we are in incremental mode, we really should just recalculate the set from `logs` (which now has all items).
+    // But `logs` might not be updated yet in the caller functions.
+
+    // Strategy: Just recalc checks/counts on newItems, but for unique users, we need full scope.
+    // OR: Just let `uniqueUsers` be O(N) but the rest O(k).
+
+    let uniqueSize = statistics.uniqueUsers;
+    if (!newItems) {
+      const uniqueUserIds = new Set<string>();
+      for (const l of logs) {
+        if (l.userId) uniqueUserIds.add(l.userId);
+      }
+      uniqueSize = uniqueUserIds.size;
+    } else {
+      // Approximate or just wait for final update?
+      // Let's just do full Set Recalc on the updated logs list (caller must assign logs first or passing full list)
+      // If we want perfection:
+      const uniqueUserIds = new Set<string>();
+      // Check if logs already includes newItems?
+      // If called from loadSnapshotEntries, logs already has new items appended.
+      for (const l of logs) {
+        if (l.userId) uniqueUserIds.add(l.userId);
+      }
+      uniqueSize = uniqueUserIds.size;
     }
 
     statistics = {
@@ -457,7 +498,7 @@
       totalCheckIns,
       totalCompleted,
       totalCancelled,
-      uniqueUsers: uniqueUserIds.size,
+      uniqueUsers: uniqueSize,
     };
   }
 
@@ -602,112 +643,161 @@
     }
   }
 
+  // ✅ Optimization: Extracted helper for mapping entries to avoid code duplication
+  function mapEntries(entries: any[], eventId: string): LogEntry[] {
+    return entries.map((e: any) => {
+      const realTime = getEntryTimestamp(e);
+      const pDate = realTime.split("T")[0];
+      const userName = e.user_name || "Unknown";
+      const userEmail = e.user_email || "";
+      const userNisitId = (e.metadata && e.metadata.nisit_id) || "";
+
+      return {
+        id: e.entry_id || String(e.id),
+        eventId: eventId,
+        userId: String(e.user_id),
+        userName,
+        userEmail,
+        userNisitId,
+        userRole: (e.metadata && e.metadata.role) || "participant",
+        action: normalizeAction(e.action || e.status || "registration"),
+        timestamp: realTime,
+        participationDate: pDate,
+        details: null,
+        metadata: e.metadata || {},
+        proofImage: (e.metadata && e.metadata.proof_image) || null,
+        distanceKm: (e.metadata && e.metadata.distance_km) || null,
+        status: e.status,
+        dateObj: new Date(realTime),
+        searchStr: `${userName} ${userEmail} ${userNisitId}`.toLowerCase(),
+      };
+    });
+  }
+
+  // ✅ Optimization: Extracted helper for parallel profile fetching
+  async function fillMissingProfiles(targetLogs: LogEntry[]) {
+    const missing = Array.from(
+      new Set(
+        targetLogs
+          .filter((l) => (!l.userNisitId || l.userNisitId === "") && l.userId)
+          .map((l) => Number(l.userId)),
+      ),
+    );
+
+    if (missing.length === 0) return;
+
+    await Promise.all(
+      missing.map(async (uid) => {
+        try {
+          await fetchUser(uid); // populates userCache
+        } catch (e) {}
+      }),
+    );
+
+    // Mutate entries in place using cache
+    for (const l of targetLogs) {
+      if ((!l.userNisitId || l.userNisitId === "") && l.userId) {
+        const cached = userCache.get(Number(l.userId));
+        if (cached) {
+          const n = cached.nisit_id || cached.nisitId || cached.nisit;
+          if (n) {
+            l.userNisitId = n;
+            // Re-compute search string if mutated
+            l.searchStr = `${l.userName} ${l.userEmail} ${n}`.toLowerCase();
+          }
+        }
+      }
+    }
+  }
+
   async function loadSnapshotEntries(eventId: string, snapshotId: string) {
     loading = true;
     try {
-      let allEntries: any[] = [];
       let page = 1;
       let totalPages = 1;
-      const pageSize = 100; // Safe limit
+      const pageSize = 100;
+      let allEntries: any[] = [];
 
-      do {
-        try {
-          const res = await getSnapshotEntries(
-            Number(eventId),
-            snapshotId,
-            page,
-            pageSize,
-          );
-          if (res && res.entries) {
-            allEntries = [...allEntries, ...res.entries];
-            totalPages = res.total_pages || 1;
-            page++;
-          } else {
-            break;
-          }
-        } catch (err) {
-          break;
+      // --- FIRST BATCH (Blocking High Priority) ---
+      try {
+        const res = await getSnapshotEntries(
+          Number(eventId),
+          snapshotId,
+          page,
+          pageSize,
+        );
+
+        if (res && res.entries) {
+          allEntries = res.entries;
+          totalPages = res.total_pages || 1;
+          page++;
         }
-      } while (page <= totalPages);
+      } catch (err) {
+        console.warn("Initial fetch failed", err);
+      }
 
-      // entries fetched
-      logs = allEntries.map((e: any) => {
-        // ✅ Use helper here too for main table consistency
-        const realTime = getEntryTimestamp(e);
-        const pDate = realTime.split("T")[0];
-
-        // ✅ Optimization: Pre-compute fields to avoid repeated heavy operations during render/filter
-        const userName = e.user_name || "Unknown";
-        const userEmail = e.user_email || "";
-        const userNisitId = (e.metadata && e.metadata.nisit_id) || "";
-
-        return {
-          id: e.entry_id || String(e.id),
-          eventId: eventId,
-          userId: String(e.user_id),
-          userName,
-          userEmail,
-          userNisitId,
-          userRole: (e.metadata && e.metadata.role) || "participant",
-          action: normalizeAction(e.action || e.status || "registration"),
-          timestamp: realTime,
-          participationDate: pDate,
-          details: null,
-          metadata: e.metadata || {},
-          proofImage: (e.metadata && e.metadata.proof_image) || null,
-          distanceKm: (e.metadata && e.metadata.distance_km) || null,
-          status: e.status,
-          // ✅ Pre-computed expensive fields
-          dateObj: new Date(realTime),
-          searchStr: `${userName} ${userEmail} ${userNisitId}`.toLowerCase(),
-        };
-      });
-
-      // logs mapped
-      // If some rows are missing nisit id, fetch user profiles (cached) and fill
-      const missing = Array.from(
-        new Set(
-          logs
-            .filter((l) => (!l.userNisitId || l.userNisitId === "") && l.userId)
-            .map((l) => Number(l.userId)),
-        ),
-      );
-      // ✅ Optimization: Concurrent fetching with Promise.all (I/O Optimization)
-      await Promise.all(
-        missing.map(async (uid) => {
-          try {
-            const prof = await fetchUser(uid);
-            if (prof && (prof.nisit_id || prof.nisitId || prof.nisit)) {
-              const nisit = prof.nisit_id || prof.nisitId || prof.nisit;
-              // Mutate in place for performance or map once at end?
-              // Since logs is reactive, let's map at end of batch to trigger one update?
-              // Actually, mutating the array elements directly is fine if we re-assign logs at the end,
-              // but here we are inside a function. Let's just update the specific entries.
-              // For O(N) update here:
-              // We can build a map of uid -> nisit and then update logs in one pass.
-            }
-          } catch (e) {}
-        }),
-      );
-
-      // Re-map logs once to fill missing data (Performance: Single pass O(N) vs multiple state updates)
-      // Check cache again since we just populated it
-      logs = logs.map((l) => {
-        if ((!l.userNisitId || l.userNisitId === "") && l.userId) {
-          const cached = userCache.get(Number(l.userId));
-          if (cached) {
-            const n = cached.nisit_id || cached.nisitId || cached.nisit;
-            if (n) return { ...l, userNisitId: n };
-          }
-        }
-        return l;
-      });
-
+      // Process first batch immediately
+      logs = mapEntries(allEntries, eventId);
+      await fillMissingProfiles(logs);
       calculateStatistics();
+      loading = false; // 🚀 UI IS NOW INTERACTIVE!
+
+      // --- BACKGROUND BATCHES (Parallelized High Throughput) ---
+      if (page <= totalPages) {
+        (async () => {
+          // 🚀 PERFORMANCE TUNING: PARALLEL FETCHING
+          // Browser handles ~6 connections per domain. We use 5 parallel requests.
+          const CONCURRENCY = 5;
+
+          while (page <= totalPages) {
+            const promises = [];
+            const pagesToFetch = [];
+
+            // Queue up multiple requests
+            for (let i = 0; i < CONCURRENCY && page <= totalPages; i++) {
+              promises.push(
+                getSnapshotEntries(Number(eventId), snapshotId, page, pageSize),
+              );
+              pagesToFetch.push(page);
+              page++;
+            }
+
+            try {
+              // 🚀 Parallel Request Execution
+              const results = await Promise.all(promises);
+
+              let batchParams: any[] = [];
+
+              for (const res of results) {
+                if (res && res.entries) {
+                  batchParams.push(...res.entries);
+                }
+              }
+
+              if (batchParams.length > 0) {
+                const newLogs = mapEntries(batchParams, eventId);
+                await fillMissingProfiles(newLogs);
+
+                // Update State in one big chunk
+                logs = logs.concat(newLogs);
+                calculateStatistics(newLogs);
+
+                // Yield for UI responsiveness
+                await new Promise((r) => setTimeout(r, 20));
+              }
+            } catch (e) {
+              console.error("Background fetch error", e);
+              // If one batch fails, we keep going? Or stop?
+              // Let's stop to be safe, or just log.
+              // Assuming transient error, maybe break.
+              break;
+            }
+          }
+        })();
+      }
     } catch (error) {
       console.error("Failed to load entries:", error);
       logs = [];
-    } finally {
       loading = false;
     }
   }
