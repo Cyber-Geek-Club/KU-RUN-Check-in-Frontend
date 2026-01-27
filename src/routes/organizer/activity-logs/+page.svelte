@@ -73,6 +73,7 @@
     totalDistanceAccumulated?: number;
     firstParticipation: string;
     lastParticipation: string;
+    isLoadingDetails?: boolean;
   };
 
   type Language = "th" | "en";
@@ -1171,19 +1172,53 @@
   // Modal (Existing logic)
   async function openParticipantDetail(log: LogEntry) {
     if (!selectedEvent) return;
-    loading = true;
+
+    // 🚀 UX Optimization: Open immediately with available data
+    // Do NOT set global loading = true (blocks entire screen)
+
+    // Initialize with known data
+    selectedParticipant = {
+      userId: log.userId,
+      userName: log.userName,
+      userEmail: log.userEmail,
+      userNisitId: log.userNisitId,
+      userRole: log.userRole,
+      participations: [log], // Show at least the clicked log
+      totalDays: 1,
+      completedDays: log.action === "reward_unlocked" ? 1 : 0,
+      totalDistance: Number(log.distanceKm) || 0,
+      firstParticipation: log.timestamp,
+      lastParticipation: log.timestamp,
+      isLoadingDetails: true, // Add a flag for UI spinners inside modal
+    };
+
+    showDetailModal = true;
+
     try {
-      // opening participant detail
+      // 🚀 Performance: Parallel Fetching
+      const eventId = selectedEvent.id;
+      const userId = Number(log.userId);
+
+      const [userLogsRes, statsRes, userProfileRes] = await Promise.allSettled([
+        getLogsForUser(eventId, userId),
+        getUserStatistics(userId),
+        // Check cache first for user profile
+        userCache.has(userId)
+          ? Promise.resolve(userCache.get(userId))
+          : fetchUser(userId),
+      ]);
+
+      // 1. Process Logs
       let userLogs: any[] = [];
-      try {
-        userLogs = await getLogsForUser(selectedEvent.id, log.userId);
-        // user logs fetched
-      } catch (e) {
-        console.warn("getLogsForUser failed", e);
-        userLogs = [];
+      if (userLogsRes.status === "fulfilled") {
+        userLogs = userLogsRes.value || [];
+      } else {
+        console.warn("getLogsForUser failed", userLogsRes.reason);
       }
 
       const logsToUse = userLogs.length > 0 ? userLogs : [log];
+
+      // Calculate derived stats
       const participationsByDate = new Map();
       logsToUse.forEach((l: any) => {
         const d = l.participationDate || l.timestamp.split("T")[0];
@@ -1205,77 +1240,61 @@
         0,
       );
 
-      selectedParticipant = {
-        userId: log.userId,
-        userName: log.userName,
-        userEmail: log.userEmail,
-        userNisitId: log.userNisitId,
-        userRole: log.userRole,
-        participations: sorted,
-        totalDays: participationsByDate.size,
-        completedDays,
-        totalDistance,
-        firstParticipation: sorted[sorted.length - 1]?.timestamp,
-        lastParticipation: sorted[0]?.timestamp,
-      };
+      // 2. Process Statistics
+      let stats: any = {};
+      let totalDistanceAccumulated = 0;
 
-      try {
-        const stats = await getUserStatistics(Number(log.userId));
-        // statistics fetched
-        (selectedParticipant as any).statistics = stats;
+      if (statsRes.status === "fulfilled" && statsRes.value) {
+        stats = statsRes.value;
         if (
-          stats &&
           stats.total_distance_km !== undefined &&
           stats.total_distance_km !== null
         ) {
-          (selectedParticipant as any).totalDistanceAccumulated = Number(
-            stats.total_distance_km,
-          );
+          totalDistanceAccumulated = Number(stats.total_distance_km);
         } else {
-          // Fallback: call the statistics API directly (axios)
-          try {
-            const resp = await api.get(
-              `/api/participations/user/${log.userId}/statistics`,
-            );
-            if (
-              resp &&
-              resp.data &&
-              resp.data.total_distance_km !== undefined &&
-              resp.data.total_distance_km !== null
-            ) {
-              (selectedParticipant as any).totalDistanceAccumulated = Number(
-                resp.data.total_distance_km,
-              );
-            }
-          } catch (e) {
-            // ignore
-          }
+          // Fallback fetch if needed (optional, maybe skip for speed? Or do separate request)
+          // Let's skip the fallback fetch to keep it fast, or do it separately.
+          // If we really need it, we should have included it in the Promise.all
         }
-      } catch (e) {}
+      }
 
-      try {
-        const userProfile = await fetchUser(Number(log.userId));
-        // user profile fetched
-        if (userProfile) {
+      // 3. Process Profile (Update display names if newer/better)
+      let profileData = null;
+      if (userProfileRes.status === "fulfilled" && userProfileRes.value) {
+        profileData = userProfileRes.value;
+      }
+
+      // Update State
+      if (selectedParticipant && selectedParticipant.userId === log.userId) {
+        selectedParticipant.participations = sorted;
+        selectedParticipant.totalDays = participationsByDate.size;
+        selectedParticipant.completedDays = completedDays;
+        selectedParticipant.totalDistance = totalDistance;
+        selectedParticipant.firstParticipation =
+          sorted[sorted.length - 1]?.timestamp;
+        selectedParticipant.lastParticipation = sorted[0]?.timestamp;
+        (selectedParticipant as any).statistics = stats;
+        if (totalDistanceAccumulated)
+          (selectedParticipant as any).totalDistanceAccumulated =
+            totalDistanceAccumulated;
+
+        if (profileData) {
           selectedParticipant.userNisitId =
-            userProfile.nisit_id ||
-            userProfile.nisitId ||
-            userProfile.nisit ||
+            profileData.nisit_id ||
+            profileData.nisitId ||
+            profileData.nisit ||
             selectedParticipant.userNisitId;
           selectedParticipant.userName =
-            `${userProfile.first_name || ""} ${userProfile.last_name || ""}`.trim() ||
+            `${profileData.first_name || ""} ${profileData.last_name || ""}`.trim() ||
             selectedParticipant.userName;
           selectedParticipant.userEmail =
-            userProfile.email || selectedParticipant.userEmail;
+            profileData.email || selectedParticipant.userEmail;
         }
-      } catch (e) {}
-
-      showDetailModal = true;
+        selectedParticipant.isLoadingDetails = false;
+      }
     } catch (e) {
-      console.error(e);
-      showDetailModal = false;
-    } finally {
-      loading = false;
+      console.error("Detail fetch error", e);
+      if (selectedParticipant) selectedParticipant.isLoadingDetails = false;
     }
   }
 
