@@ -425,90 +425,100 @@
     );
 
     // Fetch in parallel
-    await Promise.all(
-      multiDayEvents.map(async (event) => {
-        try {
-          const headers = {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          };
+    // Batch processing to prevent server overload (500 MultipleResultsFound)
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < multiDayEvents.length; i += BATCH_SIZE) {
+      const batch = multiDayEvents.slice(i, i + BATCH_SIZE);
 
-          // 1. Fetch Total Status
-          let statusData = null;
+      await Promise.all(
+        batch.map(async (event) => {
           try {
-            const statusRes = await fetch(
-              `${BASE_URL}/api/participations/pre-register-status/${event.id}`,
-              { headers },
-            );
-            if (statusRes.ok) {
-              statusData = await statusRes.json();
+            const headers = {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            };
+
+            // 1. Fetch Total Status
+            let statusData = null;
+            try {
+              const statusRes = await fetch(
+                `${BASE_URL}/api/participations/pre-register-status/${event.id}`,
+                { headers },
+              );
+              if (statusRes.ok) {
+                statusData = await statusRes.json();
+              }
+            } catch (err) {
+              console.warn(`Failed to fetch status for event ${event.id}`, err);
             }
-          } catch (err) {
-            console.warn(`Failed to fetch status for event ${event.id}`, err);
-          }
 
-          // 2. Fetch Daily Limit Check
-          let dailyData = null;
-          try {
-            // [FIX] Add error handling for daily limit check which causes 500
-            const dailyRes = await fetch(
-              `${BASE_URL}/api/participations/check-daily-limit/${event.id}`,
-              { headers },
-            );
-            if (dailyRes.ok) {
-              dailyData = await dailyRes.json();
-            } else {
+            // 2. Fetch Daily Limit Check
+            let dailyData = null;
+            try {
+              const dailyRes = await fetch(
+                `${BASE_URL}/api/participations/check-daily-limit/${event.id}`,
+                { headers },
+              );
+              if (dailyRes.ok) {
+                dailyData = await dailyRes.json();
+              } else {
+                console.warn(
+                  `Daily limit check failed for ${event.id}: ${dailyRes.status}`,
+                );
+              }
+            } catch (err) {
               console.warn(
-                `Daily limit check failed for ${event.id}: ${dailyRes.status}`,
+                `Daily limit check network error for ${event.id}`,
+                err,
               );
             }
-          } catch (err) {
-            console.warn(
-              `Daily limit check network error for ${event.id}`,
-              err,
+
+            // Update Event Object
+            const index = events.findIndex((e) => e.id === event.id);
+            if (index !== -1) {
+              if (statusData) {
+                events[index].preRegStatus = {
+                  registered_count: statusData.registered_count,
+                  max_limit: statusData.max_limit,
+                  is_full: statusData.is_full,
+                  remaining: Math.max(
+                    0,
+                    statusData.max_limit - statusData.registered_count,
+                  ),
+                };
+                // Override max_checkins_per_user with real data from server if available
+                if (statusData.max_limit) {
+                  events[index].max_checkins_per_user = statusData.max_limit;
+                }
+                // Override checkin_count with real registered_count
+                if (statusData.registered_count !== undefined) {
+                  events[index].checkin_count = statusData.registered_count;
+                }
+              }
+
+              if (dailyData) {
+                events[index].serverCanRegisterToday = dailyData.can_register;
+                // Update isJoinedToday logic based on server check
+                events[index].isJoinedToday = !dailyData.can_register;
+              }
+            }
+          } catch (e) {
+            console.error(
+              `Error processing pre-reg details for event ${event.id}:`,
+              e,
             );
           }
+        }),
+      );
 
-          // Update Event Object
-          const index = events.findIndex((e) => e.id === event.id);
-          if (index !== -1) {
-            if (statusData) {
-              events[index].preRegStatus = {
-                registered_count: statusData.registered_count,
-                max_limit: statusData.max_limit,
-                is_full: statusData.is_full,
-                remaining: Math.max(
-                  0,
-                  statusData.max_limit - statusData.registered_count,
-                ),
-              };
-              // Override max_checkins_per_user with real data from server if available
-              if (statusData.max_limit) {
-                events[index].max_checkins_per_user = statusData.max_limit;
-              }
-              // Override checkin_count with real registered_count
-              if (statusData.registered_count !== undefined) {
-                events[index].checkin_count = statusData.registered_count;
-              }
-            }
+      // Force update UI after each batch
+      events = [...events];
 
-            if (dailyData) {
-              events[index].serverCanRegisterToday = dailyData.can_register;
-              // Update isJoinedToday logic based on server check
-              events[index].isJoinedToday = !dailyData.can_register;
-            }
-          }
-        } catch (e) {
-          console.error(
-            `Error processing pre-reg details for event ${event.id}:`,
-            e,
-          );
-        }
-      }),
-    );
-
-    // Force update
-    events = [...events];
+      // Small delay between batches to be nice to the server
+      if (i + BATCH_SIZE < multiDayEvents.length) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    }
   }
 
   async function updateUserStatus() {
