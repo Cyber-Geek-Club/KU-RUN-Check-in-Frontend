@@ -66,6 +66,12 @@
 
     created_at?: string;
     updated_at?: string;
+
+    // ✅ Optimization: Pre-computed fields for O(1) access
+    searchStr?: string;
+    displayName?: string; // Cache formatted name
+    displayNisit?: string; // Cache formatted nisit
+    displayEmail?: string; // Cache display email
   }
 
   interface RewardTier {
@@ -374,38 +380,42 @@
   }
 
   function calculateStatistics() {
-    // compute into a new object then reassign to trigger Svelte reactivity
-    const newStats: Statistics = {
-      totalParticipants: rewards.length,
-      totalRewarded: rewards.filter((r) => r.rewarded_at).length,
-      totalQualified: rewards.filter((r) => r.qualified_at && !r.rewarded_at)
-        .length,
-      totalPending: rewards.filter((r) => !r.qualified_at).length,
-      averageCompletions: 0,
-      topCompletion: 0,
-    };
+    // ✅ Optimization: Single-pass O(N) calculation
+    let totalRewarded = 0;
+    let totalQualified = 0;
+    let totalPending = 0;
+    let sumCompletions = 0;
+    let topCompletion = 0;
+    const len = rewards.length;
 
-    const completions = rewards.map((r) => r.total_completions);
-    newStats.averageCompletions =
-      completions.length > 0
-        ? Math.round(
-            (completions.reduce((a, b) => a + b, 0) / completions.length) * 10,
-          ) / 10
-        : 0;
-    newStats.topCompletion = Math.max(...completions, 0);
+    for (let i = 0; i < len; i++) {
+      const r = rewards[i];
+      if (r.rewarded_at) totalRewarded++;
+      else if (r.qualified_at) totalQualified++;
+      else totalPending++;
 
-    // debug: show computed values
-    console.debug("[rewards] calculateStatistics", {
-      rewardsCount: rewards.length,
-      rewarded: newStats.totalRewarded,
-      qualified: newStats.totalQualified,
-      pending: newStats.totalPending,
-      average: newStats.averageCompletions,
-      top: newStats.topCompletion,
-    });
+      const c = r.total_completions || 0;
+      sumCompletions += c;
+      if (c > topCompletion) topCompletion = c;
+    }
+
+    const averageCompletions =
+      len > 0 ? Math.round((sumCompletions / len) * 10) / 10 : 0;
 
     // reassign to ensure Svelte notices the change
-    statistics = newStats;
+    statistics = {
+      totalParticipants: len,
+      totalRewarded,
+      totalQualified,
+      totalPending,
+      averageCompletions,
+      topCompletion,
+    };
+
+    // debug: show computed values
+    if (import.meta.env.DEV) {
+      console.debug("[rewards] calculateStatistics O(N)", statistics);
+    }
   }
 
   // Fetch and cache user profile by ID
@@ -541,9 +551,34 @@
               new Set(rewards.map((r) => r.user_id).filter(Boolean)),
             );
             await Promise.all(userIds.map((id: number) => ensureUser(id)));
+
+            // ✅ Optimization: Post-process rewards to fill cached display fields & searchStr
+            // This avoids doing it in the render loop or filter loop
+            for (const r of rewards) {
+              const u = userCache[r.user_id];
+
+              // Resolve display name
+              let dName = r.user_full_name || "Unknown";
+              if (u && (u.first_name || u.last_name)) {
+                dName = `${u.first_name || ""} ${u.last_name || ""}`.trim();
+              }
+              r.displayName = dName;
+
+              // Resolve email
+              r.displayEmail = (u && u.email) || r.user_email || "";
+
+              // Resolve nisit
+              r.displayNisit =
+                (u && (u.nisit_id || u.nisitId)) || r.user_nisit_id || "";
+
+              // Build search string
+              r.searchStr =
+                `${r.displayName} ${r.displayEmail} ${r.displayNisit}`.toLowerCase();
+            }
+
             if (import.meta.env.DEV)
               console.debug(
-                "[rewards] prefetched users",
+                "[rewards] prefetched users & built searchStr",
                 Object.keys(userCache).length,
               );
           } catch (e) {
@@ -592,13 +627,8 @@
     filteredRewards = rewards.filter((reward) => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        const match =
-          (reward.user_full_name &&
-            reward.user_full_name.toLowerCase().includes(q)) ||
-          (reward.user_email && reward.user_email.toLowerCase().includes(q)) ||
-          (reward.user_nisit_id &&
-            reward.user_nisit_id.toLowerCase().includes(q));
-        if (!match) return false;
+        // ✅ Optimization: Use pre-computed search string
+        if (reward.searchStr && !reward.searchStr.includes(q)) return false;
       }
 
       if (selectedStatus) {
@@ -1693,7 +1723,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  {#each paginatedRewards as entry}
+                  {#each paginatedRewards as entry (entry.id)}
                     <tr>
                       <td>
                         <div
@@ -1704,14 +1734,13 @@
                         </div>
                       </td>
                       <td class="name-cell" data-label={lang.name}
-                        >{formatUserName(entry)}</td
+                        >{entry.displayName}</td
                       >
                       <td class="email-cell" data-label={lang.email}
-                        >{userCache[entry.user_id]?.email ||
-                          entry.user_email}</td
+                        >{entry.displayEmail}</td
                       >
                       <td class="nisit-cell" data-label={lang.nisitId}
-                        >{formatNisitId(entry)}</td
+                        >{entry.displayNisit}</td
                       >
                       <td data-label={lang.role}>
                         <span

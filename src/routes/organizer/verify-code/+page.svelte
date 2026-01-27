@@ -147,11 +147,17 @@
     pinInputRefs[0]?.focus();
   }
 
+  // ✅ [แก้ไข] Bad Word Filter Logic (Regex - No Loop)
+  // This regex matches any string that contains "badword1", "badword2", etc. (case insensitive)
+  // Replace terms inside ( ... ) with your actual blocked list.
+  const BAD_WORDS_REGEX = /(badword1|badword2|stupid|idiot)/i;
+
   function handlePinInput(index: number, event: Event) {
     const input = event.target as HTMLInputElement;
     const value = input.value;
 
-    if (value && !/^\d$/.test(value)) {
+    // ✅ [แก้ไข] Only allow alphanumeric (0-9, A-Z, a-z)
+    if (value && !/^[0-9a-zA-Z]$/.test(value)) {
       pins[index] = "";
       return;
     }
@@ -183,6 +189,16 @@
     const code = pins.join("");
     // ✅ [แก้ไข 3] ตรวจสอบความยาว 5 หลัก
     if (code.length !== 5) return;
+
+    // ✅ [เพิ่ม] Check Bad Words
+    if (BAD_WORDS_REGEX.test(code)) {
+      verifyErrorMessage =
+        currentLang === "th"
+          ? "รหัสมีคำไม่เหมาะสม"
+          : "Code contains restricted words";
+      verifyErrorIndex = 0; // Highlight first box (or all)
+      return;
+    }
 
     verifyCode(code, "pin");
   }
@@ -255,12 +271,12 @@
         lastCheckOutSuccess = true;
         setTimeout(() => {
           lastCheckOutSuccess = false;
-        }, 3000);
+        }, 800); // ✅ [Quick] 0.8s
       } else {
         lastVerifySuccess = true;
         setTimeout(() => {
           lastVerifySuccess = false;
-        }, 3000);
+        }, 800); // ✅ [Quick] 0.8s
       }
 
       // แสดง Success ใน QR Mode ด้วย
@@ -275,7 +291,7 @@
           } else if (verifyMode === "qr") {
             requestAnimationFrame(scanFrame);
           }
-        }, 2000);
+        }, 600); // ✅ [Quick] 0.6s
       }
 
       if (type === "pin") clearPins();
@@ -740,7 +756,7 @@
               >
                 <input
                   type="text"
-                  inputmode="numeric"
+                  inputmode="text"
                   maxlength="1"
                   class="vc-pin-input"
                   bind:value={pins[i]}
@@ -1075,7 +1091,7 @@
     font-weight: 600;
     font-size: 0.95rem;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.15s;
   }
 
   .vc-action-tab svg {
@@ -1100,7 +1116,7 @@
     height: calc(100% - 1rem);
     background: linear-gradient(135deg, #10b981, #059669);
     border-radius: 12px;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1;
   }
 
@@ -1144,7 +1160,7 @@
     font-weight: 600;
     font-size: 0.9rem;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.15s;
   }
 
   .vc-type-tab.active {
@@ -1162,7 +1178,7 @@
     height: calc(100% - (var(--vc-type-pad-vertical) * 2));
     background: #334155;
     border-radius: 8px;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1;
   }
 
@@ -1186,7 +1202,7 @@
     font-weight: 600;
     font-size: 0.9rem;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.15s;
     overflow: hidden; /* ensure long labels do not push out */
   }
 
@@ -1289,7 +1305,7 @@
     color: #64748b;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.15s;
     min-height: 60px;
   }
 
@@ -1301,7 +1317,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s;
+    transition: all 0.15s;
   }
 
   .vc-mode-tab.active {
@@ -1341,7 +1357,7 @@
     );
     border: 1px solid rgba(16, 185, 129, 0.3);
     border-radius: 12px;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1;
   }
 
@@ -1372,7 +1388,7 @@
     border: 1px solid rgba(16, 185, 129, 0.3);
     border-radius: 16px;
     margin-bottom: 2rem;
-    animation: slideDown 0.3s ease-out;
+    animation: slideDown 0.15s ease-out;
   }
 
   .vc-success.checkout {
@@ -1473,7 +1489,7 @@
     border: none;
     border-radius: 16px;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.15s;
   }
 
   .vc-switch.on {
@@ -1517,7 +1533,7 @@
     background: rgba(15, 23, 42, 0.5);
     border: 2px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
-    transition: all 0.3s;
+    transition: all 0.15s;
   }
 
   .vc-pin-cell.filled {
@@ -1567,7 +1583,7 @@
     border-radius: 12px;
     color: #ef4444;
     margin-bottom: 1.5rem;
-    animation: slideDown 0.3s;
+    animation: slideDown 0.15s;
   }
 
   .vc-error-msg svg {
