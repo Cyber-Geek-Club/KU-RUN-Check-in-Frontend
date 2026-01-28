@@ -1956,7 +1956,8 @@
     background-color: var(--bg-body);
     font-family: "Inter", sans-serif;
     overflow-y: auto;
-    z-index: 10000 !important;
+    overflow-x: hidden;
+    min-height: 100vh;
   }
 
   .app-container {
@@ -1965,11 +1966,13 @@
     color: var(--text-main);
     display: flex;
     flex-direction: column;
+    position: relative; /* Ensure context */
   }
   .scroll-container {
     margin-top: calc(var(--nav-height) + 40px);
     padding-bottom: 40px;
-    overflow: visible;
+    /* overflow: visible; - default, removing redundancy */
+    flex: 1; /* Allow expansion */
   }
   .content-wrapper {
     max-width: 1400px;
@@ -2791,49 +2794,6 @@
     border: none;
   }
 
-  .cancel-direct-btn {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 14px 22px;
-    border-radius: 12px;
-    font-size: 0.95rem;
-    font-weight: 800;
-    cursor: pointer;
-    box-shadow:
-      0 8px 20px -4px rgba(239, 68, 68, 0.45),
-      0 4px 8px rgba(0, 0, 0, 0.2);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-  }
-  .cancel-direct-btn::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.25),
-      transparent
-    );
-    transition: left 0.5s;
-  }
-  .cancel-direct-btn:hover::before {
-    left: 100%;
-  }
-  .cancel-direct-btn:hover {
-    filter: brightness(1.1);
-    transform: translateY(-3px);
-    box-shadow:
-      0 12px 28px -4px rgba(239, 68, 68, 0.6),
-      0 6px 12px rgba(0, 0, 0, 0.3);
-    border-color: rgba(255, 255, 255, 0.3);
-  }
-
   @media (max-width: 520px) {
     .card-footer-actions {
       flex-direction: column;
@@ -2850,8 +2810,7 @@
     .footer-actions > button {
       width: 100%;
     }
-    .register-btn,
-    .cancel-direct-btn {
+    .register-btn {
       width: 100%;
       min-width: 0;
     }
@@ -3048,13 +3007,6 @@
   }
 
   /* Cancel Modal Specific */
-  .cancel-options {
-    text-align: left;
-    margin-bottom: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
   .radio-item {
     display: flex;
     align-items: center;
@@ -3091,10 +3043,6 @@
   }
   .reason-input textarea:focus {
     border-color: #ef4444;
-  }
-  .cancel-confirm-btn {
-    background: #ef4444;
-    color: white;
   }
 
   /* Mobile Language Switcher */
